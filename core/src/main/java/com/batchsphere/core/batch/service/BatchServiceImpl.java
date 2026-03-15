@@ -100,7 +100,7 @@ public class BatchServiceImpl implements BatchService {
      */
     @Override
     public Page<Batch> getAllBatches(Pageable pageable) {
-        return batchRepository.findByISActiveTrue(pageable);
+        return batchRepository.findByIsActiveTrue(pageable);
     }
 
     /**

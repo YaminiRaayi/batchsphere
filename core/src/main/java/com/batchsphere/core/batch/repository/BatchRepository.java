@@ -11,5 +11,5 @@ import java.util.UUID;
 public interface BatchRepository extends JpaRepository<Batch, UUID> {
 Optional<Batch> findByBatchNumber(String batchNumber);
 boolean existsByBatchNumber(String batchNumber);
-Page<Batch> findByISActiveTrue(Pageable pageable);
+Page<Batch> findByIsActiveTrue(Pageable pageable);
 }
