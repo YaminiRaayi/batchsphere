@@ -1,6 +1,6 @@
 package com.batchsphere.core.batch.entity;
 
-import com.batchsphere.core.masterdata.entity.Material;
+import com.batchsphere.core.masterdata.material.entity.Material;
 import jakarta.persistence.*;
 import lombok.*;
 

@@ -2,9 +2,9 @@ package com.batchsphere.core.masterdata.service;
 
 import com.batchsphere.core.exception.DuplicateResourceException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
-import com.batchsphere.core.masterdata.dto.MaterialRequest;
-import com.batchsphere.core.masterdata.entity.Material;
-import com.batchsphere.core.masterdata.repository.MaterialRepository;
+import com.batchsphere.core.masterdata.material.dto.MaterialRequest;
+import com.batchsphere.core.masterdata.material.entity.Material;
+import com.batchsphere.core.masterdata.material.repository.MaterialRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;

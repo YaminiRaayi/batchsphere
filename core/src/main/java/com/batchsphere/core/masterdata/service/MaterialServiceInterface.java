@@ -1,7 +1,7 @@
 package com.batchsphere.core.masterdata.service;
 
-import com.batchsphere.core.masterdata.dto.MaterialRequest;
-import com.batchsphere.core.masterdata.entity.Material;
+import com.batchsphere.core.masterdata.material.dto.MaterialRequest;
+import com.batchsphere.core.masterdata.material.entity.Material;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
