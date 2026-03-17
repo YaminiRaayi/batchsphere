@@ -1,0 +1,257 @@
+{
+  "info": {
+    "_postman_id": "1d8d2907-f056-4fe0-a918-7f11ff551234",
+    "name": "BatchSphere API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "supplierId", "value": "" },
+    { "key": "vendorId", "value": "" },
+    { "key": "vendorBusinessUnitId", "value": "" },
+    { "key": "materialId", "value": "" },
+    { "key": "batchId", "value": "" },
+    { "key": "grnId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Create Supplier",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"supplierCode\": \"SUP-001\",\n  \"supplierName\": \"Acme Chemicals\",\n  \"contactPerson\": \"Ravi Kumar\",\n  \"email\": \"supplier@acme.com\",\n  \"phone\": \"9876543210\",\n  \"createdBy\": \"admin\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/suppliers",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "suppliers"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "var json = pm.response.json();",
+              "pm.collectionVariables.set('supplierId', json.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Create Vendor",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"vendorCode\": \"VEN-001\",\n  \"vendorName\": \"Acme Procurement\",\n  \"contactPerson\": \"Sonia\",\n  \"email\": \"vendor@acme.com\",\n  \"phone\": \"9988776655\",\n  \"createdBy\": \"admin\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/vendors",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "vendors"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "var json = pm.response.json();",
+              "pm.collectionVariables.set('vendorId', json.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Create Vendor Business Unit",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"unitName\": \"Hyderabad Unit\",\n  \"address\": \"Plot 42, Industrial Zone\",\n  \"city\": \"Hyderabad\",\n  \"state\": \"Telangana\",\n  \"country\": \"India\",\n  \"createdBy\": \"admin\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/vendors/{{vendorId}}/business-units",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "vendors", "{{vendorId}}", "business-units"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "var json = pm.response.json();",
+              "pm.collectionVariables.set('vendorBusinessUnitId', json.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Create Material",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"materialCode\": \"MAT-001\",\n  \"materialName\": \"Citric Acid\",\n  \"materialType\": \"RAW_MATERIAL\",\n  \"uom\": \"KG\",\n  \"description\": \"Food grade material\",\n  \"createdBy\": \"admin\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/materials",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "materials"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "var json = pm.response.json();",
+              "pm.collectionVariables.set('materialId', json.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Create Batch",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"batchNumber\": \"BAT-001\",\n  \"materialId\": \"{{materialId}}\",\n  \"batchType\": \"RAW_MATERIAL\",\n  \"quantity\": 100,\n  \"unitOfMeasure\": \"KG\",\n  \"manufactureDate\": \"2026-03-01\",\n  \"expiryDate\": \"2027-03-01\",\n  \"retestDate\": \"2026-09-01\",\n  \"createdBy\": \"admin\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/batches",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "batches"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "var json = pm.response.json();",
+              "pm.collectionVariables.set('batchId', json.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Create GRN",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"grnNumber\": \"GRN-001\",\n  \"supplierId\": \"{{supplierId}}\",\n  \"vendorId\": \"{{vendorId}}\",\n  \"vendorBusinessUnitId\": \"{{vendorBusinessUnitId}}\",\n  \"receiptDate\": \"2026-03-17\",\n  \"invoiceNumber\": \"INV-001\",\n  \"remarks\": \"Initial inward receipt\",\n  \"createdBy\": \"admin\",\n  \"items\": [\n    {\n      \"materialId\": \"{{materialId}}\",\n      \"batchId\": \"{{batchId}}\",\n      \"receivedQuantity\": 100,\n      \"acceptedQuantity\": 95,\n      \"rejectedQuantity\": 5,\n      \"uom\": \"KG\",\n      \"warehouseLocation\": \"RM-WH-01-A\",\n      \"unitPrice\": 42.50,\n      \"qcStatus\": \"PARTIALLY_APPROVED\",\n      \"description\": \"5 KG rejected during QC\"\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/grns",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "grns"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "var json = pm.response.json();",
+              "pm.collectionVariables.set('grnId', json.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Receive GRN",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"updatedBy\": \"admin\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/grns/{{grnId}}/receive",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "grns", "{{grnId}}", "receive"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "var json = pm.response.json();",
+              "pm.test('GRN is received', function () { pm.expect(json.status).to.eql('RECEIVED'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Get Inventory",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/inventory",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "inventory"]
+        }
+      }
+    },
+    {
+      "name": "9. Get Inventory Transactions",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{baseUrl}}/api/inventory/transactions",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "inventory", "transactions"]
+        }
+      }
+    }
+  ]
+}

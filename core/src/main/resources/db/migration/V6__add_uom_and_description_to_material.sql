@@ -1,0 +1,12 @@
+ALTER TABLE material
+    ADD COLUMN uom VARCHAR(50);
+
+ALTER TABLE material
+    ADD COLUMN description VARCHAR(500);
+
+UPDATE material
+SET uom = 'UNKNOWN'
+WHERE uom IS NULL;
+
+ALTER TABLE material
+    ALTER COLUMN uom SET NOT NULL;

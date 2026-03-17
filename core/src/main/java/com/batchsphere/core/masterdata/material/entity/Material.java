@@ -29,6 +29,34 @@ public class Material {
     @Column(name = "material_type", nullable = false, length = 50)
     private String materialType;
 
+    @Column(name = "uom", nullable = false, length = 50)
+    private String uom;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "storage_condition", nullable = false, length = 50)
+    private StorageCondition storageCondition;
+
+    @Column(name = "photosensitive", nullable = false)
+    private Boolean photosensitive;
+
+    @Column(name = "hygroscopic", nullable = false)
+    private Boolean hygroscopic;
+
+    @Column(name = "hazardous", nullable = false)
+    private Boolean hazardous;
+
+    @Column(name = "selective_material", nullable = false)
+    private Boolean selectiveMaterial;
+
+    @Column(name = "vendor_coa_release_allowed", nullable = false)
+    private Boolean vendorCoaReleaseAllowed;
+
+    @Column(name = "sampling_required", nullable = false)
+    private Boolean samplingRequired;
+
+    @Column(name = "description", length = 500)
+    private String description;
+
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 

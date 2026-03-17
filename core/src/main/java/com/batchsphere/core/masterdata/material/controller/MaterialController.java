@@ -2,7 +2,7 @@ package com.batchsphere.core.masterdata.material.controller;
 
 import com.batchsphere.core.masterdata.material.dto.MaterialRequest;
 import com.batchsphere.core.masterdata.material.entity.Material;
-import com.batchsphere.core.masterdata.service.MaterialServiceImpl;
+import com.batchsphere.core.masterdata.material.service.MaterialServiceImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

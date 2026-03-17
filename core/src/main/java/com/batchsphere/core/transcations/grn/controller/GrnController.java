@@ -1,0 +1,86 @@
+package com.batchsphere.core.transcations.grn.controller;
+
+import com.batchsphere.core.transcations.grn.dto.CreateGrnRequest;
+import com.batchsphere.core.transcations.grn.dto.ContainerSamplingLabelRequest;
+import com.batchsphere.core.transcations.grn.dto.GrnContainerResponse;
+import com.batchsphere.core.transcations.grn.dto.GrnResponse;
+import com.batchsphere.core.transcations.grn.dto.GrnStatusUpdateRequest;
+import com.batchsphere.core.transcations.grn.dto.MaterialLabelResponse;
+import com.batchsphere.core.transcations.grn.dto.UpdateGrnRequest;
+import com.batchsphere.core.transcations.grn.service.GrnService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/grns")
+@RequiredArgsConstructor
+public class GrnController {
+
+    private final GrnService grnService;
+
+    @PostMapping
+    public ResponseEntity<GrnResponse> createGrn(@Valid @RequestBody CreateGrnRequest request) {
+        return ResponseEntity.ok(grnService.createGrn(request));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<GrnResponse> getGrnById(@PathVariable UUID id) {
+        return ResponseEntity.ok(grnService.getGrnById(id));
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<GrnResponse>> getAllGrns(Pageable pageable) {
+        return ResponseEntity.ok(grnService.getAllGrns(pageable));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<GrnResponse> updateGrn(@PathVariable UUID id, @Valid @RequestBody UpdateGrnRequest request) {
+        return ResponseEntity.ok(grnService.updateGrn(id, request));
+    }
+
+    @PostMapping("/{id}/receive")
+    public ResponseEntity<GrnResponse> receiveGrn(@PathVariable UUID id, @Valid @RequestBody GrnStatusUpdateRequest request) {
+        return ResponseEntity.ok(grnService.receiveGrn(id, request.getUpdatedBy()));
+    }
+
+    @GetMapping("/items/{grnItemId}/containers")
+    public ResponseEntity<List<GrnContainerResponse>> getContainersByGrnItemId(@PathVariable UUID grnItemId) {
+        return ResponseEntity.ok(grnService.getContainersByGrnItemId(grnItemId));
+    }
+
+    @GetMapping("/containers/{containerId}/labels")
+    public ResponseEntity<List<MaterialLabelResponse>> getLabelsByContainerId(@PathVariable UUID containerId) {
+        return ResponseEntity.ok(grnService.getLabelsByContainerId(containerId));
+    }
+
+    @PostMapping("/containers/{containerId}/sampling-label")
+    public ResponseEntity<GrnContainerResponse> applySamplingLabel(@PathVariable UUID containerId, @Valid @RequestBody ContainerSamplingLabelRequest request) {
+        return ResponseEntity.ok(grnService.applySamplingLabel(containerId, request));
+    }
+
+    @PostMapping("/{id}/cancel")
+    public ResponseEntity<GrnResponse> cancelGrn(@PathVariable UUID id, @Valid @RequestBody GrnStatusUpdateRequest request) {
+        return ResponseEntity.ok(grnService.cancelGrn(id, request.getUpdatedBy()));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deactivateGrn(@PathVariable UUID id, @RequestParam String updatedBy) {
+        grnService.deactivateGrn(id, updatedBy);
+        return ResponseEntity.noContent().build();
+    }
+}
