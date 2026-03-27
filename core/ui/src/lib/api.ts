@@ -1,0 +1,442 @@
+import type { Batch } from "../types/batch";
+import type { CreateMoaRequest, Moa } from "../types/moa";
+import type { InventoryRecord, InventoryTransaction } from "../types/inventory";
+import type {
+  CreatePalletRequest,
+  CreateRackRequest,
+  CreateRoomRequest,
+  CreateShelfRequest,
+  CreateWarehouseRequest,
+  Pallet,
+  Rack,
+  Room,
+  Shelf,
+  Warehouse
+} from "../types/location";
+import type { CreateMaterialRequest, Material } from "../types/material";
+import type { CreateSamplingToolRequest, SamplingTool } from "../types/sampling-tool";
+import type { CreateSpecRequest, Spec } from "../types/spec";
+import type { CreateSupplierRequest, Supplier } from "../types/supplier";
+import type {
+  CreateGrnRequest,
+  Grn,
+  GrnContainer,
+  GrnDocument,
+  MaterialLabel,
+  PageResponse
+} from "../types/grn";
+import type { SamplingPlanRequest, SamplingRequest } from "../types/sampling";
+import type {
+  CreateVendorBusinessUnitRequest,
+  VendorBusinessUnit
+} from "../types/vendor-business-unit";
+import type { CreateVendorRequest, Vendor } from "../types/vendor";
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+
+type ApiErrorResponse = {
+  error?: string;
+  message?: string;
+  details?: string;
+  timestamp?: string;
+};
+
+async function buildError(response: Response) {
+  let details = `Request failed with status ${response.status}`;
+
+  try {
+    const data = (await response.json()) as ApiErrorResponse;
+    if (data.details) {
+      details = data.details;
+    } else if (data.message) {
+      details = data.message;
+    } else if (data.error) {
+      details = data.error;
+    }
+  } catch {
+    // Ignore JSON parse failures and fall back to the HTTP status message.
+  }
+
+  return new Error(details);
+}
+
+async function requestJson<T>(path: string): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      Accept: "application/json"
+    }
+  });
+
+  if (!response.ok) {
+    throw await buildError(response);
+  }
+
+  return (await response.json()) as T;
+}
+
+async function requestMutation<T>(path: string, init: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json"
+    },
+    ...init
+  });
+
+  if (!response.ok) {
+    throw await buildError(response);
+  }
+
+  return (await response.json()) as T;
+}
+
+async function requestMultipart<T>(path: string, formData: FormData): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    body: formData
+  });
+
+  if (!response.ok) {
+    throw await buildError(response);
+  }
+
+  return (await response.json()) as T;
+}
+
+export function getApiBaseUrl() {
+  return API_BASE_URL;
+}
+
+export async function fetchGrns(page = 0, size = 15) {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    sort: "createdAt,desc"
+  });
+  return requestJson<PageResponse<Grn>>(`/api/grns?${params.toString()}`);
+}
+
+export async function createGrn(payload: CreateGrnRequest) {
+  return requestMutation<Grn>("/api/grns", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function receiveGrn(id: string, updatedBy: string) {
+  return requestMutation<Grn>(`/api/grns/${id}/receive`, {
+    method: "POST",
+    body: JSON.stringify({ updatedBy })
+  });
+}
+
+export async function fetchGrnById(id: string) {
+  return requestJson<Grn>(`/api/grns/${id}`);
+}
+
+export async function fetchGrnItemContainers(grnItemId: string) {
+  return requestJson<GrnContainer[]>(`/api/grns/items/${grnItemId}/containers`);
+}
+
+export async function fetchContainerLabels(containerId: string) {
+  return requestJson<MaterialLabel[]>(`/api/grns/containers/${containerId}/labels`);
+}
+
+export async function uploadGrnDocument(
+  grnItemId: string,
+  payload: {
+    documentName: string;
+    documentType: string;
+    documentUrl?: string;
+    createdBy: string;
+    file: File;
+  }
+) {
+  const formData = new FormData();
+  formData.set("documentName", payload.documentName);
+  formData.set("documentType", payload.documentType);
+  if (payload.documentUrl) {
+    formData.set("documentUrl", payload.documentUrl);
+  }
+  formData.set("createdBy", payload.createdBy);
+  formData.set("file", payload.file);
+  return requestMultipart<GrnDocument>(`/api/grns/items/${grnItemId}/documents`, formData);
+}
+
+export async function fetchSuppliers() {
+  return requestJson<Supplier[]>("/api/suppliers");
+}
+
+export async function createSupplier(payload: CreateSupplierRequest) {
+  return requestMutation<Supplier>("/api/suppliers", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchVendors(page = 0, size = 20) {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    sort: "createdAt,desc"
+  });
+  return requestJson<PageResponse<Vendor>>(`/api/vendors?${params.toString()}`);
+}
+
+export async function createVendor(payload: CreateVendorRequest) {
+  return requestMutation<Vendor>("/api/vendors", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchVendorBusinessUnits(page = 0, size = 20, vendorId?: string) {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    sort: "createdAt,desc"
+  });
+
+  if (vendorId) {
+    params.set("vendorId", vendorId);
+  }
+
+  return requestJson<PageResponse<VendorBusinessUnit>>(
+    `/api/vendor-business-units?${params.toString()}`
+  );
+}
+
+export async function createVendorBusinessUnit(
+  vendorId: string,
+  payload: CreateVendorBusinessUnitRequest
+) {
+  return requestMutation<VendorBusinessUnit>(`/api/vendors/${vendorId}/business-units`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchMaterials(page = 0, size = 20) {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    sort: "createdAt,desc"
+  });
+  return requestJson<PageResponse<Material>>(`/api/materials?${params.toString()}`);
+}
+
+export async function createMaterial(payload: CreateMaterialRequest) {
+  return requestMutation<Material>("/api/materials", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchSpecs() {
+  return requestJson<Spec[]>("/api/specs");
+}
+
+export async function createSpec(payload: CreateSpecRequest) {
+  return requestMutation<Spec>("/api/specs", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchMoas() {
+  return requestJson<Moa[]>("/api/moas");
+}
+
+export async function createMoa(payload: CreateMoaRequest) {
+  return requestMutation<Moa>("/api/moas", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchSamplingTools() {
+  return requestJson<SamplingTool[]>("/api/sampling-tools");
+}
+
+export async function createSamplingTool(payload: CreateSamplingToolRequest) {
+  return requestMutation<SamplingTool>("/api/sampling-tools", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchWarehouses(page = 0, size = 50) {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    sort: "createdAt,desc"
+  });
+  return requestJson<PageResponse<Warehouse>>(`/api/warehouses?${params.toString()}`);
+}
+
+export async function createWarehouse(payload: CreateWarehouseRequest) {
+  return requestMutation<Warehouse>("/api/warehouses", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchRooms(page = 0, size = 50, warehouseId?: string) {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    sort: "createdAt,desc"
+  });
+  if (warehouseId) {
+    params.set("warehouseId", warehouseId);
+  }
+  return requestJson<PageResponse<Room>>(`/api/rooms?${params.toString()}`);
+}
+
+export async function createRoom(warehouseId: string, payload: CreateRoomRequest) {
+  return requestMutation<Room>(`/api/warehouses/${warehouseId}/rooms`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchRacks(page = 0, size = 50, roomId?: string) {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    sort: "createdAt,desc"
+  });
+  if (roomId) {
+    params.set("roomId", roomId);
+  }
+  return requestJson<PageResponse<Rack>>(`/api/racks?${params.toString()}`);
+}
+
+export async function createRack(roomId: string, payload: CreateRackRequest) {
+  return requestMutation<Rack>(`/api/rooms/${roomId}/racks`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchShelves(page = 0, size = 50, rackId?: string) {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    sort: "createdAt,desc"
+  });
+  if (rackId) {
+    params.set("rackId", rackId);
+  }
+  return requestJson<PageResponse<Shelf>>(`/api/shelves?${params.toString()}`);
+}
+
+export async function createShelf(rackId: string, payload: CreateShelfRequest) {
+  return requestMutation<Shelf>(`/api/racks/${rackId}/shelves`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchPallets(page = 0, size = 50, shelfId?: string) {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    sort: "createdAt,desc"
+  });
+  if (shelfId) {
+    params.set("shelfId", shelfId);
+  }
+  return requestJson<PageResponse<Pallet>>(`/api/pallets?${params.toString()}`);
+}
+
+export async function createPallet(shelfId: string, payload: CreatePalletRequest) {
+  return requestMutation<Pallet>(`/api/shelves/${shelfId}/pallets`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchBatches(page = 0, size = 20) {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    sort: "createdAt,desc"
+  });
+  return requestJson<PageResponse<Batch>>(`/api/batches?${params.toString()}`);
+}
+
+export async function fetchInventory(page = 0, size = 20) {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    sort: "createdAt,desc"
+  });
+  return requestJson<PageResponse<InventoryRecord>>(`/api/inventory?${params.toString()}`);
+}
+
+export async function fetchInventoryTransactions(page = 0, size = 20) {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    sort: "createdAt,desc"
+  });
+  return requestJson<PageResponse<InventoryTransaction>>(
+    `/api/inventory/transactions?${params.toString()}`
+  );
+}
+
+export async function fetchSamplingRequests(page = 0, size = 20) {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    sort: "createdAt,desc"
+  });
+  return requestJson<PageResponse<SamplingRequest>>(
+    `/api/sampling-requests?${params.toString()}`
+  );
+}
+
+export async function createSamplingPlan(
+  samplingRequestId: string,
+  payload: SamplingPlanRequest
+) {
+  return requestMutation<SamplingRequest>(`/api/sampling-requests/${samplingRequestId}/plans`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateSamplingPlan(
+  samplingRequestId: string,
+  planId: string,
+  payload: SamplingPlanRequest
+) {
+  return requestMutation<SamplingRequest>(
+    `/api/sampling-requests/${samplingRequestId}/plans/${planId}`,
+    {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    }
+  );
+}
+
+export async function completeSampling(samplingRequestId: string, updatedBy: string) {
+  return requestMutation<SamplingRequest>(`/api/sampling-requests/${samplingRequestId}/complete`, {
+    method: "POST",
+    body: JSON.stringify({ updatedBy })
+  });
+}
+
+export async function recordQcDecision(
+  samplingRequestId: string,
+  payload: { approved: boolean; remarks: string; updatedBy: string }
+) {
+  return requestMutation<SamplingRequest>(
+    `/api/sampling-requests/${samplingRequestId}/qc-decision`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload)
+    }
+  );
+}

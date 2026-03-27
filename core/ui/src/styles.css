@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #14202b;
+  background:
+    radial-gradient(circle at 14% 16%, rgba(19, 167, 184, 0.12), transparent 22%),
+    radial-gradient(circle at 84% 8%, rgba(36, 48, 65, 0.1), transparent 24%),
+    linear-gradient(180deg, #edf1f5 0%, #e5eaf1 52%, #dde3ea 100%);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+@layer components {
+  .panel {
+    @apply rounded-3xl border border-[#d7dee7] bg-white shadow-panel backdrop-blur;
+  }
+
+  .panel-dark {
+    @apply rounded-[28px] border border-white/10 bg-navy text-white shadow-float;
+  }
+
+  .module-chip {
+    @apply inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em];
+  }
+
+  .status-pill {
+    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold tracking-wide;
+  }
+}
