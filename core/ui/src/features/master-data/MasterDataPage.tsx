@@ -100,10 +100,9 @@ type WarehouseFolder = "warehouse" | "room" | "rack" | "shelf" | "pallet";
 
 const masterDataMenu = [
   { id: "supplier" as const, label: "Create Supplier", group: "Partner Network" },
-  { id: "vendor" as const, label: "Create Vendor", group: "Partner Network" },
-  { id: "vendorBusinessUnit" as const, label: "Create Vendor Business Unit", group: "Partner Network" },
+  { id: "vendor" as const, label: "Vendor Details", group: "Partner Network" },
   { id: "material" as const, label: "Create Material", group: "Material & Location" },
-  { id: "warehouse" as const, label: "Warehouse Structure", group: "Material & Location" },
+  { id: "warehouse" as const, label: "Warehouse Details", group: "Material & Location" },
   { id: "spec" as const, label: "Spec Master", group: "QC References" },
   { id: "moa" as const, label: "MoA Master", group: "QC References" },
   { id: "samplingTool" as const, label: "Sampling Tool", group: "QC References" }
@@ -243,6 +242,7 @@ function yesNoClass(flag: boolean) {
 export function MasterDataPage() {
   const [selectedSection, setSelectedSection] = useState<MasterDataSection>("supplier");
   const [selectedWarehouseFolder, setSelectedWarehouseFolder] = useState<WarehouseFolder>("warehouse");
+  const [isRegistryOpen, setIsRegistryOpen] = useState(false);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [vendorBusinessUnits, setVendorBusinessUnits] = useState<VendorBusinessUnit[]>([]);
@@ -1097,6 +1097,29 @@ export function MasterDataPage() {
     }
   }
 
+  function registryTitle() {
+    switch (selectedSection) {
+      case "supplier":
+        return "Suppliers";
+      case "vendor":
+        return "Vendor Details";
+      case "vendorBusinessUnit":
+        return "Vendor Business Units";
+      case "material":
+        return "Materials";
+      case "warehouse":
+        return "Warehouse Details";
+      case "spec":
+        return "Specs";
+      case "moa":
+        return "MoAs";
+      case "samplingTool":
+        return "Sampling Tools";
+      default:
+        return "Registry";
+    }
+  }
+
   return (
     <div className="space-y-6">
       <SectionHeader
@@ -1106,51 +1129,54 @@ export function MasterDataPage() {
       />
 
       <section className="panel px-6 py-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.26em] text-steel">Master Data Menu</p>
-            <h4 className="mt-3 text-2xl font-semibold text-ink">Select one setup area to open</h4>
+            <p className="text-xs font-semibold uppercase tracking-[0.26em] text-steel">Master Data Workflow</p>
+            <h4 className="mt-3 text-2xl font-semibold text-ink">Select a master and proceed</h4>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate">
-              Each master is now separated. Pick one link first, then the related form and registry will open.
+              Choose a master from the dropdown, complete the creation form, and use the view link only when you want to inspect existing records.
             </p>
           </div>
-          <div className="rounded-[22px] bg-[#f3f6f8] px-4 py-4 text-sm text-slate">
-            Onboarding: {onboardingSteps.join(" -> ")}
+          <div className="grid gap-3 md:grid-cols-[260px_auto] md:items-end">
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium text-ink">Master data module</span>
+              <select
+                value={selectedSection}
+                onChange={(event) => setSelectedSection(event.target.value as MasterDataSection)}
+                className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
+              >
+                {masterDataGroups.map((group) => (
+                  <optgroup key={group.title} label={group.title}>
+                    {masterDataMenu
+                      .filter((item) => item.group === group.title)
+                      .map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.label}
+                        </option>
+                      ))}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={() => setIsRegistryOpen(true)}
+              className="rounded-2xl border border-ink/10 bg-[#f3f6f8] px-4 py-3 text-sm font-medium text-ink"
+            >
+              View {registryTitle()}
+            </button>
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 xl:grid-cols-3">
-          {masterDataGroups.map((group) => (
-            <article key={group.title} className={`rounded-[28px] px-5 py-5 shadow-panel ${group.accent}`}>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] opacity-70">Domain Group</p>
-              <h4 className="mt-3 text-xl font-semibold">{group.title}</h4>
-              <p className="mt-3 text-sm leading-6 opacity-80">{group.description}</p>
-            </article>
-          ))}
-        </div>
-
-        <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {masterDataMenu.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setSelectedSection(item.id)}
-              className={[
-                "rounded-[22px] border px-4 py-4 text-left transition",
-                selectedSection === item.id
-                  ? "border-[#13a7b8]/20 bg-[#13a7b8]/10"
-                  : "border-ink/10 bg-white hover:bg-[#f3f6f8]"
-              ].join(" ")}
-            >
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-steel">{item.group}</p>
-              <p className="mt-2 text-sm font-semibold text-ink">{item.label}</p>
-            </button>
-          ))}
+        <div className="mt-5 rounded-[22px] bg-[#f3f6f8] px-4 py-4 text-sm text-slate">
+          Onboarding: {onboardingSteps.join(" -> ")}
         </div>
       </section>
 
+      <div className="space-y-6">
+
       {selectedSection === "supplier" ? (
-      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+      <section>
         <article className="panel px-6 py-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate">
@@ -1262,70 +1288,11 @@ export function MasterDataPage() {
             </button>
           </form>
         </article>
-
-        <article className="panel overflow-hidden">
-          <div className="border-b border-ink/10 px-6 py-5">
-            <h4 className="text-lg font-semibold text-ink">Supplier registry</h4>
-            <p className="mt-1 text-sm text-slate">
-              Live supplier records from the backend. This becomes the first reusable master-data table pattern.
-            </p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-ink/5 text-slate">
-                <tr>
-                  <th className="px-6 py-4 font-medium">Code</th>
-                  <th className="px-6 py-4 font-medium">Name</th>
-                  <th className="px-6 py-4 font-medium">Contact</th>
-                  <th className="px-6 py-4 font-medium">Phone</th>
-                  <th className="px-6 py-4 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr className="border-t border-ink/10">
-                    <td className="px-6 py-8 text-slate" colSpan={5}>
-                      Loading suppliers...
-                    </td>
-                  </tr>
-                ) : null}
-
-                {!isLoading && suppliers.length === 0 ? (
-                  <tr className="border-t border-ink/10">
-                    <td className="px-6 py-8 text-slate" colSpan={5}>
-                      No suppliers exist yet. Create your first supplier from the form.
-                    </td>
-                  </tr>
-                ) : null}
-
-                {!isLoading &&
-                  suppliers.map((supplier) => (
-                    <tr key={supplier.id} className="border-t border-ink/10">
-                      <td className="px-6 py-4 font-medium text-ink">{supplier.supplierCode}</td>
-                      <td className="px-6 py-4 text-ink">{supplier.supplierName}</td>
-                      <td className="px-6 py-4 text-ink">{supplier.contactPerson || "Not set"}</td>
-                      <td className="px-6 py-4 text-ink">{supplier.phone || "Not set"}</td>
-                      <td className="px-6 py-4 text-ink">
-                        <span
-                          className={`status-pill ${
-                            supplier.isActive ? "bg-moss/15 text-moss" : "bg-redoxide/15 text-redoxide"
-                          }`}
-                        >
-                          {supplier.isActive ? "ACTIVE" : "INACTIVE"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        </article>
       </section>
       ) : null}
 
-      {selectedSection === "vendor" ? (
-      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+      {selectedSection === "vendor" || selectedSection === "vendorBusinessUnit" ? (
+      <section className="grid gap-6 xl:grid-cols-[1fr_0.95fr]">
         <article className="panel px-6 py-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate">
@@ -1333,7 +1300,7 @@ export function MasterDataPage() {
             </p>
             <h4 className="mt-2 text-xl font-semibold text-ink">Create vendor</h4>
             <p className="mt-2 text-sm text-slate">
-              Vendors are required in the GRN header, so this is the second setup form after suppliers.
+              Vendor is mandatory in GRN. Business units are optional, but when used they always belong to a vendor.
             </p>
           </div>
 
@@ -1437,86 +1404,14 @@ export function MasterDataPage() {
             </button>
           </form>
         </article>
-
-        <article className="panel overflow-hidden">
-          <div className="border-b border-ink/10 px-6 py-5">
-            <h4 className="text-lg font-semibold text-ink">Vendor registry</h4>
-            <p className="mt-1 text-sm text-slate">
-              Live vendors from the backend, including approval state carried by the entity.
-            </p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-ink/5 text-slate">
-                <tr>
-                  <th className="px-6 py-4 font-medium">Code</th>
-                  <th className="px-6 py-4 font-medium">Name</th>
-                  <th className="px-6 py-4 font-medium">Contact</th>
-                  <th className="px-6 py-4 font-medium">Approval</th>
-                  <th className="px-6 py-4 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isVendorLoading ? (
-                  <tr className="border-t border-ink/10">
-                    <td className="px-6 py-8 text-slate" colSpan={5}>
-                      Loading vendors...
-                    </td>
-                  </tr>
-                ) : null}
-
-                {!isVendorLoading && vendors.length === 0 ? (
-                  <tr className="border-t border-ink/10">
-                    <td className="px-6 py-8 text-slate" colSpan={5}>
-                      No vendors exist yet. Create your first vendor from the form.
-                    </td>
-                  </tr>
-                ) : null}
-
-                {!isVendorLoading &&
-                  vendors.map((vendor) => (
-                    <tr key={vendor.id} className="border-t border-ink/10">
-                      <td className="px-6 py-4 font-medium text-ink">{vendor.vendorCode}</td>
-                      <td className="px-6 py-4 text-ink">{vendor.vendorName}</td>
-                      <td className="px-6 py-4 text-ink">{vendor.contactPerson || "Not set"}</td>
-                      <td className="px-6 py-4 text-ink">
-                        <span
-                          className={`status-pill ${
-                            vendor.isApproved ? "bg-moss/15 text-moss" : "bg-amber/15 text-amber"
-                          }`}
-                        >
-                          {vendor.isApproved ? "APPROVED" : "PENDING"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-ink">
-                        <span
-                          className={`status-pill ${
-                            vendor.isActive ? "bg-moss/15 text-moss" : "bg-redoxide/15 text-redoxide"
-                          }`}
-                        >
-                          {vendor.isActive ? "ACTIVE" : "INACTIVE"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        </article>
-      </section>
-      ) : null}
-
-      {selectedSection === "vendorBusinessUnit" ? (
-      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <article className="panel px-6 py-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate">
-              Step 3
+              Optional linked setup
             </p>
             <h4 className="mt-2 text-xl font-semibold text-ink">Create vendor business unit</h4>
             <p className="mt-2 text-sm text-slate">
-              GRN requires a vendor business unit, and each unit belongs to a vendor. The form enforces that dependency.
+              Use this only when a vendor needs multiple operating units. Every business unit is linked to one vendor.
             </p>
           </div>
 
@@ -1652,71 +1547,6 @@ export function MasterDataPage() {
             </button>
           </form>
         </article>
-
-        <article className="panel overflow-hidden">
-          <div className="border-b border-ink/10 px-6 py-5">
-            <h4 className="text-lg font-semibold text-ink">Vendor business units</h4>
-            <p className="mt-1 text-sm text-slate">
-              Units created under vendors. This is the third required GRN dependency.
-            </p>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-ink/5 text-slate">
-                <tr>
-                  <th className="px-6 py-4 font-medium">Unit</th>
-                  <th className="px-6 py-4 font-medium">Vendor</th>
-                  <th className="px-6 py-4 font-medium">City</th>
-                  <th className="px-6 py-4 font-medium">Country</th>
-                  <th className="px-6 py-4 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isVendorBusinessUnitLoading ? (
-                  <tr className="border-t border-ink/10">
-                    <td className="px-6 py-8 text-slate" colSpan={5}>
-                      Loading vendor business units...
-                    </td>
-                  </tr>
-                ) : null}
-
-                {!isVendorBusinessUnitLoading && vendorBusinessUnits.length === 0 ? (
-                  <tr className="border-t border-ink/10">
-                    <td className="px-6 py-8 text-slate" colSpan={5}>
-                      No vendor business units exist yet. Create one after creating a vendor.
-                    </td>
-                  </tr>
-                ) : null}
-
-                {!isVendorBusinessUnitLoading &&
-                  vendorBusinessUnits.map((unit) => {
-                    const vendor = vendors.find((entry) => entry.id === unit.vendorId);
-
-                    return (
-                      <tr key={unit.id} className="border-t border-ink/10">
-                        <td className="px-6 py-4 font-medium text-ink">{unit.unitName}</td>
-                        <td className="px-6 py-4 text-ink">
-                          {vendor ? `${vendor.vendorCode} - ${vendor.vendorName}` : unit.vendorId}
-                        </td>
-                        <td className="px-6 py-4 text-ink">{unit.city || "Not set"}</td>
-                        <td className="px-6 py-4 text-ink">{unit.country || "Not set"}</td>
-                        <td className="px-6 py-4 text-ink">
-                          <span
-                            className={`status-pill ${
-                              unit.isActive ? "bg-moss/15 text-moss" : "bg-redoxide/15 text-redoxide"
-                            }`}
-                          >
-                            {unit.isActive ? "ACTIVE" : "INACTIVE"}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          </div>
-        </article>
       </section>
       ) : null}
 
@@ -1796,38 +1626,6 @@ export function MasterDataPage() {
             <button type="submit" disabled={isMaterialSubmitting} className="rounded-2xl bg-ink px-4 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-ink/50">{isMaterialSubmitting ? "Creating material..." : "Create material"}</button>
           </form>
         </article>
-        <article className="panel overflow-hidden">
-          <div className="border-b border-ink/10 px-6 py-5">
-            <h4 className="text-lg font-semibold text-ink">Material registry</h4>
-            <p className="mt-1 text-sm text-slate">Storage and QC flags stay visible because they affect receipt behavior.</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-ink/5 text-slate">
-                <tr>
-                  <th className="px-6 py-4 font-medium">Code</th>
-                  <th className="px-6 py-4 font-medium">Name</th>
-                  <th className="px-6 py-4 font-medium">Condition</th>
-                  <th className="px-6 py-4 font-medium">Sampling</th>
-                  <th className="px-6 py-4 font-medium">CoA</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isMaterialLoading ? <tr className="border-t border-ink/10"><td className="px-6 py-8 text-slate" colSpan={5}>Loading materials...</td></tr> : null}
-                {!isMaterialLoading && materials.length === 0 ? <tr className="border-t border-ink/10"><td className="px-6 py-8 text-slate" colSpan={5}>No materials exist yet.</td></tr> : null}
-                {!isMaterialLoading && materials.map((material) => (
-                  <tr key={material.id} className="border-t border-ink/10">
-                    <td className="px-6 py-4 font-medium text-ink">{material.materialCode}</td>
-                    <td className="px-6 py-4 text-ink">{material.materialName}</td>
-                    <td className="px-6 py-4 text-ink">{material.storageCondition}</td>
-                    <td className="px-6 py-4 text-ink"><span className={`status-pill ${yesNoClass(material.samplingRequired)}`}>{material.samplingRequired ? "YES" : "NO"}</span></td>
-                    <td className="px-6 py-4 text-ink"><span className={`status-pill ${yesNoClass(material.vendorCoaReleaseAllowed)}`}>{material.vendorCoaReleaseAllowed ? "ALLOWED" : "NOT ALLOWED"}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </article>
       </section>
       </>
       ) : null}
@@ -1836,8 +1634,8 @@ export function MasterDataPage() {
       <section className="panel px-6 py-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate">Warehouse Structure</p>
-          <h4 className="mt-2 text-xl font-semibold text-ink">Create warehouse hierarchy</h4>
-          <p className="mt-2 text-sm text-slate">Use the folder-style selector below to open warehouse, room, rack, shelf, and pallet creation one level at a time.</p>
+          <h4 className="mt-2 text-xl font-semibold text-ink">Warehouse details and hierarchy</h4>
+          <p className="mt-2 text-sm text-slate">Warehouse, room, rack, shelf, and pallet are one linked structure. Use the folder selector to create each level under the correct parent.</p>
         </div>
         <div className="mt-6 grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
           <div className="rounded-3xl border border-ink/10 bg-[#243041] p-4 text-white">
@@ -1963,38 +1761,6 @@ export function MasterDataPage() {
           ) : null}
           </div>
         </div>
-        <div className="mt-6 grid gap-6 xl:grid-cols-2">
-          <article className="rounded-3xl border border-ink/10 bg-white/60 p-5">
-            <h5 className="text-lg font-semibold text-ink">Warehouse and room registry</h5>
-            <div className="mt-4 space-y-4 text-sm">
-              <div>
-                <p className="font-medium text-ink">Warehouses</p>
-                {isWarehouseLoading ? <p className="mt-2 text-slate">Loading warehouses...</p> : warehouses.map((warehouse) => <p key={warehouse.id} className="mt-2 text-slate">{warehouse.warehouseCode} - {warehouse.warehouseName}</p>)}
-              </div>
-              <div>
-                <p className="font-medium text-ink">Rooms</p>
-                {isRoomLoading ? <p className="mt-2 text-slate">Loading rooms...</p> : filteredRooms.map((room) => <p key={room.id} className="mt-2 text-slate">{room.roomCode} - {room.roomName} ({room.storageCondition})</p>)}
-              </div>
-            </div>
-          </article>
-          <article className="rounded-3xl border border-ink/10 bg-white/60 p-5">
-            <h5 className="text-lg font-semibold text-ink">Rack, shelf, and pallet registry</h5>
-            <div className="mt-4 space-y-4 text-sm">
-              <div>
-                <p className="font-medium text-ink">Racks</p>
-                {isRackLoading ? <p className="mt-2 text-slate">Loading racks...</p> : filteredRacks.map((rack) => <p key={rack.id} className="mt-2 text-slate">{rack.rackCode} - {rack.rackName}</p>)}
-              </div>
-              <div>
-                <p className="font-medium text-ink">Shelves</p>
-                {isShelfLoading ? <p className="mt-2 text-slate">Loading shelves...</p> : filteredShelves.map((shelf) => <p key={shelf.id} className="mt-2 text-slate">{shelf.shelfCode} - {shelf.shelfName}</p>)}
-              </div>
-              <div>
-                <p className="font-medium text-ink">Pallets</p>
-                {isPalletLoading ? <p className="mt-2 text-slate">Loading pallets...</p> : filteredPallets.map((pallet) => <p key={pallet.id} className="mt-2 text-slate">{pallet.palletCode} - {pallet.palletName} ({pallet.storageCondition})</p>)}
-              </div>
-            </div>
-          </article>
-        </div>
       </section>
       ) : null}
 
@@ -2025,9 +1791,6 @@ export function MasterDataPage() {
             {specError ? <div className="rounded-2xl border border-redoxide/20 bg-redoxide/10 px-4 py-3 text-sm text-redoxide">{specError}</div> : null}
             <button type="submit" disabled={isSpecSubmitting} className="rounded-2xl bg-ink px-4 py-3 text-sm font-medium text-white disabled:bg-ink/50">{isSpecSubmitting ? "Creating..." : "Create spec"}</button>
           </form>
-          <div className="mt-4 space-y-2 text-sm text-slate">
-            {isSpecLoading ? <p>Loading specs...</p> : specs.map((spec) => <p key={spec.id}>{spec.specCode} - {spec.specName} ({spec.samplingMethod})</p>)}
-          </div>
         </article>
         ) : null}
 
@@ -2044,9 +1807,6 @@ export function MasterDataPage() {
             {moaError ? <div className="rounded-2xl border border-redoxide/20 bg-redoxide/10 px-4 py-3 text-sm text-redoxide">{moaError}</div> : null}
             <button type="submit" disabled={isMoaSubmitting} className="rounded-2xl bg-steel px-4 py-3 text-sm font-medium text-white disabled:bg-steel/50">{isMoaSubmitting ? "Creating..." : "Create MoA"}</button>
           </form>
-          <div className="mt-4 space-y-2 text-sm text-slate">
-            {isMoaLoading ? <p>Loading MoAs...</p> : moas.map((moa) => <p key={moa.id}>{moa.moaCode} - {moa.moaName}</p>)}
-          </div>
         </article>
         ) : null}
 
@@ -2062,13 +1822,235 @@ export function MasterDataPage() {
             {samplingToolError ? <div className="rounded-2xl border border-redoxide/20 bg-redoxide/10 px-4 py-3 text-sm text-redoxide">{samplingToolError}</div> : null}
             <button type="submit" disabled={isSamplingToolSubmitting} className="rounded-2xl bg-teal px-4 py-3 text-sm font-medium text-white disabled:bg-teal/50">{isSamplingToolSubmitting ? "Creating..." : "Create tool"}</button>
           </form>
-          <div className="mt-4 space-y-2 text-sm text-slate">
-            {isSamplingToolLoading ? <p>Loading sampling tools...</p> : samplingTools.map((tool) => <p key={tool.id}>{tool.toolCode} - {tool.toolName}</p>)}
-          </div>
         </article>
         ) : null}
       </section>
       </>
+      ) : null}
+
+      </div>
+
+      {isRegistryOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/30 px-4" onClick={() => setIsRegistryOpen(false)}>
+          <div
+            className="max-h-[80vh] w-full max-w-5xl overflow-hidden rounded-[28px] border border-ink/10 bg-white shadow-float"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-ink/10 px-6 py-5">
+              <div>
+                <h4 className="text-lg font-semibold text-ink">{registryTitle()}</h4>
+                <p className="mt-1 text-sm text-slate">Review existing records in a popup window.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsRegistryOpen(false)}
+                className="rounded-full border border-ink/10 px-3 py-2 text-sm text-ink"
+              >
+                Close
+              </button>
+            </div>
+            <div className="max-h-[65vh] overflow-auto p-6">
+              {selectedSection === "supplier" ? (
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-ink/5 text-slate">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">Code</th>
+                      <th className="px-4 py-3 font-medium">Name</th>
+                      <th className="px-4 py-3 font-medium">Contact</th>
+                      <th className="px-4 py-3 font-medium">Phone</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {suppliers.map((supplier) => (
+                      <tr key={supplier.id} className="border-t border-ink/10">
+                        <td className="px-4 py-3">{supplier.supplierCode}</td>
+                        <td className="px-4 py-3">{supplier.supplierName}</td>
+                        <td className="px-4 py-3">{supplier.contactPerson || "Not set"}</td>
+                        <td className="px-4 py-3">{supplier.phone || "Not set"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : null}
+
+              {selectedSection === "vendor" ? (
+                <div className="space-y-4">
+                  {vendors.map((vendor) => {
+                    const linkedUnits = vendorBusinessUnits.filter((unit) => unit.vendorId === vendor.id);
+                    return (
+                      <article key={vendor.id} className="rounded-2xl border border-ink/10 px-4 py-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-ink">{vendor.vendorCode} - {vendor.vendorName}</p>
+                            <p className="mt-1 text-sm text-slate">
+                              {vendor.contactPerson || "No contact"} {vendor.phone ? `• ${vendor.phone}` : ""}
+                            </p>
+                          </div>
+                          <span className="status-pill bg-ink/5 text-ink">
+                            {vendor.isApproved ? "Approved" : "Pending"}
+                          </span>
+                        </div>
+                        <div className="mt-4 rounded-2xl bg-mist/70 px-4 py-4">
+                          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate">
+                            Vendor Business Units
+                          </p>
+                          {linkedUnits.length === 0 ? (
+                            <p className="mt-2 text-sm text-slate">No business units linked yet.</p>
+                          ) : (
+                            <div className="mt-3 space-y-2">
+                              {linkedUnits.map((unit) => (
+                                <p key={unit.id} className="text-sm text-ink">
+                                  {vendor.vendorName} {"->"} {unit.unitName}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              {selectedSection === "vendorBusinessUnit" ? (
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-ink/5 text-slate">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">Vendor / Business Unit</th>
+                      <th className="px-4 py-3 font-medium">City</th>
+                      <th className="px-4 py-3 font-medium">Country</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {vendorBusinessUnits.map((unit) => {
+                      const vendor = vendors.find((entry) => entry.id === unit.vendorId);
+                      return (
+                        <tr key={unit.id} className="border-t border-ink/10">
+                          <td className="px-4 py-3">
+                            <div>
+                              <p className="font-medium text-ink">
+                                {vendor ? `${vendor.vendorCode} - ${vendor.vendorName}` : unit.vendorId}
+                              </p>
+                              <p className="mt-1 text-sm text-slate">
+                                {unit.unitName}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">{unit.city || "Not set"}</td>
+                          <td className="px-4 py-3">{unit.country || "Not set"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : null}
+
+              {selectedSection === "material" ? (
+                <table className="min-w-full text-left text-sm">
+                  <thead className="bg-ink/5 text-slate">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">Code</th>
+                      <th className="px-4 py-3 font-medium">Name</th>
+                      <th className="px-4 py-3 font-medium">Condition</th>
+                      <th className="px-4 py-3 font-medium">Sampling</th>
+                      <th className="px-4 py-3 font-medium">CoA</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {materials.map((material) => (
+                      <tr key={material.id} className="border-t border-ink/10">
+                        <td className="px-4 py-3">{material.materialCode}</td>
+                        <td className="px-4 py-3">{material.materialName}</td>
+                        <td className="px-4 py-3">{material.storageCondition}</td>
+                        <td className="px-4 py-3">{material.samplingRequired ? "YES" : "NO"}</td>
+                        <td className="px-4 py-3">{material.vendorCoaReleaseAllowed ? "ALLOWED" : "NOT ALLOWED"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : null}
+
+              {selectedSection === "warehouse" ? (
+                <div className="space-y-4">
+                  {warehouses.map((warehouse) => {
+                    const warehouseRooms = rooms.filter((room) => room.warehouseId === warehouse.id);
+                    return (
+                      <article key={warehouse.id} className="rounded-2xl border border-ink/10 px-4 py-4">
+                        <p className="font-semibold text-ink">
+                          {warehouse.warehouseCode} - {warehouse.warehouseName}
+                        </p>
+                        {warehouseRooms.length === 0 ? (
+                          <p className="mt-2 text-sm text-slate">No rooms linked yet.</p>
+                        ) : (
+                          <div className="mt-3 space-y-3">
+                            {warehouseRooms.map((room) => {
+                              const roomRacks = racks.filter((rack) => rack.roomId === room.id);
+                              return (
+                                <div key={room.id} className="rounded-2xl bg-mist/70 px-4 py-4">
+                                  <p className="text-sm font-medium text-ink">
+                                    {warehouse.warehouseCode} {"->"} {room.roomCode}
+                                  </p>
+                                  <p className="mt-1 text-sm text-slate">
+                                    {room.roomName} ({room.storageCondition})
+                                  </p>
+                                  {roomRacks.length === 0 ? (
+                                    <p className="mt-2 text-sm text-slate">No racks linked yet.</p>
+                                  ) : (
+                                    <div className="mt-3 space-y-2">
+                                      {roomRacks.map((rack) => {
+                                        const rackShelves = shelves.filter((shelf) => shelf.rackId === rack.id);
+                                        return (
+                                          <div key={rack.id} className="text-sm text-ink">
+                                            <p>{room.roomCode} {"->"} {rack.rackCode}</p>
+                                            {rackShelves.map((shelf) => {
+                                              const shelfPallets = pallets.filter((pallet) => pallet.shelfId === shelf.id);
+                                              return (
+                                                <div key={shelf.id} className="mt-1 pl-4 text-slate">
+                                                  <p>{rack.rackCode} {"->"} {shelf.shelfCode}</p>
+                                                  {shelfPallets.map((pallet) => (
+                                                    <p key={pallet.id} className="pl-4">
+                                                      {shelf.shelfCode} {"->"} {pallet.palletCode}
+                                                    </p>
+                                                  ))}
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              {selectedSection === "spec" ? (
+                <div className="space-y-2 text-sm text-slate">
+                  {specs.map((spec) => <p key={spec.id}>{spec.specCode} - {spec.specName} ({spec.samplingMethod})</p>)}
+                </div>
+              ) : null}
+
+              {selectedSection === "moa" ? (
+                <div className="space-y-2 text-sm text-slate">
+                  {moas.map((moa) => <p key={moa.id}>{moa.moaCode} - {moa.moaName}</p>)}
+                </div>
+              ) : null}
+
+              {selectedSection === "samplingTool" ? (
+                <div className="space-y-2 text-sm text-slate">
+                  {samplingTools.map((tool) => <p key={tool.id}>{tool.toolCode} - {tool.toolName}</p>)}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
       ) : null}
 
     </div>

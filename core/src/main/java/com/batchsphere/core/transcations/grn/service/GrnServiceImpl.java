@@ -1,6 +1,13 @@
 package com.batchsphere.core.transcations.grn.service;
 
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.WriterException;
+import com.google.zxing.client.j2se.MatrixToImageWriter;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
 import com.batchsphere.core.batch.entity.Batch;
+import com.batchsphere.core.batch.entity.BatchStatus;
+import com.batchsphere.core.batch.entity.BatchType;
 import com.batchsphere.core.batch.repository.BatchRepository;
 import com.batchsphere.core.exception.BusinessConflictException;
 import com.batchsphere.core.exception.DuplicateResourceException;
@@ -8,12 +15,15 @@ import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.transcations.grn.dto.CreateGrnRequest;
 import com.batchsphere.core.transcations.grn.dto.ContainerSamplingLabelRequest;
 import com.batchsphere.core.transcations.grn.dto.GrnContainerResponse;
+import com.batchsphere.core.transcations.grn.dto.GrnDocumentResponse;
+import com.batchsphere.core.transcations.grn.dto.GrnDocumentUploadRequest;
 import com.batchsphere.core.transcations.grn.dto.GrnItemRequest;
 import com.batchsphere.core.transcations.grn.dto.GrnItemResponse;
 import com.batchsphere.core.transcations.grn.dto.MaterialLabelResponse;
 import com.batchsphere.core.transcations.grn.dto.GrnResponse;
 import com.batchsphere.core.transcations.grn.dto.UpdateGrnRequest;
 import com.batchsphere.core.transcations.grn.entity.GrnContainer;
+import com.batchsphere.core.transcations.grn.entity.GrnDocument;
 import com.batchsphere.core.transcations.grn.entity.Grn;
 import com.batchsphere.core.transcations.grn.entity.GrnItem;
 import com.batchsphere.core.transcations.grn.entity.GrnStatus;
@@ -22,11 +32,13 @@ import com.batchsphere.core.transcations.grn.entity.LabelType;
 import com.batchsphere.core.transcations.grn.entity.MaterialLabel;
 import com.batchsphere.core.transcations.grn.repository.GrnItemRepository;
 import com.batchsphere.core.transcations.grn.repository.GrnContainerRepository;
+import com.batchsphere.core.transcations.grn.repository.GrnDocumentRepository;
 import com.batchsphere.core.transcations.grn.repository.GrnRepository;
 import com.batchsphere.core.transcations.grn.repository.MaterialLabelRepository;
 import com.batchsphere.core.transcations.inventory.entity.InventoryStatus;
 import com.batchsphere.core.transcations.inventory.service.InventoryService;
 import com.batchsphere.core.transcations.sampling.service.SamplingService;
+import com.batchsphere.core.storage.LocalStorageService;
 import com.batchsphere.core.masterdata.material.entity.Material;
 import com.batchsphere.core.masterdata.material.repository.MaterialRepository;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Pallet;
@@ -48,20 +60,28 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class GrnServiceImpl implements GrnService {
+    private static final DateTimeFormatter NUMERIC_BATCH_DATE = DateTimeFormatter.BASIC_ISO_DATE;
+
 
     private final GrnRepository grnRepository;
     private final GrnItemRepository grnItemRepository;
     private final GrnContainerRepository grnContainerRepository;
+    private final GrnDocumentRepository grnDocumentRepository;
     private final MaterialLabelRepository materialLabelRepository;
     private final SupplierRepository supplierRepository;
     private final VendorRepository vendorRepository;
@@ -74,6 +94,7 @@ public class GrnServiceImpl implements GrnService {
     private final BatchRepository batchRepository;
     private final InventoryService inventoryService;
     private final SamplingService samplingService;
+    private final LocalStorageService localStorageService;
 
     @Override
     @Transactional
@@ -156,6 +177,7 @@ public class GrnServiceImpl implements GrnService {
         Grn grn = getActiveGrn(id);
         ensureDraft(grn, "Only draft GRNs can be received");
         List<GrnItem> items = grnItemRepository.findByGrnIdAndIsActiveTrueOrderByLineNumber(id);
+        items = generateInHouseBatches(grn, items, updatedBy);
         generateContainersAndLabels(grn, items, updatedBy);
         inventoryService.recordGrnReceipt(id, items, updatedBy);
         samplingService.createSamplingRequestsForGrn(id, items, updatedBy);
@@ -207,12 +229,15 @@ public class GrnServiceImpl implements GrnService {
         GrnContainer savedContainer = grnContainerRepository.save(container);
 
         String labelContent = buildSamplingLabel(savedContainer);
+        String qrPayload = buildSamplingLabelQrPayload(savedContainer);
         MaterialLabel label = MaterialLabel.builder()
                 .id(UUID.randomUUID())
                 .grnContainerId(savedContainer.getId())
                 .labelType(LabelType.QC_SAMPLING)
                 .labelStatus(LabelStatus.APPLIED)
                 .labelContent(labelContent)
+                .qrPayload(qrPayload)
+                .qrCodeDataUrl(generateQrCodeDataUrl(qrPayload))
                 .generatedBy(request.getSampledBy())
                 .generatedAt(LocalDateTime.now())
                 .appliedBy(request.getSampledBy())
@@ -222,6 +247,33 @@ public class GrnServiceImpl implements GrnService {
         materialLabelRepository.save(label);
 
         return toContainerResponse(savedContainer);
+    }
+
+    @Override
+    @Transactional
+    public GrnDocumentResponse uploadDocument(UUID grnItemId, GrnDocumentUploadRequest request, MultipartFile file) {
+        GrnItem grnItem = grnItemRepository.findById(grnItemId)
+                .orElseThrow(() -> new ResourceNotFoundException("GRN item not found with id: " + grnItemId));
+        if (!Boolean.TRUE.equals(grnItem.getIsActive())) {
+            throw new ResourceNotFoundException("GRN item not found with id: " + grnItemId);
+        }
+        String documentPath = localStorageService.store("grn", "line-items/" + grnItem.getId() + "/documents", file);
+
+        GrnDocument document = GrnDocument.builder()
+                .id(UUID.randomUUID())
+                .grnId(grnItem.getGrnId())
+                .grnItemId(grnItemId)
+                .documentName(request.getDocumentName().trim())
+                .documentType(request.getDocumentType().trim())
+                .fileName(file.getOriginalFilename() == null ? "document" : file.getOriginalFilename())
+                .documentPath(documentPath)
+                .documentUrl(request.getDocumentUrl())
+                .isActive(true)
+                .createdBy(request.getCreatedBy().trim())
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        return toDocumentResponse(grnDocumentRepository.save(document));
     }
 
     @Override
@@ -271,6 +323,7 @@ public class GrnServiceImpl implements GrnService {
         for (int index = 0; index < requests.size(); index++) {
             GrnItemRequest request = requests.get(index);
             Material material = getActiveMaterial(request.getMaterialId());
+            Pallet pallet = getActivePallet(request.getPalletId());
             validateItem(request, material);
             BigDecimal totalPrice = request.getUnitPrice().multiply(request.getReceivedQuantity());
             BigDecimal expectedTotal = request.getQuantityPerContainer().multiply(BigDecimal.valueOf(request.getNumberOfContainers()));
@@ -288,6 +341,7 @@ public class GrnServiceImpl implements GrnService {
                     .acceptedQuantity(request.getAcceptedQuantity())
                     .rejectedQuantity(request.getRejectedQuantity())
                     .uom(request.getUom())
+                    .warehouseLocation(pallet.getPalletCode())
                     .palletId(request.getPalletId())
                     .containerType(request.getContainerType())
                     .numberOfContainers(request.getNumberOfContainers())
@@ -332,6 +386,12 @@ public class GrnServiceImpl implements GrnService {
     }
 
     private void validateItem(GrnItemRequest request, Material material) {
+        if (request.getBatchId() != null) {
+            throw new BusinessConflictException(
+                    "Manual batch entry is disabled. Batch numbers are generated automatically from GRN receipt"
+            );
+        }
+
         BigDecimal totalProcessed = request.getAcceptedQuantity().add(request.getRejectedQuantity());
         if (totalProcessed.compareTo(request.getReceivedQuantity()) > 0) {
             throw new BusinessConflictException("Accepted and rejected quantities cannot exceed received quantity");
@@ -348,12 +408,62 @@ public class GrnServiceImpl implements GrnService {
             throw new BusinessConflictException("QC status is required");
         }
 
-        if (request.getBatchId() != null) {
-            Batch batch = getActiveBatch(request.getBatchId());
-            if (!batch.getMaterial().getId().equals(request.getMaterialId())) {
-                throw new BusinessConflictException("Batch does not belong to the provided material");
+    }
+
+    private List<GrnItem> generateInHouseBatches(Grn grn, List<GrnItem> items, String actor) {
+        boolean updated = false;
+        LocalDateTime now = LocalDateTime.now();
+
+        for (GrnItem item : items) {
+            if (item.getBatchId() != null) {
+                continue;
             }
+
+            Material material = getActiveMaterial(item.getMaterialId());
+            Batch batch = Batch.builder()
+                    .id(UUID.randomUUID())
+                    .batchNumber(generateUniqueInHouseBatchNumber(grn, item))
+                    .material(material)
+                    .batchType(BatchType.RAW_MATERIAL)
+                    .batchStatus(BatchStatus.CREATED)
+                    .quantity(item.getReceivedQuantity())
+                    .unitOfMeasure(item.getUom())
+                    .manufactureDate(item.getManufactureDate())
+                    .expiryDate(item.getExpiryDate())
+                    .retestDate(item.getRetestDate())
+                    .isActive(true)
+                    .createdBy(actor)
+                    .createdAt(now)
+                    .build();
+
+            Batch savedBatch = batchRepository.save(batch);
+            item.setBatchId(savedBatch.getId());
+            item.setUpdatedBy(actor);
+            item.setUpdatedAt(now);
+            updated = true;
         }
+
+        return updated ? grnItemRepository.saveAll(items) : items;
+    }
+
+    private String generateUniqueInHouseBatchNumber(Grn grn, GrnItem item) {
+        String grnPart = grn.getGrnNumber().replaceAll("\\D", "");
+        if (grnPart.isBlank()) {
+            grnPart = String.valueOf(Math.abs(grn.getId().hashCode()));
+        }
+
+        String baseNumber = grn.getReceiptDate().format(NUMERIC_BATCH_DATE)
+                + grnPart
+                + String.format("%02d", item.getLineNumber());
+        String candidate = baseNumber;
+        int suffix = 1;
+
+        while (batchRepository.existsByBatchNumber(candidate)) {
+            candidate = baseNumber + String.format("%02d", suffix);
+            suffix++;
+        }
+
+        return candidate;
     }
 
     private Grn getActiveGrn(UUID id) {
@@ -486,6 +596,10 @@ public class GrnServiceImpl implements GrnService {
                 .createdAt(item.getCreatedAt())
                 .updatedBy(item.getUpdatedBy())
                 .updatedAt(item.getUpdatedAt())
+                .documents(grnDocumentRepository.findByGrnItemIdAndIsActiveTrueOrderByCreatedAtDesc(item.getId())
+                        .stream()
+                        .map(this::toDocumentResponse)
+                        .toList())
                 .build();
     }
 
@@ -496,6 +610,7 @@ public class GrnServiceImpl implements GrnService {
             }
 
             Material material = getActiveMaterial(item.getMaterialId());
+            Batch batch = getActiveBatch(item.getBatchId());
             Room room = getRoomForPallet(item.getPalletId());
             String internalLot = generateInternalLot(grn, item);
             for (int index = 1; index <= item.getNumberOfContainers(); index++) {
@@ -531,7 +646,9 @@ public class GrnServiceImpl implements GrnService {
                         .grnContainerId(savedContainer.getId())
                         .labelType(LabelType.IN_HOUSE_RECEIPT)
                         .labelStatus(LabelStatus.GENERATED)
-                        .labelContent(buildInHouseReceiptLabel(grn, item, material, savedContainer))
+                        .labelContent(buildInHouseReceiptLabel(material, savedContainer, batch))
+                        .qrPayload(buildInHouseReceiptQrPayload(material, savedContainer, batch))
+                        .qrCodeDataUrl(generateQrCodeDataUrl(buildInHouseReceiptQrPayload(material, savedContainer, batch)))
                         .generatedBy(actor)
                         .generatedAt(LocalDateTime.now())
                         .isActive(true)
@@ -545,19 +662,25 @@ public class GrnServiceImpl implements GrnService {
         return "LOT-" + grn.getReceiptDate().getYear() + "-" + String.format("%03d", item.getLineNumber());
     }
 
-    private String buildInHouseReceiptLabel(Grn grn, GrnItem item, Material material, GrnContainer container) {
-        return "Material : " + material.getMaterialName() + "\n"
-                + "Material Code : " + material.getMaterialCode() + "\n\n"
-                + "GRN No : " + grn.getGrnNumber() + "\n"
-                + "Vendor Batch : " + container.getVendorBatch() + "\n"
-                + "Internal Lot : " + container.getInternalLot() + "\n\n"
-                + "Container : " + container.getContainerNumber() + "\n"
-                + "Qty : " + container.getQuantity() + " " + container.getUom() + "\n\n"
-                + "Mfg Date : " + container.getManufactureDate() + "\n"
-                + "Expiry : " + container.getExpiryDate() + "\n"
-                + "Retest Date : " + container.getRetestDate() + "\n"
-                + "Storage : " + container.getStorageCondition() + "\n\n"
-                + "Status : " + container.getInventoryStatus();
+    private String buildInHouseReceiptLabel(Material material, GrnContainer container, Batch batch) {
+        return "In-house Batch No : " + batch.getBatchNumber() + "\n"
+                + "Material Name : " + material.getMaterialName() + "\n"
+                + "Container Number : " + container.getContainerNumber() + "\n"
+                + "Quantity : " + container.getQuantity() + " " + container.getUom() + "\n"
+                + "Manufacturing Date : " + container.getManufactureDate() + "\n"
+                + "Storage Condition : " + container.getStorageCondition();
+    }
+
+    private String buildInHouseReceiptQrPayload(Material material, GrnContainer container, Batch batch) {
+        return "inHouseBatchNo=" + batch.getBatchNumber() + "\n"
+                + "materialName=" + material.getMaterialName() + "\n"
+                + "containerNumber=" + container.getContainerNumber() + "\n"
+                + "quantity=" + container.getQuantity() + " " + container.getUom() + "\n"
+                + "manufacturingDate=" + container.getManufactureDate() + "\n"
+                + "storageCondition=" + container.getStorageCondition() + "\n"
+                + "materialStatus=" + container.getInventoryStatus() + "\n"
+                + "expiryDate=" + batch.getExpiryDate() + "\n"
+                + "retestDate=" + batch.getRetestDate();
     }
 
     private String buildSamplingLabel(GrnContainer container) {
@@ -572,6 +695,36 @@ public class GrnServiceImpl implements GrnService {
                 + "Sampled Date : " + container.getSampledAt() + "\n"
                 + "Sample Qty : " + container.getSampledQuantity() + " " + container.getUom() + "\n\n"
                 + "Sampling Location : " + container.getSamplingLocation();
+    }
+
+    private String buildSamplingLabelQrPayload(GrnContainer container) {
+        Grn grn = grnRepository.findById(container.getGrnId())
+                .orElseThrow(() -> new ResourceNotFoundException("GRN not found with id: " + container.getGrnId()));
+        Material material = getActiveMaterial(container.getMaterialId());
+        Batch batch = getActiveBatch(container.getBatchId());
+        return "inHouseBatchNo=" + batch.getBatchNumber() + "\n"
+                + "materialName=" + material.getMaterialName() + "\n"
+                + "containerNumber=" + container.getContainerNumber() + "\n"
+                + "quantity=" + container.getQuantity() + " " + container.getUom() + "\n"
+                + "manufacturingDate=" + container.getManufactureDate() + "\n"
+                + "storageCondition=" + container.getStorageCondition() + "\n"
+                + "materialStatus=" + container.getInventoryStatus() + "\n"
+                + "expiryDate=" + batch.getExpiryDate() + "\n"
+                + "retestDate=" + batch.getRetestDate() + "\n"
+                + "grnNumber=" + grn.getGrnNumber();
+    }
+
+    private String generateQrCodeDataUrl(String payload) {
+        try {
+            QRCodeWriter writer = new QRCodeWriter();
+            BitMatrix matrix = writer.encode(payload, BarcodeFormat.QR_CODE, 220, 220);
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            MatrixToImageWriter.writeToStream(matrix, "PNG", outputStream);
+            String base64 = Base64.getEncoder().encodeToString(outputStream.toByteArray());
+            return "data:image/png;base64," + base64;
+        } catch (WriterException | java.io.IOException exception) {
+            throw new BusinessConflictException("Unable to generate QR code for label");
+        }
     }
 
     private GrnContainerResponse toContainerResponse(GrnContainer container) {
@@ -609,10 +762,26 @@ public class GrnServiceImpl implements GrnService {
                 .labelType(label.getLabelType())
                 .labelStatus(label.getLabelStatus())
                 .labelContent(label.getLabelContent())
+                .qrPayload(label.getQrPayload())
+                .qrCodeDataUrl(label.getQrCodeDataUrl())
                 .generatedBy(label.getGeneratedBy())
                 .generatedAt(label.getGeneratedAt())
                 .appliedBy(label.getAppliedBy())
                 .appliedAt(label.getAppliedAt())
+                .build();
+    }
+
+    private GrnDocumentResponse toDocumentResponse(GrnDocument document) {
+        return GrnDocumentResponse.builder()
+                .id(document.getId())
+                .grnItemId(document.getGrnItemId())
+                .documentName(document.getDocumentName())
+                .documentType(document.getDocumentType())
+                .fileName(document.getFileName())
+                .documentPath(document.getDocumentPath())
+                .documentUrl(document.getDocumentUrl())
+                .createdBy(document.getCreatedBy())
+                .createdAt(document.getCreatedAt())
                 .build();
     }
 }

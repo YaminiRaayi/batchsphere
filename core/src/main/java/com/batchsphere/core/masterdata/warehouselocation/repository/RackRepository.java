@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public interface RackRepository extends JpaRepository<Rack, UUID> {
 
-    boolean existsByRackCode(String rackCode);
+    boolean existsByRoomIdAndRackCode(UUID roomId, String rackCode);
 
     Page<Rack> findByIsActiveTrue(Pageable pageable);
 

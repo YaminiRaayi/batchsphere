@@ -7,6 +7,7 @@ import lombok.Value;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Value
@@ -14,6 +15,8 @@ import java.util.UUID;
 public class SamplingPlanResponse {
     UUID id;
     UUID samplingRequestId;
+    UUID specId;
+    UUID moaId;
     SamplingMethod samplingMethod;
     SampleType sampleType;
     Integer totalContainers;
@@ -21,7 +24,8 @@ public class SamplingPlanResponse {
     BigDecimal individualSampleQuantity;
     BigDecimal compositeSampleQuantity;
     String samplingLocation;
-    String samplingToolInfo;
+    String analystEmployeeCode;
+    UUID samplingToolId;
     Boolean photosensitiveHandlingRequired;
     Boolean hygroscopicHandlingRequired;
     Boolean coaBasedRelease;
@@ -32,4 +36,5 @@ public class SamplingPlanResponse {
     LocalDateTime createdAt;
     String updatedBy;
     LocalDateTime updatedAt;
+    List<SamplingContainerSampleResponse> containerSamples;
 }

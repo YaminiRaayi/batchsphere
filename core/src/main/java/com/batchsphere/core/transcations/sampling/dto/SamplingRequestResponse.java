@@ -25,6 +25,10 @@ public class SamplingRequestResponse {
     Boolean hazardousMaterial;
     Boolean selectiveMaterial;
     String remarks;
+    Integer totalContainers;
+    String qcDecisionRemarks;
+    String qcDecidedBy;
+    LocalDateTime qcDecidedAt;
     Boolean isActive;
     String createdBy;
     LocalDateTime createdAt;

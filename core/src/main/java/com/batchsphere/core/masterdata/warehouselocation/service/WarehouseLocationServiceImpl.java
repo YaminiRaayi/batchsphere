@@ -162,12 +162,15 @@ public class WarehouseLocationServiceImpl implements WarehouseLocationService {
     @Override
     public Rack createRack(UUID roomId, CreateRackRequest request) {
         ensureRoomExists(roomId);
-        if (rackRepository.existsByRackCode(request.getRackCode())) {
-            throw new DuplicateResourceException("Rack code already exists: " + request.getRackCode());
+        if (rackRepository.existsByRoomIdAndRackCode(roomId, request.getRackCode())) {
+            throw new DuplicateResourceException("Rack code already exists in room: " + request.getRackCode());
         }
+
+        Room room = getRoomById(roomId);
 
         Rack rack = Rack.builder()
                 .id(UUID.randomUUID())
+                .warehouseId(room.getWarehouseId())
                 .roomId(roomId)
                 .rackCode(request.getRackCode())
                 .rackName(request.getRackName())
@@ -198,11 +201,13 @@ public class WarehouseLocationServiceImpl implements WarehouseLocationService {
     public Rack updateRack(UUID roomId, UUID id, UpdateRackRequest request) {
         ensureRoomExists(roomId);
         Rack rack = getRackById(id);
-        if (!rack.getRackCode().equals(request.getRackCode())
-                && rackRepository.existsByRackCode(request.getRackCode())) {
-            throw new DuplicateResourceException("Rack code already exists: " + request.getRackCode());
+        Room room = getRoomById(roomId);
+        if ((!rack.getRoomId().equals(roomId) || !rack.getRackCode().equals(request.getRackCode()))
+                && rackRepository.existsByRoomIdAndRackCode(roomId, request.getRackCode())) {
+            throw new DuplicateResourceException("Rack code already exists in room: " + request.getRackCode());
         }
 
+        rack.setWarehouseId(room.getWarehouseId());
         rack.setRoomId(roomId);
         rack.setRackCode(request.getRackCode());
         rack.setRackName(request.getRackName());
@@ -224,8 +229,8 @@ public class WarehouseLocationServiceImpl implements WarehouseLocationService {
     @Override
     public Shelf createShelf(UUID rackId, CreateShelfRequest request) {
         ensureRackExists(rackId);
-        if (shelfRepository.existsByShelfCode(request.getShelfCode())) {
-            throw new DuplicateResourceException("Shelf code already exists: " + request.getShelfCode());
+        if (shelfRepository.existsByRackIdAndShelfCode(rackId, request.getShelfCode())) {
+            throw new DuplicateResourceException("Shelf code already exists in rack: " + request.getShelfCode());
         }
 
         Shelf shelf = Shelf.builder()
@@ -260,9 +265,9 @@ public class WarehouseLocationServiceImpl implements WarehouseLocationService {
     public Shelf updateShelf(UUID rackId, UUID id, UpdateShelfRequest request) {
         ensureRackExists(rackId);
         Shelf shelf = getShelfById(id);
-        if (!shelf.getShelfCode().equals(request.getShelfCode())
-                && shelfRepository.existsByShelfCode(request.getShelfCode())) {
-            throw new DuplicateResourceException("Shelf code already exists: " + request.getShelfCode());
+        if ((!shelf.getRackId().equals(rackId) || !shelf.getShelfCode().equals(request.getShelfCode()))
+                && shelfRepository.existsByRackIdAndShelfCode(rackId, request.getShelfCode())) {
+            throw new DuplicateResourceException("Shelf code already exists in rack: " + request.getShelfCode());
         }
 
         shelf.setRackId(rackId);
@@ -286,8 +291,8 @@ public class WarehouseLocationServiceImpl implements WarehouseLocationService {
     @Override
     public Pallet createPallet(UUID shelfId, CreatePalletRequest request) {
         ensureShelfExists(shelfId);
-        if (palletRepository.existsByPalletCode(request.getPalletCode())) {
-            throw new DuplicateResourceException("Pallet code already exists: " + request.getPalletCode());
+        if (palletRepository.existsByShelfIdAndPalletCode(shelfId, request.getPalletCode())) {
+            throw new DuplicateResourceException("Pallet code already exists in shelf: " + request.getPalletCode());
         }
 
         Room room = getRoomForShelf(shelfId);
@@ -325,9 +330,9 @@ public class WarehouseLocationServiceImpl implements WarehouseLocationService {
     public Pallet updatePallet(UUID shelfId, UUID id, UpdatePalletRequest request) {
         ensureShelfExists(shelfId);
         Pallet pallet = getPalletById(id);
-        if (!pallet.getPalletCode().equals(request.getPalletCode())
-                && palletRepository.existsByPalletCode(request.getPalletCode())) {
-            throw new DuplicateResourceException("Pallet code already exists: " + request.getPalletCode());
+        if ((!pallet.getShelfId().equals(shelfId) || !pallet.getPalletCode().equals(request.getPalletCode()))
+                && palletRepository.existsByShelfIdAndPalletCode(shelfId, request.getPalletCode())) {
+            throw new DuplicateResourceException("Pallet code already exists in shelf: " + request.getPalletCode());
         }
 
         Room room = getRoomForShelf(shelfId);

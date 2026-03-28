@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public interface ShelfRepository extends JpaRepository<Shelf, UUID> {
 
-    boolean existsByShelfCode(String shelfCode);
+    boolean existsByRackIdAndShelfCode(UUID rackId, String shelfCode);
 
     Page<Shelf> findByIsActiveTrue(Pageable pageable);
 

@@ -29,7 +29,7 @@ public class Shelf {
     @Column(name = "rack_id", nullable = false)
     private UUID rackId;
 
-    @Column(name = "shelf_code", nullable = false, unique = true, length = 50)
+    @Column(name = "shelf_code", nullable = false, length = 50)
     private String shelfCode;
 
     @Column(name = "shelf_name", nullable = false, length = 150)

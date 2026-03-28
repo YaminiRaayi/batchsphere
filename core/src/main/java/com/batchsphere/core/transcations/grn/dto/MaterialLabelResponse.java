@@ -16,6 +16,8 @@ public class MaterialLabelResponse {
     LabelType labelType;
     LabelStatus labelStatus;
     String labelContent;
+    String qrPayload;
+    String qrCodeDataUrl;
     String generatedBy;
     LocalDateTime generatedAt;
     String appliedBy;

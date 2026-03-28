@@ -8,6 +8,7 @@ import lombok.Value;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Value
@@ -38,4 +39,5 @@ public class GrnItemResponse {
     LocalDateTime createdAt;
     String updatedBy;
     LocalDateTime updatedAt;
+    List<GrnDocumentResponse> documents;
 }

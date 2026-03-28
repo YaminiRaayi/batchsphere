@@ -1,7 +1,9 @@
 package com.batchsphere.core.transcations.sampling.controller;
 
 import com.batchsphere.core.transcations.sampling.dto.CreateSamplingPlanRequest;
+import com.batchsphere.core.transcations.sampling.dto.QcDecisionRequest;
 import com.batchsphere.core.transcations.sampling.dto.SamplingLabelUpdateRequest;
+import com.batchsphere.core.transcations.sampling.dto.SamplingCompletionRequest;
 import com.batchsphere.core.transcations.sampling.dto.SamplingRequestResponse;
 import com.batchsphere.core.transcations.sampling.dto.UpdateSamplingPlanRequest;
 import com.batchsphere.core.transcations.sampling.service.SamplingService;
@@ -53,5 +55,17 @@ public class SamplingController {
     @PutMapping("/{id}/sampling-label")
     public ResponseEntity<SamplingRequestResponse> updateSamplingLabel(@PathVariable UUID id, @Valid @RequestBody SamplingLabelUpdateRequest request) {
         return ResponseEntity.ok(samplingService.updateSamplingLabel(id, request.getSamplingLabelApplied(), request.getUpdatedBy()));
+    }
+
+    @PostMapping("/{id}/complete")
+    public ResponseEntity<SamplingRequestResponse> completeSampling(@PathVariable UUID id,
+                                                                    @Valid @RequestBody SamplingCompletionRequest request) {
+        return ResponseEntity.ok(samplingService.completeSampling(id, request));
+    }
+
+    @PostMapping("/{id}/qc-decision")
+    public ResponseEntity<SamplingRequestResponse> recordQcDecision(@PathVariable UUID id,
+                                                                    @Valid @RequestBody QcDecisionRequest request) {
+        return ResponseEntity.ok(samplingService.recordQcDecision(id, request));
     }
 }

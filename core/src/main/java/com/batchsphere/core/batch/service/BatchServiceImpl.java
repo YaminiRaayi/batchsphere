@@ -6,10 +6,7 @@ import com.batchsphere.core.batch.entity.Batch;
 import com.batchsphere.core.batch.entity.BatchStatus;
 import com.batchsphere.core.batch.repository.BatchRepository;
 import com.batchsphere.core.exception.BusinessConflictException;
-import com.batchsphere.core.exception.DuplicateResourceException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
-import com.batchsphere.core.masterdata.material.entity.Material;
-import com.batchsphere.core.masterdata.material.repository.MaterialRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,13 +14,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
-
-
 @Service
 @RequiredArgsConstructor
 public class BatchServiceImpl implements BatchService {
   private final BatchRepository batchRepository;
-  private final MaterialRepository materialRepository;
 
     /**
      * @param request
@@ -31,33 +25,9 @@ public class BatchServiceImpl implements BatchService {
      */
     @Override
     public Batch createBatch(BatchRequest request) {
-
-        if(batchRepository.existsByBatchNumber(request.getBatchNumber())){
-            throw  new DuplicateResourceException("Batch Number already exists: " +request.getBatchNumber());
-        }
-
-        Material material = materialRepository.findById(request.getMaterialId()).orElseThrow(() -> new ResourceNotFoundException("Material Not found with Id: " +request.getMaterialId()));
-
-        Batch batch = Batch.builder()
-                .id(UUID.randomUUID())
-                .batchNumber(request.getBatchNumber())
-                .material(material)
-                .batchType(request.getBatchType())
-                .batchStatus(BatchStatus.CREATED)
-                .quantity(request.getQuantity())
-                .unitOfMeasure(request.getUnitOfMeasure())
-                .manufactureDate(request.getManufactureDate())
-                .expiryDate(request.getExpiryDate())
-                .retestDate(request.getRetestDate())
-                .isActive(true)
-                .createdBy(request.getCreatedBy())
-                .createdAt(LocalDateTime.now())
-                .build();
-
-        return batchRepository.save(batch);
-
-
-
+        throw new BusinessConflictException(
+                "Manual batch creation is disabled. Batches are generated automatically from GRN receipt."
+        );
     }
 
     /**

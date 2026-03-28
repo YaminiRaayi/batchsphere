@@ -32,7 +32,7 @@ public class Pallet {
     @Column(name = "shelf_id", nullable = false)
     private UUID shelfId;
 
-    @Column(name = "pallet_code", nullable = false, unique = true, length = 50)
+    @Column(name = "pallet_code", nullable = false, length = 50)
     private String palletCode;
 
     @Column(name = "pallet_name", nullable = false, length = 150)

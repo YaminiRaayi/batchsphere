@@ -26,10 +26,13 @@ public class Rack {
     @Column(nullable = false, updatable = false)
     private UUID id;
 
+    @Column(name = "warehouse_id", nullable = false)
+    private UUID warehouseId;
+
     @Column(name = "room_id", nullable = false)
     private UUID roomId;
 
-    @Column(name = "rack_code", nullable = false, unique = true, length = 50)
+    @Column(name = "rack_code", nullable = false, length = 50)
     private String rackCode;
 
     @Column(name = "rack_name", nullable = false, length = 150)

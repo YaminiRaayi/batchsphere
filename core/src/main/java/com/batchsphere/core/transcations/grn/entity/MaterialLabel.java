@@ -42,6 +42,12 @@ public class MaterialLabel {
     @Column(name = "label_content", nullable = false, length = 4000)
     private String labelContent;
 
+    @Column(name = "qr_payload", length = 4000)
+    private String qrPayload;
+
+    @Column(name = "qr_code_data_url", length = 12000)
+    private String qrCodeDataUrl;
+
     @Column(name = "generated_by", nullable = false, length = 100)
     private String generatedBy;
 

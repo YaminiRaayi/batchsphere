@@ -40,8 +40,14 @@ public class SamplingRequest {
     @Column(name = "batch_id")
     private UUID batchId;
 
+    @Column(name = "warehouse_location", nullable = false, length = 150)
+    private String warehouseLocation;
+
     @Column(name = "pallet_id", nullable = false)
     private UUID palletId;
+
+    @Column(name = "total_containers", nullable = false)
+    private Integer totalContainers;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "request_status", nullable = false, length = 30)
@@ -70,6 +76,15 @@ public class SamplingRequest {
 
     @Column(length = 500)
     private String remarks;
+
+    @Column(name = "qc_decision_remarks", length = 1000)
+    private String qcDecisionRemarks;
+
+    @Column(name = "qc_decided_by", length = 100)
+    private String qcDecidedBy;
+
+    @Column(name = "qc_decided_at")
+    private LocalDateTime qcDecidedAt;
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;

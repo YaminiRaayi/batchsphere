@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public interface PalletRepository extends JpaRepository<Pallet, UUID> {
 
-    boolean existsByPalletCode(String palletCode);
+    boolean existsByShelfIdAndPalletCode(UUID shelfId, String palletCode);
 
     Page<Pallet> findByIsActiveTrue(Pageable pageable);
 

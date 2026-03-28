@@ -2,6 +2,8 @@ package com.batchsphere.core.transcations.sampling.service;
 
 import com.batchsphere.core.transcations.grn.entity.GrnItem;
 import com.batchsphere.core.transcations.sampling.dto.CreateSamplingPlanRequest;
+import com.batchsphere.core.transcations.sampling.dto.QcDecisionRequest;
+import com.batchsphere.core.transcations.sampling.dto.SamplingCompletionRequest;
 import com.batchsphere.core.transcations.sampling.dto.SamplingRequestResponse;
 import com.batchsphere.core.transcations.sampling.dto.UpdateSamplingPlanRequest;
 import org.springframework.data.domain.Page;
@@ -23,4 +25,6 @@ public interface SamplingService {
     SamplingRequestResponse updateSamplingPlan(UUID samplingRequestId, UUID planId, UpdateSamplingPlanRequest request);
 
     SamplingRequestResponse updateSamplingLabel(UUID samplingRequestId, Boolean samplingLabelApplied, String updatedBy);
+    SamplingRequestResponse completeSampling(UUID samplingRequestId, SamplingCompletionRequest request);
+    SamplingRequestResponse recordQcDecision(UUID samplingRequestId, QcDecisionRequest request);
 }

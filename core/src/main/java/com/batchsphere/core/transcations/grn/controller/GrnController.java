@@ -3,6 +3,8 @@ package com.batchsphere.core.transcations.grn.controller;
 import com.batchsphere.core.transcations.grn.dto.CreateGrnRequest;
 import com.batchsphere.core.transcations.grn.dto.ContainerSamplingLabelRequest;
 import com.batchsphere.core.transcations.grn.dto.GrnContainerResponse;
+import com.batchsphere.core.transcations.grn.dto.GrnDocumentResponse;
+import com.batchsphere.core.transcations.grn.dto.GrnDocumentUploadRequest;
 import com.batchsphere.core.transcations.grn.dto.GrnResponse;
 import com.batchsphere.core.transcations.grn.dto.GrnStatusUpdateRequest;
 import com.batchsphere.core.transcations.grn.dto.MaterialLabelResponse;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -71,6 +74,21 @@ public class GrnController {
     @PostMapping("/containers/{containerId}/sampling-label")
     public ResponseEntity<GrnContainerResponse> applySamplingLabel(@PathVariable UUID containerId, @Valid @RequestBody ContainerSamplingLabelRequest request) {
         return ResponseEntity.ok(grnService.applySamplingLabel(containerId, request));
+    }
+
+    @PostMapping("/items/{grnItemId}/documents")
+    public ResponseEntity<GrnDocumentResponse> uploadDocument(@PathVariable UUID grnItemId,
+                                                              @RequestParam String documentName,
+                                                              @RequestParam String documentType,
+                                                              @RequestParam(required = false) String documentUrl,
+                                                              @RequestParam String createdBy,
+                                                              @RequestParam MultipartFile file) {
+        GrnDocumentUploadRequest request = new GrnDocumentUploadRequest();
+        request.setDocumentName(documentName);
+        request.setDocumentType(documentType);
+        request.setDocumentUrl(documentUrl);
+        request.setCreatedBy(createdBy);
+        return ResponseEntity.ok(grnService.uploadDocument(grnItemId, request, file));
     }
 
     @PostMapping("/{id}/cancel")

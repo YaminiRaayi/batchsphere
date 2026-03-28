@@ -54,6 +54,9 @@ public class GrnItem {
     @Column(name = "uom", nullable = false, length = 50)
     private String uom;
 
+    @Column(name = "warehouse_location", nullable = false, length = 150)
+    private String warehouseLocation;
+
     @Column(name = "pallet_id", nullable = false)
     private UUID palletId;
 

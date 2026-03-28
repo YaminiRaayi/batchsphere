@@ -35,6 +35,9 @@ public class Inventory {
     @Column(name = "batch_id", nullable = false)
     private UUID batchId;
 
+    @Column(name = "warehouse_location", nullable = false, length = 150)
+    private String warehouseLocation;
+
     @Column(name = "pallet_id", nullable = false)
     private UUID palletId;
 

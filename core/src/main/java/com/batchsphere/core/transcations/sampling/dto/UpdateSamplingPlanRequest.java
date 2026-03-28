@@ -9,6 +9,8 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
 
 @Data
 public class UpdateSamplingPlanRequest {
@@ -18,6 +20,12 @@ public class UpdateSamplingPlanRequest {
 
     @NotNull
     private SampleType sampleType;
+
+    @NotNull
+    private UUID specId;
+
+    @NotNull
+    private UUID moaId;
 
     @Min(1)
     private Integer totalContainers;
@@ -34,7 +42,11 @@ public class UpdateSamplingPlanRequest {
     @NotBlank
     private String samplingLocation;
 
-    private String samplingToolInfo;
+    @NotBlank
+    private String analystEmployeeCode;
+
+    @NotNull
+    private UUID samplingToolId;
 
     @NotNull
     private Boolean photosensitiveHandlingRequired;
@@ -46,6 +58,8 @@ public class UpdateSamplingPlanRequest {
     private Boolean coaBasedRelease;
 
     private String rationale;
+
+    private List<SamplingContainerSampleRequest> containerSamples;
 
     @NotBlank
     private String updatedBy;

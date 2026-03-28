@@ -32,6 +32,12 @@ public class SamplingPlan {
     @Column(name = "sampling_request_id", nullable = false, unique = true)
     private UUID samplingRequestId;
 
+    @Column(name = "spec_id")
+    private UUID specId;
+
+    @Column(name = "moa_id")
+    private UUID moaId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "sampling_method", nullable = false, length = 30)
     private SamplingMethod samplingMethod;
@@ -55,8 +61,11 @@ public class SamplingPlan {
     @Column(name = "sampling_location", nullable = false, length = 150)
     private String samplingLocation;
 
-    @Column(name = "sampling_tool_info", length = 500)
-    private String samplingToolInfo;
+    @Column(name = "analyst_employee_code", length = 100)
+    private String analystEmployeeCode;
+
+    @Column(name = "sampling_tool_id")
+    private UUID samplingToolId;
 
     @Column(name = "photosensitive_handling_required", nullable = false)
     private Boolean photosensitiveHandlingRequired;

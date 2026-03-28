@@ -13,7 +13,7 @@ CREATE TABLE warehouse (
 CREATE TABLE rack (
                       id UUID PRIMARY KEY,
                       warehouse_id UUID NOT NULL,
-                      rack_code VARCHAR(50) NOT NULL UNIQUE,
+                      rack_code VARCHAR(50) NOT NULL,
                       rack_name VARCHAR(150) NOT NULL,
                       description VARCHAR(500),
                       is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -28,7 +28,7 @@ CREATE TABLE rack (
 CREATE TABLE shelf (
                        id UUID PRIMARY KEY,
                        rack_id UUID NOT NULL,
-                       shelf_code VARCHAR(50) NOT NULL UNIQUE,
+                       shelf_code VARCHAR(50) NOT NULL,
                        shelf_name VARCHAR(150) NOT NULL,
                        description VARCHAR(500),
                        is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -43,7 +43,7 @@ CREATE TABLE shelf (
 CREATE TABLE pallet (
                         id UUID PRIMARY KEY,
                         shelf_id UUID NOT NULL,
-                        pallet_code VARCHAR(50) NOT NULL UNIQUE,
+                        pallet_code VARCHAR(50) NOT NULL,
                         pallet_name VARCHAR(150) NOT NULL,
                         storage_condition VARCHAR(50) NOT NULL,
                         description VARCHAR(500),

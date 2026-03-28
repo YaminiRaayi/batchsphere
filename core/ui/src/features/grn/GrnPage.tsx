@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { SectionHeader } from "../../components/SectionHeader";
 import {
   createGrn,
@@ -123,8 +123,11 @@ export function GrnPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [queueMessage, setQueueMessage] = useState<string | null>(null);
-  const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isQueueModalOpen, setIsQueueModalOpen] = useState(false);
+  const [activeLabelContainer, setActiveLabelContainer] = useState<GrnContainer | null>(null);
+  const [isDetailHighlighted, setIsDetailHighlighted] = useState(false);
+  const detailSectionRef = useRef<HTMLElement | null>(null);
   const [createDocumentDraft, setCreateDocumentDraft] = useState<DocumentDraft>({
     documentName: "",
     documentType: "",
@@ -207,7 +210,7 @@ export function GrnPage() {
       !selectedMaterial || pallet.storageCondition === selectedMaterial.storageCondition
   );
 
-  async function handleSelectGrn(grnId: string) {
+  async function handleSelectGrn(grnId: string, options?: { focusDetail?: boolean }) {
     setIsDetailLoading(true);
     setError(null);
     setIsDetailOpen(true);
@@ -227,6 +230,14 @@ export function GrnPage() {
         allContainers.map(async (container) => [container.id, await fetchContainerLabels(container.id)] as const)
       );
       setContainerLabels(Object.fromEntries(labelPairs));
+
+      if (options?.focusDetail) {
+        setIsDetailHighlighted(true);
+        window.requestAnimationFrame(() => {
+          detailSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+        window.setTimeout(() => setIsDetailHighlighted(false), 2200);
+      }
     } catch (detailError) {
       const message =
         detailError instanceof Error ? detailError.message : "Unknown error while loading GRN detail";
@@ -874,146 +885,30 @@ export function GrnPage() {
           </form>
         </article>
 
-        <article className="panel overflow-hidden">
-          <div className="flex items-center justify-between border-b border-ink/10 px-6 py-5">
+        <article className="panel px-6 py-6">
+          <div className="flex items-start justify-between gap-4">
             <div>
               <h4 className="text-lg font-semibold text-ink">GRN queue</h4>
-              <p className="mt-1 text-sm text-slate">Click to open the GRN list in table format</p>
+              <p className="mt-1 text-sm text-slate">
+                Keep the creation screen clean and open the queue only when you want to inspect or receive records.
+              </p>
             </div>
+          </div>
+          <div className="mt-5 rounded-[22px] bg-[#f3f6f8] px-5 py-5 text-sm text-slate">
+            <p>
+              Queue is hidden by default. Use the highlighted link to open the GRN queue and select a record.
+            </p>
             <button
               type="button"
-              onClick={() => setIsQueueOpen((current) => !current)}
-              className="rounded-2xl bg-mist px-4 py-3 text-sm font-medium text-slate"
+              onClick={() => setIsQueueModalOpen(true)}
+              className="mt-4 text-sm font-semibold text-steel underline underline-offset-4"
             >
-              {isQueueOpen ? "Hide GRN List" : "Open GRN List"}
+              Open GRN Queue
             </button>
           </div>
 
-          {isQueueOpen ? (
-            <>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-left text-sm">
-                  <thead className="bg-ink/5 text-slate">
-                    <tr>
-                      <th className="px-6 py-4 font-medium">GRN</th>
-                      <th className="px-6 py-4 font-medium">Receipt Date</th>
-                      <th className="px-6 py-4 font-medium">Items</th>
-                      <th className="px-6 py-4 font-medium">Received</th>
-                      <th className="px-6 py-4 font-medium">Accepted</th>
-                      <th className="px-6 py-4 font-medium">Status</th>
-                      <th className="px-6 py-4 font-medium">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {isLoading ? (
-                      <tr className="border-t border-ink/10">
-                        <td className="px-6 py-8 text-slate" colSpan={7}>
-                          Loading GRNs from {getApiBaseUrl()}
-                        </td>
-                      </tr>
-                    ) : null}
-
-                    {!isLoading && error ? (
-                      <tr className="border-t border-ink/10">
-                        <td className="px-6 py-8" colSpan={7}>
-                          <div className="rounded-2xl border border-redoxide/20 bg-redoxide/10 px-4 py-4 text-sm text-redoxide">
-                            Could not load GRNs. {error}. Confirm the backend is running on {getApiBaseUrl()}.
-                          </div>
-                        </td>
-                      </tr>
-                    ) : null}
-
-                    {!isLoading && !error && page?.content.length === 0 ? (
-                      <tr className="border-t border-ink/10">
-                        <td className="px-6 py-8 text-slate" colSpan={7}>
-                          No GRNs found yet.
-                        </td>
-                      </tr>
-                    ) : null}
-
-                    {!isLoading &&
-                      !error &&
-                      page?.content.map((grn) => (
-                        <tr key={grn.id} className="border-t border-ink/10">
-                          <td className="px-6 py-4 text-ink">
-                            <div>
-                              <p className="font-semibold">{grn.grnNumber}</p>
-                              <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate">
-                                {grn.invoiceNumber}
-                              </p>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-ink">{grn.receiptDate}</td>
-                          <td className="px-6 py-4 text-ink">{summarizeMaterials(grn)}</td>
-                          <td className="px-6 py-4 text-ink">{sumQuantity(grn, "receivedQuantity")}</td>
-                          <td className="px-6 py-4 text-ink">{sumQuantity(grn, "acceptedQuantity")}</td>
-                          <td className="px-6 py-4 text-ink">
-                            <span className={`status-pill ${statusTone(grn.status)}`}>{grn.status}</span>
-                          </td>
-                          <td className="px-6 py-4 text-ink">
-                            <div className="flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                onClick={() => void handleSelectGrn(grn.id)}
-                                className="rounded-2xl border border-ink/10 bg-white px-4 py-2 text-sm font-medium text-ink"
-                              >
-                                View
-                              </button>
-                              {grn.status === "DRAFT" ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleReceive(grn.id)}
-                                  disabled={receivingGrnId === grn.id}
-                                  className="rounded-2xl bg-steel px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-steel/50"
-                                >
-                                  {receivingGrnId === grn.id ? "Receiving..." : "Receive"}
-                                </button>
-                              ) : null}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {!isLoading && !error && page ? (
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink/10 px-6 py-4 text-sm text-slate">
-                  <p>
-                    Showing {page.content.length} of {page.totalElements} GRNs
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <p>
-                      Page {page.number + 1} of {Math.max(page.totalPages, 1)}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setCurrentPage((current) => Math.max(0, current - 1))}
-                      disabled={page.first}
-                      className="rounded-2xl border border-ink/10 px-4 py-2 text-ink disabled:cursor-not-allowed disabled:text-slate/50"
-                    >
-                      Previous
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCurrentPage((current) => current + 1)}
-                      disabled={page.last}
-                      className="rounded-2xl border border-ink/10 px-4 py-2 text-ink disabled:cursor-not-allowed disabled:text-slate/50"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-            </>
-          ) : (
-            <div className="px-6 py-8 text-sm text-slate">
-              GRN list is hidden. Click <span className="font-medium text-ink">Open GRN List</span> to view the tabular queue.
-            </div>
-          )}
-
           {queueMessage ? (
-            <div className="border-t border-ink/10 px-6 py-4">
+            <div className="mt-5">
               <div className="rounded-2xl border border-moss/20 bg-moss/10 px-4 py-4 text-sm text-moss">
                 {queueMessage}
               </div>
@@ -1023,7 +918,12 @@ export function GrnPage() {
 
       </section>
 
-      <section className="panel px-6 py-6">
+      <section
+        ref={detailSectionRef}
+        className={`panel px-6 py-6 transition-all duration-300 ${
+          isDetailHighlighted ? "ring-2 ring-steel/60 bg-steel/5" : ""
+        }`}
+      >
         <div className="flex items-center justify-between gap-3">
           <div>
             <h4 className="text-lg font-semibold text-ink">GRN detail, containers, and labels</h4>
@@ -1058,6 +958,11 @@ export function GrnPage() {
 
         {!isDetailLoading && selectedGrn && isDetailOpen ? (
           <div className="mt-6 space-y-6">
+            {isDetailHighlighted ? (
+              <div className="rounded-2xl border border-steel/20 bg-steel/10 px-4 py-3 text-sm text-steel">
+                Selected GRN opened below. Use the container links to view sampling label details.
+              </div>
+            ) : null}
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-2xl border border-ink/10 px-4 py-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-slate">GRN</p>
@@ -1155,34 +1060,15 @@ export function GrnPage() {
 
                           <div className="mt-4 space-y-3">
                             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate">
-                              Labels
+                              Sampling labels
                             </p>
-                            {(containerLabels[container.id] ?? []).length === 0 ? (
-                              <p className="text-sm text-slate">No labels found.</p>
-                            ) : (
-                              (containerLabels[container.id] ?? []).map((label) => (
-                                <div key={label.id} className="rounded-2xl bg-mist/80 px-4 py-4">
-                                  <div className="flex flex-wrap items-center justify-between gap-3">
-                                    <p className="text-sm font-semibold text-ink">{label.labelType}</p>
-                                    <span className="status-pill bg-ink/5 text-ink">
-                                      {label.labelStatus}
-                                    </span>
-                                  </div>
-                                  {label.qrCodeDataUrl ? (
-                                    <div className="mt-3 inline-flex rounded-2xl bg-white p-3">
-                                      <img
-                                        src={label.qrCodeDataUrl}
-                                        alt={`${label.labelType} QR code`}
-                                        className="h-40 w-40"
-                                      />
-                                    </div>
-                                  ) : null}
-                                  <pre className="mt-3 whitespace-pre-wrap text-sm text-slate">
-                                    {label.labelContent}
-                                  </pre>
-                                </div>
-                              ))
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => setActiveLabelContainer(container)}
+                              className="text-sm font-semibold text-steel underline underline-offset-4"
+                            >
+                              View Sampling Label Details
+                            </button>
                           </div>
                         </div>
                       ))
@@ -1194,6 +1080,200 @@ export function GrnPage() {
           </div>
         ) : null}
       </section>
+
+      {isQueueModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/30 px-4" onClick={() => setIsQueueModalOpen(false)}>
+          <div
+            className="max-h-[85vh] w-full max-w-6xl overflow-hidden rounded-[28px] border border-ink/10 bg-white shadow-float"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-ink/10 px-6 py-5">
+              <div>
+                <h4 className="text-lg font-semibold text-ink">GRN Queue</h4>
+                <p className="mt-1 text-sm text-slate">Open a GRN, review it, or receive it from this popup.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQueueModalOpen(false)}
+                className="rounded-full border border-ink/10 px-3 py-2 text-sm text-ink"
+              >
+                Close
+              </button>
+            </div>
+            <div className="max-h-[68vh] overflow-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-ink/5 text-slate">
+                  <tr>
+                    <th className="px-6 py-4 font-medium">GRN</th>
+                    <th className="px-6 py-4 font-medium">Receipt Date</th>
+                    <th className="px-6 py-4 font-medium">Items</th>
+                    <th className="px-6 py-4 font-medium">Received</th>
+                    <th className="px-6 py-4 font-medium">Accepted</th>
+                    <th className="px-6 py-4 font-medium">Status</th>
+                    <th className="px-6 py-4 font-medium">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isLoading ? (
+                    <tr className="border-t border-ink/10">
+                      <td className="px-6 py-8 text-slate" colSpan={7}>
+                        Loading GRNs from {getApiBaseUrl()}
+                      </td>
+                    </tr>
+                  ) : null}
+
+                  {!isLoading && error ? (
+                    <tr className="border-t border-ink/10">
+                      <td className="px-6 py-8" colSpan={7}>
+                        <div className="rounded-2xl border border-redoxide/20 bg-redoxide/10 px-4 py-4 text-sm text-redoxide">
+                          Could not load GRNs. {error}. Confirm the backend is running on {getApiBaseUrl()}.
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+
+                  {!isLoading && !error && page?.content.length === 0 ? (
+                    <tr className="border-t border-ink/10">
+                      <td className="px-6 py-8 text-slate" colSpan={7}>
+                        No GRNs found yet.
+                      </td>
+                    </tr>
+                  ) : null}
+
+                  {!isLoading &&
+                    !error &&
+                    page?.content.map((grn) => (
+                      <tr key={grn.id} className="border-t border-ink/10">
+                        <td className="px-6 py-4 text-ink">
+                          <div>
+                            <p className="font-semibold">{grn.grnNumber}</p>
+                            <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate">
+                              {grn.invoiceNumber}
+                            </p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-ink">{grn.receiptDate}</td>
+                        <td className="px-6 py-4 text-ink">{summarizeMaterials(grn)}</td>
+                        <td className="px-6 py-4 text-ink">{sumQuantity(grn, "receivedQuantity")}</td>
+                        <td className="px-6 py-4 text-ink">{sumQuantity(grn, "acceptedQuantity")}</td>
+                        <td className="px-6 py-4 text-ink">
+                          <span className={`status-pill ${statusTone(grn.status)}`}>{grn.status}</span>
+                        </td>
+                        <td className="px-6 py-4 text-ink">
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void handleSelectGrn(grn.id, { focusDetail: true });
+                                setIsQueueModalOpen(false);
+                              }}
+                              className="rounded-2xl border border-ink/10 bg-white px-4 py-2 text-sm font-medium text-ink"
+                            >
+                              View Details
+                            </button>
+                            {grn.status === "DRAFT" ? (
+                              <button
+                                type="button"
+                                onClick={() => handleReceive(grn.id)}
+                                disabled={receivingGrnId === grn.id}
+                                className="rounded-2xl bg-steel px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-steel/50"
+                              >
+                                {receivingGrnId === grn.id ? "Receiving..." : "Receive"}
+                              </button>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+            {!isLoading && !error && page ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink/10 px-6 py-4 text-sm text-slate">
+                <p>
+                  Showing {page.content.length} of {page.totalElements} GRNs
+                </p>
+                <div className="flex items-center gap-3">
+                  <p>
+                    Page {page.number + 1} of {Math.max(page.totalPages, 1)}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((current) => Math.max(0, current - 1))}
+                    disabled={page.first}
+                    className="rounded-2xl border border-ink/10 px-4 py-2 text-ink disabled:cursor-not-allowed disabled:text-slate/50"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((current) => current + 1)}
+                    disabled={page.last}
+                    className="rounded-2xl border border-ink/10 px-4 py-2 text-ink disabled:cursor-not-allowed disabled:text-slate/50"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {activeLabelContainer ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/30 px-4" onClick={() => setActiveLabelContainer(null)}>
+          <div
+            className="max-h-[80vh] w-full max-w-4xl overflow-hidden rounded-[28px] border border-ink/10 bg-white shadow-float"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-ink/10 px-6 py-5">
+              <div>
+                <h4 className="text-lg font-semibold text-ink">Sampling Label Details</h4>
+                <p className="mt-1 text-sm text-slate">
+                  {activeLabelContainer.containerNumber} / {activeLabelContainer.internalLot}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveLabelContainer(null)}
+                className="rounded-full border border-ink/10 px-3 py-2 text-sm text-ink"
+              >
+                Close
+              </button>
+            </div>
+            <div className="max-h-[62vh] overflow-auto p-6">
+              {(containerLabels[activeLabelContainer.id] ?? []).length === 0 ? (
+                <p className="text-sm text-slate">No labels found for this container.</p>
+              ) : (
+                <div className="space-y-4">
+                  {(containerLabels[activeLabelContainer.id] ?? []).map((label) => (
+                    <div key={label.id} className="rounded-2xl bg-mist/80 px-4 py-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm font-semibold text-ink">{label.labelType}</p>
+                        <span className="status-pill bg-ink/5 text-ink">
+                          {label.labelStatus}
+                        </span>
+                      </div>
+                      {label.qrCodeDataUrl ? (
+                        <div className="mt-3 inline-flex rounded-2xl bg-white p-3">
+                          <img
+                            src={label.qrCodeDataUrl}
+                            alt={`${label.labelType} QR code`}
+                            className="h-40 w-40"
+                          />
+                        </div>
+                      ) : null}
+                      <pre className="mt-3 whitespace-pre-wrap text-sm text-slate">
+                        {label.labelContent}
+                      </pre>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

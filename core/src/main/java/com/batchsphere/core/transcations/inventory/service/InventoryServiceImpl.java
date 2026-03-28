@@ -3,7 +3,6 @@ package com.batchsphere.core.transcations.inventory.service;
 import com.batchsphere.core.exception.BusinessConflictException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.transcations.grn.entity.GrnItem;
-import com.batchsphere.core.transcations.grn.entity.QcStatus;
 import com.batchsphere.core.transcations.inventory.dto.InventoryResponse;
 import com.batchsphere.core.transcations.inventory.dto.InventoryTransactionResponse;
 import com.batchsphere.core.transcations.inventory.entity.Inventory;
@@ -73,6 +72,7 @@ public class InventoryServiceImpl implements InventoryService {
                             .id(UUID.randomUUID())
                             .materialId(item.getMaterialId())
                             .batchId(item.getBatchId())
+                            .warehouseLocation(item.getWarehouseLocation())
                             .palletId(item.getPalletId())
                             .quantityOnHand(BigDecimal.ZERO)
                             .uom(item.getUom())
@@ -83,6 +83,7 @@ public class InventoryServiceImpl implements InventoryService {
                             .build());
 
             inventory.setQuantityOnHand(inventory.getQuantityOnHand().add(item.getAcceptedQuantity()));
+            inventory.setWarehouseLocation(item.getWarehouseLocation());
             inventory.setUom(item.getUom());
             inventory.setStatus(InventoryStatus.QUARANTINE);
             inventory.setUpdatedBy(actor);
@@ -95,6 +96,7 @@ public class InventoryServiceImpl implements InventoryService {
                     .inventoryId(savedInventory.getId())
                     .materialId(item.getMaterialId())
                     .batchId(item.getBatchId())
+                    .warehouseLocation(item.getWarehouseLocation())
                     .palletId(item.getPalletId())
                     .transactionType(InventoryTransactionType.INBOUND)
                     .referenceType(InventoryReferenceType.GRN)
@@ -132,10 +134,6 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     private void validateReceivableItem(GrnItem item) {
-        if (item.getQcStatus() == QcStatus.PENDING) {
-            throw new BusinessConflictException("GRN item cannot be received into inventory while QC is pending");
-        }
-
         if (item.getAcceptedQuantity().compareTo(BigDecimal.ZERO) > 0 && item.getBatchId() == null) {
             throw new BusinessConflictException("Accepted GRN quantity requires a batch for inventory tracking");
         }
