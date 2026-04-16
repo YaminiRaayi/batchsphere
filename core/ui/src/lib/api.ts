@@ -90,6 +90,20 @@ async function requestMutation<T>(path: string, init: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+async function requestVoid(path: string, init: RequestInit): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json"
+    },
+    ...init
+  });
+
+  if (!response.ok) {
+    throw await buildError(response);
+  }
+}
+
 async function requestMultipart<T>(path: string, formData: FormData): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
@@ -174,6 +188,19 @@ export async function createSupplier(payload: CreateSupplierRequest) {
   });
 }
 
+export async function updateSupplier(id: string, payload: CreateSupplierRequest) {
+  return requestMutation<Supplier>(`/api/suppliers/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteSupplier(id: string) {
+  return requestVoid(`/api/suppliers/${id}`, {
+    method: "DELETE"
+  });
+}
+
 export async function fetchVendors(page = 0, size = 20) {
   const params = new URLSearchParams({
     page: String(page),
@@ -187,6 +214,19 @@ export async function createVendor(payload: CreateVendorRequest) {
   return requestMutation<Vendor>("/api/vendors", {
     method: "POST",
     body: JSON.stringify(payload)
+  });
+}
+
+export async function updateVendor(id: string, payload: CreateVendorRequest) {
+  return requestMutation<Vendor>(`/api/vendors/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteVendor(id: string) {
+  return requestVoid(`/api/vendors/${id}`, {
+    method: "DELETE"
   });
 }
 
@@ -216,6 +256,30 @@ export async function createVendorBusinessUnit(
   });
 }
 
+export async function updateVendorBusinessUnit(
+  vendorId: string,
+  id: string,
+  payload: CreateVendorBusinessUnitRequest
+) {
+  return requestMutation<VendorBusinessUnit>(`/api/vendors/${vendorId}/business-units/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      unitName: payload.unitName,
+      address: payload.address,
+      city: payload.city,
+      state: payload.state,
+      country: payload.country,
+      updatedBy: payload.createdBy
+    })
+  });
+}
+
+export async function deleteVendorBusinessUnit(id: string) {
+  return requestVoid(`/api/vendor-business-units/${id}`, {
+    method: "DELETE"
+  });
+}
+
 export async function fetchMaterials(page = 0, size = 20) {
   const params = new URLSearchParams({
     page: String(page),
@@ -232,6 +296,19 @@ export async function createMaterial(payload: CreateMaterialRequest) {
   });
 }
 
+export async function updateMaterial(id: string, payload: CreateMaterialRequest) {
+  return requestMutation<Material>(`/api/materials/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteMaterial(id: string) {
+  return requestVoid(`/api/materials/${id}`, {
+    method: "DELETE"
+  });
+}
+
 export async function fetchSpecs() {
   return requestJson<Spec[]>("/api/specs");
 }
@@ -240,6 +317,19 @@ export async function createSpec(payload: CreateSpecRequest) {
   return requestMutation<Spec>("/api/specs", {
     method: "POST",
     body: JSON.stringify(payload)
+  });
+}
+
+export async function updateSpec(id: string, payload: CreateSpecRequest) {
+  return requestMutation<Spec>(`/api/specs/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteSpec(id: string) {
+  return requestVoid(`/api/specs/${id}`, {
+    method: "DELETE"
   });
 }
 
@@ -254,6 +344,19 @@ export async function createMoa(payload: CreateMoaRequest) {
   });
 }
 
+export async function updateMoa(id: string, payload: CreateMoaRequest) {
+  return requestMutation<Moa>(`/api/moas/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteMoa(id: string) {
+  return requestVoid(`/api/moas/${id}`, {
+    method: "DELETE"
+  });
+}
+
 export async function fetchSamplingTools() {
   return requestJson<SamplingTool[]>("/api/sampling-tools");
 }
@@ -262,6 +365,19 @@ export async function createSamplingTool(payload: CreateSamplingToolRequest) {
   return requestMutation<SamplingTool>("/api/sampling-tools", {
     method: "POST",
     body: JSON.stringify(payload)
+  });
+}
+
+export async function updateSamplingTool(id: string, payload: CreateSamplingToolRequest) {
+  return requestMutation<SamplingTool>(`/api/sampling-tools/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteSamplingTool(id: string) {
+  return requestVoid(`/api/sampling-tools/${id}`, {
+    method: "DELETE"
   });
 }
 
@@ -278,6 +394,24 @@ export async function createWarehouse(payload: CreateWarehouseRequest) {
   return requestMutation<Warehouse>("/api/warehouses", {
     method: "POST",
     body: JSON.stringify(payload)
+  });
+}
+
+export async function updateWarehouse(id: string, payload: CreateWarehouseRequest) {
+  return requestMutation<Warehouse>(`/api/warehouses/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      warehouseCode: payload.warehouseCode,
+      warehouseName: payload.warehouseName,
+      description: payload.description,
+      updatedBy: payload.createdBy
+    })
+  });
+}
+
+export async function deleteWarehouse(id: string) {
+  return requestVoid(`/api/warehouses/${id}`, {
+    method: "DELETE"
   });
 }
 
@@ -300,6 +434,25 @@ export async function createRoom(warehouseId: string, payload: CreateRoomRequest
   });
 }
 
+export async function updateRoom(warehouseId: string, id: string, payload: CreateRoomRequest) {
+  return requestMutation<Room>(`/api/warehouses/${warehouseId}/rooms/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      roomCode: payload.roomCode,
+      roomName: payload.roomName,
+      storageCondition: payload.storageCondition,
+      description: payload.description,
+      updatedBy: payload.createdBy
+    })
+  });
+}
+
+export async function deleteRoom(id: string) {
+  return requestVoid(`/api/rooms/${id}`, {
+    method: "DELETE"
+  });
+}
+
 export async function fetchRacks(page = 0, size = 50, roomId?: string) {
   const params = new URLSearchParams({
     page: String(page),
@@ -316,6 +469,24 @@ export async function createRack(roomId: string, payload: CreateRackRequest) {
   return requestMutation<Rack>(`/api/rooms/${roomId}/racks`, {
     method: "POST",
     body: JSON.stringify(payload)
+  });
+}
+
+export async function updateRack(roomId: string, id: string, payload: CreateRackRequest) {
+  return requestMutation<Rack>(`/api/rooms/${roomId}/racks/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      rackCode: payload.rackCode,
+      rackName: payload.rackName,
+      description: payload.description,
+      updatedBy: payload.createdBy
+    })
+  });
+}
+
+export async function deleteRack(id: string) {
+  return requestVoid(`/api/racks/${id}`, {
+    method: "DELETE"
   });
 }
 
@@ -338,6 +509,24 @@ export async function createShelf(rackId: string, payload: CreateShelfRequest) {
   });
 }
 
+export async function updateShelf(rackId: string, id: string, payload: CreateShelfRequest) {
+  return requestMutation<Shelf>(`/api/racks/${rackId}/shelves/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      shelfCode: payload.shelfCode,
+      shelfName: payload.shelfName,
+      description: payload.description,
+      updatedBy: payload.createdBy
+    })
+  });
+}
+
+export async function deleteShelf(id: string) {
+  return requestVoid(`/api/shelves/${id}`, {
+    method: "DELETE"
+  });
+}
+
 export async function fetchPallets(page = 0, size = 50, shelfId?: string) {
   const params = new URLSearchParams({
     page: String(page),
@@ -354,6 +543,24 @@ export async function createPallet(shelfId: string, payload: CreatePalletRequest
   return requestMutation<Pallet>(`/api/shelves/${shelfId}/pallets`, {
     method: "POST",
     body: JSON.stringify(payload)
+  });
+}
+
+export async function updatePallet(shelfId: string, id: string, payload: CreatePalletRequest) {
+  return requestMutation<Pallet>(`/api/shelves/${shelfId}/pallets/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      palletCode: payload.palletCode,
+      palletName: payload.palletName,
+      description: payload.description,
+      updatedBy: payload.createdBy
+    })
+  });
+}
+
+export async function deletePallet(id: string) {
+  return requestVoid(`/api/pallets/${id}`, {
+    method: "DELETE"
   });
 }
 

@@ -5,6 +5,7 @@ import com.batchsphere.core.masterdata.supplier.entity.Supplier;
 import com.batchsphere.core.masterdata.supplier.service.SupplierService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,17 +19,28 @@ public class SupplierController {
     private final SupplierService supplierService;
 
     @PostMapping
-    public Supplier createSupplier(@Valid @RequestBody SupplierRequest request) {
-        return supplierService.createSupplier(request);
+    public ResponseEntity<Supplier> createSupplier(@Valid @RequestBody SupplierRequest request) {
+        return ResponseEntity.ok(supplierService.createSupplier(request));
     }
 
     @GetMapping("/{id}")
-    public Supplier getSupplier(@PathVariable UUID id) {
-        return supplierService.getSupplier(id);
+    public ResponseEntity<Supplier> getSupplier(@PathVariable UUID id) {
+        return ResponseEntity.ok(supplierService.getSupplier(id));
     }
 
     @GetMapping
-    public List<Supplier> getAllSuppliers() {
-        return supplierService.getAllSuppliers();
+    public ResponseEntity<List<Supplier>> getAllSuppliers() {
+        return ResponseEntity.ok(supplierService.getAllSuppliers());
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Supplier> updateSupplier(@PathVariable UUID id, @Valid @RequestBody SupplierRequest request) {
+        return ResponseEntity.ok(supplierService.updateSupplier(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deactivateSupplier(@PathVariable UUID id) {
+        supplierService.deactivateSupplier(id);
+        return ResponseEntity.noContent().build();
     }
 }

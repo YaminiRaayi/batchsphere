@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { SectionHeader } from "../../components/SectionHeader";
 import {
   fetchBatches,
@@ -30,59 +31,35 @@ function statusTone(status: InventoryRecord["status"]) {
 }
 
 export function InventoryPage() {
-  const [inventory, setInventory] = useState<InventoryRecord[]>([]);
-  const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
-  const [materials, setMaterials] = useState<Material[]>([]);
-  const [batches, setBatches] = useState<Batch[]>([]);
-  const [pallets, setPallets] = useState<Pallet[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["inventory-page"],
+    queryFn: async () => {
+      const [inventoryPage, transactionPage, materialPage, batchPage, palletPage] =
+        await Promise.all([
+          fetchInventory(),
+          fetchInventoryTransactions(),
+          fetchMaterials(),
+          fetchBatches(),
+          fetchPallets()
+        ]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadInventoryPage() {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const [inventoryPage, transactionPage, materialPage, batchPage, palletPage] =
-          await Promise.all([
-            fetchInventory(),
-            fetchInventoryTransactions(),
-            fetchMaterials(),
-            fetchBatches(),
-            fetchPallets()
-          ]);
-
-        if (!cancelled) {
-          setInventory(inventoryPage.content);
-          setTransactions(transactionPage.content);
-          setMaterials(materialPage.content);
-          setBatches(batchPage.content);
-          setPallets(palletPage.content);
-        }
-      } catch (loadError) {
-        if (!cancelled) {
-          const message =
-            loadError instanceof Error
-              ? loadError.message
-              : "Unknown error while loading inventory";
-          setError(message);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
+      return {
+        inventory: inventoryPage.content,
+        transactions: transactionPage.content,
+        materials: materialPage.content,
+        batches: batchPage.content,
+        pallets: palletPage.content
+      };
     }
+  });
 
-    void loadInventoryPage();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const inventory = data?.inventory ?? [];
+  const transactions = data?.transactions ?? [];
+  const materials = data?.materials ?? [];
+  const batches = data?.batches ?? [];
+  const pallets = data?.pallets ?? [];
+  const errorMessage =
+    error instanceof Error ? error.message : error ? "Unknown error while loading inventory" : null;
 
   const materialMap = useMemo(
     () => new Map(materials.map((material) => [material.id, material])),
@@ -127,15 +104,15 @@ export function InventoryPage() {
                   </tr>
                 ) : null}
 
-                {!isLoading && error ? (
+                {!isLoading && errorMessage ? (
                   <tr className="border-t border-ink/10">
                     <td className="px-6 py-8 text-redoxide" colSpan={5}>
-                      {error}
+                      {errorMessage}
                     </td>
                   </tr>
                 ) : null}
 
-                {!isLoading && !error && inventory.length === 0 ? (
+                {!isLoading && !errorMessage && inventory.length === 0 ? (
                   <tr className="border-t border-ink/10">
                     <td className="px-6 py-8 text-slate" colSpan={5}>
                       No inventory records yet. Receive a GRN to create stock.
@@ -144,7 +121,7 @@ export function InventoryPage() {
                 ) : null}
 
                 {!isLoading &&
-                  !error &&
+                  !errorMessage &&
                   inventory.map((record) => {
                     const material = materialMap.get(record.materialId);
                     const batch = batchMap.get(record.batchId);
@@ -188,14 +165,14 @@ export function InventoryPage() {
               <div className="px-6 py-8 text-sm text-slate">Loading transactions...</div>
             ) : null}
 
-            {!isLoading && !error && transactions.length === 0 ? (
+            {!isLoading && !errorMessage && transactions.length === 0 ? (
               <div className="px-6 py-8 text-sm text-slate">
                 No inventory transactions yet.
               </div>
             ) : null}
 
             {!isLoading &&
-              !error &&
+              !errorMessage &&
               transactions.map((transaction) => {
                 const material = materialMap.get(transaction.materialId);
                 const batch = batchMap.get(transaction.batchId);

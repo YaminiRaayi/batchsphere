@@ -2,12 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── CSS custom properties (module colors for dynamic JS use) ─────────── */
 :root {
-  color: #14202b;
-  background:
-    radial-gradient(circle at 14% 16%, rgba(19, 167, 184, 0.12), transparent 22%),
-    radial-gradient(circle at 84% 8%, rgba(36, 48, 65, 0.1), transparent 24%),
-    linear-gradient(180deg, #edf1f5 0%, #e5eaf1 52%, #dde3ea 100%);
+  /* Module accent colors — mirrors tailwind.config.js */
+  --mod-grn:      #2563EB;  --mod-grn-light:  #EFF6FF;  --mod-grn-dim:  #BFDBFE;
+  --mod-inv:      #059669;  --mod-inv-light:  #ECFDF5;  --mod-inv-dim:  #A7F3D0;
+  --mod-qc:       #0D9488;  --mod-qc-light:   #F0FDFA;  --mod-qc-dim:   #99F6E4;
+  --mod-wms:      #4F46E5;  --mod-wms-light:  #EEF2FF;  --mod-wms-dim:  #C7D2FE;
+  --mod-vq:       #EA580C;  --mod-vq-light:   #FFF7ED;  --mod-vq-dim:   #FED7AA;
+  --mod-qms:      #D97706;  --mod-qms-light:  #FFFBEB;  --mod-qms-dim:  #FDE68A;
+  --mod-lims:     #7C3AED;  --mod-lims-light: #F5F3FF;  --mod-lims-dim: #DDD6FE;
+  --mod-hrms:     #E11D48;  --mod-hrms-light: #FFF1F2;  --mod-hrms-dim: #FECDD3;
+  --mod-admin:    #475569;  --mod-admin-light:#F1F5F9;  --mod-admin-dim:#CBD5E1;
+
+  /* Semantic tokens */
+  --color-ink:     #0F172A;
+  --color-muted:   #64748B;
+  --color-subtle:  #94A3B8;
+  --color-surface: #F8FAFC;
+  --color-border:  #E2E8F0;
+
+  color: var(--color-ink);
+  background-color: var(--color-surface);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -19,26 +35,121 @@ body {
   min-width: 320px;
   min-height: 100vh;
   font-family: "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--color-surface);
 }
 
 #root {
   min-height: 100vh;
 }
 
+/* ── Scrollbar (webkit) — subtle, matches the design ─────────────────── */
+::-webkit-scrollbar          { width: 6px; height: 6px; }
+::-webkit-scrollbar-track    { background: transparent; }
+::-webkit-scrollbar-thumb    { background: #CBD5E1; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* ── Focus ring — visible but not jarring ─────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #2563EB;
+  outline-offset: 2px;
+}
+
 @layer components {
+
+  /* ── Card / panel surfaces ─────────────────────────────────────────── */
   .panel {
-    @apply rounded-3xl border border-[#d7dee7] bg-white shadow-panel backdrop-blur;
+    @apply rounded-2xl border border-slate-200 bg-white shadow-card;
   }
 
+  /* Legacy dark panel — kept for dashboard "platform narrative" block */
   .panel-dark {
-    @apply rounded-[28px] border border-white/10 bg-navy text-white shadow-float;
+    @apply rounded-2xl border border-white/10 bg-[#0F172A] text-white shadow-float;
   }
 
+  /* ── Module accent badge (abbr letters in colored circle) ──────────── */
+  .mod-icon {
+    @apply flex shrink-0 items-center justify-center rounded-xl
+           text-[11px] font-bold leading-none text-white;
+  }
+
+  /* ── Module chip — for dashboard/header tags ───────────────────────── */
   .module-chip {
-    @apply inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em];
+    @apply inline-flex items-center rounded-full border
+           px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em];
   }
 
+  /* ── Status pills — used across GRN, Inventory, Sampling ──────────── */
   .status-pill {
-    @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold tracking-wide;
+    @apply inline-flex items-center gap-1.5 rounded-full
+           px-3 py-1 text-xs font-semibold;
+  }
+
+  /* Status pill colour presets — add more as needed */
+  .pill-released   { @apply bg-inv-light  text-inv;  }
+  .pill-quarantine { @apply bg-vq-light   text-vq;   }
+  .pill-sampling   { @apply bg-qc-light   text-qc;   }
+  .pill-draft      { @apply bg-admin-light text-admin; }
+  .pill-rejected   { @apply bg-hrms-light text-hrms; }
+  .pill-undertest  { @apply bg-lims-light text-lims;  }
+  .pill-blocked    { @apply bg-qms-light  text-qms;  }
+
+  /* ── Table base ────────────────────────────────────────────────────── */
+  .data-table {
+    @apply w-full text-sm;
+  }
+  .data-table th {
+    @apply border-b border-slate-100 bg-slate-50 px-4 py-3
+           text-left text-[11px] font-bold uppercase tracking-[0.15em] text-slate-500;
+  }
+  .data-table td {
+    @apply border-b border-slate-50 px-4 py-3 text-slate-700;
+  }
+  .data-table tr:last-child td {
+    @apply border-b-0;
+  }
+  .data-table tbody tr:hover td {
+    @apply bg-slate-50/60;
+  }
+
+  /* ── Form inputs ───────────────────────────────────────────────────── */
+  .field-input {
+    @apply block w-full rounded-xl border border-slate-200 bg-white
+           px-3.5 py-2.5 text-sm text-ink placeholder-slate-400
+           shadow-sm transition
+           focus:border-grn focus:outline-none focus:ring-2 focus:ring-grn/20;
+  }
+  .field-label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-[0.15em] text-slate-500;
+  }
+  .field-select {
+    @apply field-input appearance-none pr-9;
+  }
+
+  /* ── Buttons ───────────────────────────────────────────────────────── */
+  .btn {
+    @apply inline-flex items-center gap-2 rounded-xl
+           px-4 py-2.5 text-sm font-semibold
+           transition focus-visible:outline-none;
+  }
+  .btn-primary {
+    @apply btn bg-ink text-white hover:bg-ink/90 active:bg-ink/80;
+  }
+  .btn-ghost {
+    @apply btn border border-slate-200 bg-white text-slate-700
+           hover:bg-slate-50 active:bg-slate-100;
+  }
+  .btn-danger {
+    @apply btn bg-hrms text-white hover:bg-hrms-dark;
+  }
+
+  /* ── Section header (eyebrow + title + description) ───────────────── */
+  .section-eyebrow {
+    @apply text-[11px] font-bold uppercase tracking-[0.3em] text-muted;
+  }
+  .section-title {
+    @apply mt-2 font-display text-2xl font-semibold text-ink;
+  }
+  .section-desc {
+    @apply mt-2 max-w-2xl text-sm leading-6 text-muted;
   }
 }

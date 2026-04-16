@@ -1,6 +1,7 @@
 package com.batchsphere.core.masterdata.samplingtool.service;
 
 import com.batchsphere.core.exception.DuplicateResourceException;
+import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.masterdata.samplingtool.dto.SamplingToolRequest;
 import com.batchsphere.core.masterdata.samplingtool.entity.SamplingTool;
 import com.batchsphere.core.masterdata.samplingtool.repository.SamplingToolRepository;
@@ -37,7 +38,39 @@ public class SamplingToolServiceImpl implements SamplingToolService {
     }
 
     @Override
+    public SamplingTool getSamplingToolById(UUID id) {
+        return samplingToolRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Sampling tool not found with id: " + id));
+    }
+
+    @Override
     public List<SamplingTool> getAllSamplingTools() {
         return samplingToolRepository.findByIsActiveTrueOrderByToolCodeAsc();
+    }
+
+    @Override
+    public SamplingTool updateSamplingTool(UUID id, SamplingToolRequest request) {
+        SamplingTool tool = getSamplingToolById(id);
+        String toolCode = request.getToolCode().trim();
+
+        if (!tool.getToolCode().equals(toolCode) && samplingToolRepository.existsByToolCode(toolCode)) {
+            throw new DuplicateResourceException("Sampling tool code already exists: " + request.getToolCode());
+        }
+
+        tool.setToolCode(toolCode);
+        tool.setToolName(request.getToolName().trim());
+        tool.setDescription(request.getDescription());
+        tool.setUpdatedBy(request.getCreatedBy().trim());
+        tool.setUpdatedAt(LocalDateTime.now());
+
+        return samplingToolRepository.save(tool);
+    }
+
+    @Override
+    public void deactivateSamplingTool(UUID id) {
+        SamplingTool tool = getSamplingToolById(id);
+        tool.setIsActive(false);
+        tool.setUpdatedAt(LocalDateTime.now());
+        samplingToolRepository.save(tool);
     }
 }

@@ -7,6 +7,8 @@ export type Moa = {
   isActive: boolean;
   createdBy: string;
   createdAt: string;
+  updatedBy: string | null;
+  updatedAt: string | null;
 };
 
 export type CreateMoaRequest = {

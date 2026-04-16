@@ -14,4 +14,7 @@ public interface SupplierService {
 
     List<Supplier> getAllSuppliers();
 
+    Supplier updateSupplier(UUID id, SupplierRequest request);
+
+    void deactivateSupplier(UUID id);
 }
