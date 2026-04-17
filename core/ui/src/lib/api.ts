@@ -1,4 +1,5 @@
 import type { Batch } from "../types/batch";
+import type { LoginResponse } from "../types/auth";
 import type { CreateMoaRequest, Moa } from "../types/moa";
 import type { InventoryRecord, InventoryTransaction } from "../types/inventory";
 import type {
@@ -31,8 +32,13 @@ import type {
   VendorBusinessUnit
 } from "../types/vendor-business-unit";
 import type { CreateVendorRequest, Vendor } from "../types/vendor";
+import { useAuthStore } from "../stores/authStore";
+import { useAppShellStore } from "../stores/appShellStore";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+
+let accessToken: string | null = null;
+let refreshRequest: Promise<string | null> | null = null;
 
 type ApiErrorResponse = {
   error?: string;
@@ -40,6 +46,15 @@ type ApiErrorResponse = {
   details?: string;
   timestamp?: string;
 };
+
+class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
 
 async function buildError(response: Response) {
   let details = `Request failed with status ${response.status}`;
@@ -57,14 +72,106 @@ async function buildError(response: Response) {
     // Ignore JSON parse failures and fall back to the HTTP status message.
   }
 
-  return new Error(details);
+  return new ApiError(response.status, details);
+}
+
+function shouldAttemptRefresh(path: string) {
+  return path !== "/api/auth/login" && path !== "/api/auth/refresh";
+}
+
+function redirectToLogin() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (window.location.pathname !== "/login") {
+    window.location.replace("/login");
+  }
+}
+
+function clearClientSession() {
+  setAccessToken(null);
+  useAuthStore.getState().clearSession();
+  useAppShellStore.getState().resetCurrentUser();
+}
+
+function getAuthHeaders(extraHeaders?: HeadersInit, includeJsonContentType = false): HeadersInit {
+  return {
+    Accept: "application/json",
+    ...(includeJsonContentType ? { "Content-Type": "application/json" } : {}),
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    ...(extraHeaders ?? {})
+  };
+}
+
+async function refreshAccessToken() {
+  const { refreshToken, tokenType } = useAuthStore.getState();
+  if (!refreshToken) {
+    clearClientSession();
+    redirectToLogin();
+    return null;
+  }
+
+  if (!refreshRequest) {
+    refreshRequest = (async () => {
+      const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ refreshToken })
+      });
+
+      if (!response.ok) {
+        clearClientSession();
+        redirectToLogin();
+        throw await buildError(response);
+      }
+
+      const payload = (await response.json()) as LoginResponse;
+      setAccessToken(payload.accessToken);
+      useAuthStore.getState().setSession({
+        accessToken: payload.accessToken,
+        refreshToken: payload.refreshToken,
+        tokenType: payload.tokenType ?? tokenType,
+        user: payload.user
+      });
+      return payload.accessToken;
+    })().finally(() => {
+      refreshRequest = null;
+    });
+  }
+
+  return refreshRequest;
+}
+
+async function performRequest(path: string, init: RequestInit, retryAuth = true) {
+  const response = await fetch(`${API_BASE_URL}${path}`, init);
+
+  if (response.status === 401 && retryAuth && shouldAttemptRefresh(path)) {
+    try {
+      const refreshedAccessToken = await refreshAccessToken();
+      if (refreshedAccessToken) {
+        return fetch(`${API_BASE_URL}${path}`, {
+          ...init,
+          headers: {
+            ...(init.headers ?? {}),
+            Authorization: `Bearer ${refreshedAccessToken}`
+          }
+        });
+      }
+    } catch {
+      // Failed refresh falls through to the original HTTP error below.
+    }
+  }
+
+  return response;
 }
 
 async function requestJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      Accept: "application/json"
-    }
+  const response = await performRequest(path, {
+    headers: getAuthHeaders()
   });
 
   if (!response.ok) {
@@ -75,12 +182,9 @@ async function requestJson<T>(path: string): Promise<T> {
 }
 
 async function requestMutation<T>(path: string, init: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json"
-    },
-    ...init
+  const response = await performRequest(path, {
+    ...init,
+    headers: getAuthHeaders(init.headers, true)
   });
 
   if (!response.ok) {
@@ -91,12 +195,9 @@ async function requestMutation<T>(path: string, init: RequestInit): Promise<T> {
 }
 
 async function requestVoid(path: string, init: RequestInit): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json"
-    },
-    ...init
+  const response = await performRequest(path, {
+    ...init,
+    headers: getAuthHeaders(init.headers, true)
   });
 
   if (!response.ok) {
@@ -105,7 +206,8 @@ async function requestVoid(path: string, init: RequestInit): Promise<void> {
 }
 
 async function requestMultipart<T>(path: string, formData: FormData): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await performRequest(path, {
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
     method: "POST",
     body: formData
   });
@@ -119,6 +221,27 @@ async function requestMultipart<T>(path: string, formData: FormData): Promise<T>
 
 export function getApiBaseUrl() {
   return API_BASE_URL;
+}
+
+export function setAccessToken(token: string | null) {
+  accessToken = token;
+}
+
+export async function login(username: string, password: string) {
+  return requestMutation<LoginResponse>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password })
+  });
+}
+
+export async function fetchCurrentUser() {
+  return requestJson<LoginResponse["user"]>("/api/auth/me");
+}
+
+export async function logout() {
+  return requestVoid("/api/auth/logout", {
+    method: "POST"
+  });
 }
 
 export async function fetchGrns(page = 0, size = 15) {
@@ -591,6 +714,16 @@ export async function fetchInventoryTransactions(page = 0, size = 20) {
   return requestJson<PageResponse<InventoryTransaction>>(
     `/api/inventory/transactions?${params.toString()}`
   );
+}
+
+export async function updateInventoryStatus(id: string, status: InventoryRecord["status"], remarks?: string) {
+  return requestMutation<InventoryRecord>(`/api/inventory/${id}/status`, {
+    method: "PUT",
+    body: JSON.stringify({
+      status,
+      remarks
+    })
+  });
 }
 
 export async function fetchSamplingRequests(page = 0, size = 20) {

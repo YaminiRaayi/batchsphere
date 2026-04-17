@@ -20,5 +20,17 @@ spring:
     locations: classpath:db/migration
 
 app:
+  auth:
+    jwt:
+      secret: batchsphere-test-jwt-secret
+      expiration-seconds: 3600
+      refresh-expiration-seconds: 604800
+    bootstrap-admin:
+      username: admin
+      email: admin@batchsphere.test
+      password: Admin@123
+      role: SUPER_ADMIN
+  cors:
+    allowed-origins: http://localhost:5173,http://127.0.0.1:5173
   storage:
     root: /tmp/batchsphere-test-storage

@@ -27,5 +27,17 @@ server:
   port: 8080
 
 app:
+  auth:
+    jwt:
+      secret: batchsphere-dev-jwt-secret-change-me
+      expiration-seconds: 3600
+      refresh-expiration-seconds: 604800
+    bootstrap-admin:
+      username: admin
+      email: admin@batchsphere.local
+      password: Admin@123
+      role: SUPER_ADMIN
+  cors:
+    allowed-origins: http://localhost:5173,http://127.0.0.1:5173
   storage:
     root: storage

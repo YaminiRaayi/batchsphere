@@ -1,5 +1,6 @@
 package com.batchsphere.core.masterdata.spec.service;
 
+import com.batchsphere.core.auth.service.AuthenticatedActorService;
 import com.batchsphere.core.exception.DuplicateResourceException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.masterdata.spec.dto.SpecRequest;
@@ -17,9 +18,11 @@ import java.util.UUID;
 public class SpecServiceImpl implements SpecService {
 
     private final SpecRepository specRepository;
+    private final AuthenticatedActorService authenticatedActorService;
 
     @Override
     public Spec createSpec(SpecRequest request) {
+        String actor = authenticatedActorService.currentActor();
         if (specRepository.existsBySpecCode(request.getSpecCode().trim())) {
             throw new DuplicateResourceException("Spec code already exists: " + request.getSpecCode());
         }
@@ -32,7 +35,7 @@ public class SpecServiceImpl implements SpecService {
                 .samplingMethod(request.getSamplingMethod())
                 .referenceAttachment(request.getReferenceAttachment())
                 .isActive(true)
-                .createdBy(request.getCreatedBy().trim())
+                .createdBy(actor)
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -52,6 +55,7 @@ public class SpecServiceImpl implements SpecService {
 
     @Override
     public Spec updateSpec(UUID id, SpecRequest request) {
+        String actor = authenticatedActorService.currentActor();
         Spec spec = getSpecById(id);
         String specCode = request.getSpecCode().trim();
 
@@ -64,7 +68,7 @@ public class SpecServiceImpl implements SpecService {
         spec.setRevision(request.getRevision());
         spec.setSamplingMethod(request.getSamplingMethod());
         spec.setReferenceAttachment(request.getReferenceAttachment());
-        spec.setUpdatedBy(request.getCreatedBy().trim());
+        spec.setUpdatedBy(actor);
         spec.setUpdatedAt(LocalDateTime.now());
 
         return specRepository.save(spec);
@@ -72,8 +76,10 @@ public class SpecServiceImpl implements SpecService {
 
     @Override
     public void deactivateSpec(UUID id) {
+        String actor = authenticatedActorService.currentActor();
         Spec spec = getSpecById(id);
         spec.setIsActive(false);
+        spec.setUpdatedBy(actor);
         spec.setUpdatedAt(LocalDateTime.now());
         specRepository.save(spec);
     }

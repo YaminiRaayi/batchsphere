@@ -1,5 +1,6 @@
 package com.batchsphere.core.batch.service;
 
+import com.batchsphere.core.auth.service.AuthenticatedActorService;
 import com.batchsphere.core.batch.dto.BatchRequest;
 import com.batchsphere.core.batch.dto.BatchTransitionRequest;
 import com.batchsphere.core.batch.entity.Batch;
@@ -18,6 +19,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class BatchServiceImpl implements BatchService {
   private final BatchRepository batchRepository;
+  private final AuthenticatedActorService authenticatedActorService;
 
     /**
      * @param request
@@ -37,6 +39,7 @@ public class BatchServiceImpl implements BatchService {
      */
     @Override
     public Batch transitionBatchStatus(UUID id, BatchTransitionRequest request) {
+        String actor = authenticatedActorService.currentActor();
 
         Batch batch = batchRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Batch Not Found bWith this Id: " +id));
 
@@ -48,7 +51,7 @@ public class BatchServiceImpl implements BatchService {
             );
         }
         batch.setBatchStatus(target);
-        batch.setUpdatedBy(request.getUpdatedBy());
+        batch.setUpdatedBy(actor);
         batch.setUpdatedAt(LocalDateTime.now());
 
         return batchRepository.save(batch);
@@ -77,10 +80,12 @@ public class BatchServiceImpl implements BatchService {
      */
     @Override
     public void deactivateBatch(UUID id) {
+        String actor = authenticatedActorService.currentActor();
 
         Batch batch = batchRepository.findById(id).orElseThrow(()->
                 new ResourceNotFoundException("Batch Not found with id: " +id));
         batch.setIsActive(false);
+        batch.setUpdatedBy(actor);
         batch.setUpdatedAt(LocalDateTime.now());
 
         batchRepository.save(batch);

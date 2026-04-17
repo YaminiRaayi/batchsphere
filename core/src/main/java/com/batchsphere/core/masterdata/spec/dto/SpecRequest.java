@@ -1,6 +1,6 @@
 package com.batchsphere.core.masterdata.spec.dto;
 
-import com.batchsphere.core.transcations.sampling.entity.SamplingMethod;
+import com.batchsphere.core.transactions.sampling.entity.SamplingMethod;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;

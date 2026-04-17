@@ -1,5 +1,6 @@
 package com.batchsphere.core.masterdata.moa.service;
 
+import com.batchsphere.core.auth.service.AuthenticatedActorService;
 import com.batchsphere.core.exception.DuplicateResourceException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.masterdata.moa.dto.MoaRequest;
@@ -17,9 +18,11 @@ import java.util.UUID;
 public class MoaServiceImpl implements MoaService {
 
     private final MoaRepository moaRepository;
+    private final AuthenticatedActorService authenticatedActorService;
 
     @Override
     public Moa createMoa(MoaRequest request) {
+        String actor = authenticatedActorService.currentActor();
         if (moaRepository.existsByMoaCode(request.getMoaCode().trim())) {
             throw new DuplicateResourceException("MoA code already exists: " + request.getMoaCode());
         }
@@ -31,7 +34,7 @@ public class MoaServiceImpl implements MoaService {
                 .revision(request.getRevision())
                 .referenceAttachment(request.getReferenceAttachment())
                 .isActive(true)
-                .createdBy(request.getCreatedBy().trim())
+                .createdBy(actor)
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -51,6 +54,7 @@ public class MoaServiceImpl implements MoaService {
 
     @Override
     public Moa updateMoa(UUID id, MoaRequest request) {
+        String actor = authenticatedActorService.currentActor();
         Moa moa = getMoaById(id);
         String moaCode = request.getMoaCode().trim();
 
@@ -62,7 +66,7 @@ public class MoaServiceImpl implements MoaService {
         moa.setMoaName(request.getMoaName().trim());
         moa.setRevision(request.getRevision());
         moa.setReferenceAttachment(request.getReferenceAttachment());
-        moa.setUpdatedBy(request.getCreatedBy().trim());
+        moa.setUpdatedBy(actor);
         moa.setUpdatedAt(LocalDateTime.now());
 
         return moaRepository.save(moa);
@@ -70,8 +74,10 @@ public class MoaServiceImpl implements MoaService {
 
     @Override
     public void deactivateMoa(UUID id) {
+        String actor = authenticatedActorService.currentActor();
         Moa moa = getMoaById(id);
         moa.setIsActive(false);
+        moa.setUpdatedBy(actor);
         moa.setUpdatedAt(LocalDateTime.now());
         moaRepository.save(moa);
     }

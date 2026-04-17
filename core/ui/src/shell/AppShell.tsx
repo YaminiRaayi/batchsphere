@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Breadcrumbs } from "../components/Breadcrumbs";
+import { canAccessNavPath } from "../lib/authz";
+import { logout, setAccessToken } from "../lib/api";
+import { useAuthStore } from "../stores/authStore";
 import { useAppShellStore } from "../stores/appShellStore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -215,11 +218,15 @@ function SoonBadge() {
 // ─── AppShell ─────────────────────────────────────────────────────────────────
 
 export function AppShell() {
+  const navigate = useNavigate();
   const location = useLocation();
   const collapsed = useAppShellStore((state) => state.sidebarCollapsed);
   const setSidebarCollapsed = useAppShellStore((state) => state.setSidebarCollapsed);
   const activeWarehouse = useAppShellStore((state) => state.activeWarehouse);
   const currentUser = useAppShellStore((state) => state.currentUser);
+  const resetCurrentUser = useAppShellStore((state) => state.resetCurrentUser);
+  const authUser = useAuthStore((state) => state.user);
+  const clearSession = useAuthStore((state) => state.clearSession);
 
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -233,6 +240,19 @@ export function AppShell() {
 
   // Sidebar widths
   const sidebarW = collapsed ? "72px" : "272px";
+
+  async function handleSignOut() {
+    try {
+      await logout();
+    } catch {
+      // Client logout still proceeds if the backend token is already invalid.
+    } finally {
+      setAccessToken(null);
+      clearSession();
+      resetCurrentUser();
+      navigate("/login", { replace: true });
+    }
+  }
 
   // ── Sidebar inner ───────────────────────────────────────────────────────────
   const sidebarInner = (
@@ -302,7 +322,9 @@ export function AppShell() {
 
             {/* Nav items */}
             <div style={{ padding: collapsed ? "0 8px" : "0 8px" }} className="space-y-0.5">
-              {group.items.map((item) => {
+              {group.items
+                .filter((item) => item.soon || canAccessNavPath(authUser, item.to))
+                .map((item) => {
 
                 // ── Coming Soon item ────────────────────────────────────
                 if (item.soon) {
@@ -395,6 +417,15 @@ export function AppShell() {
               Site
             </p>
             <p className="mt-0.5 text-sm font-medium text-slate-700">Hyderabad</p>
+            <button
+              type="button"
+              onClick={() => {
+                void handleSignOut();
+              }}
+              className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 transition hover:text-slate-900"
+            >
+              Sign out
+            </button>
           </div>
         )}
 

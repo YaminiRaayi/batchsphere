@@ -1,5 +1,6 @@
 package com.batchsphere.core.masterdata.supplier.service;
 
+import com.batchsphere.core.auth.service.AuthenticatedActorService;
 import com.batchsphere.core.exception.DuplicateResourceException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.masterdata.supplier.dto.supplier.dto.SupplierRequest;
@@ -17,9 +18,11 @@ import java.util.UUID;
 public class SupplierServiceImpl implements SupplierService {
 
     private final SupplierRepository supplierRepository;
+    private final AuthenticatedActorService authenticatedActorService;
 
     @Override
     public Supplier createSupplier(SupplierRequest request) {
+        String actor = authenticatedActorService.currentActor();
         supplierRepository.findBySupplierCode(request.getSupplierCode())
                 .ifPresent(existing -> {
                     throw new DuplicateResourceException("Supplier code already exists: " + request.getSupplierCode());
@@ -33,7 +36,7 @@ public class SupplierServiceImpl implements SupplierService {
                 .email(request.getEmail())
                 .phone(request.getPhone())
                 .isActive(true)
-                .createdBy(request.getCreatedBy())
+                .createdBy(actor)
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -55,6 +58,7 @@ public class SupplierServiceImpl implements SupplierService {
 
     @Override
     public Supplier updateSupplier(UUID id, SupplierRequest request) {
+        String actor = authenticatedActorService.currentActor();
         Supplier supplier = getSupplier(id);
 
         if (!supplier.getSupplierCode().equals(request.getSupplierCode())) {
@@ -69,7 +73,7 @@ public class SupplierServiceImpl implements SupplierService {
         supplier.setContactPerson(request.getContactPerson());
         supplier.setEmail(request.getEmail());
         supplier.setPhone(request.getPhone());
-        supplier.setUpdatedBy(request.getCreatedBy());
+        supplier.setUpdatedBy(actor);
         supplier.setUpdatedAt(LocalDateTime.now());
 
         return supplierRepository.save(supplier);
@@ -77,8 +81,10 @@ public class SupplierServiceImpl implements SupplierService {
 
     @Override
     public void deactivateSupplier(UUID id) {
+        String actor = authenticatedActorService.currentActor();
         Supplier supplier = getSupplier(id);
         supplier.setIsActive(false);
+        supplier.setUpdatedBy(actor);
         supplier.setUpdatedAt(LocalDateTime.now());
         supplierRepository.save(supplier);
     }

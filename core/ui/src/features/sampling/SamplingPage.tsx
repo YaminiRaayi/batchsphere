@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { SectionHeader } from "../../components/SectionHeader";
+import { useAppShellStore } from "../../stores/appShellStore";
 import {
   completeSampling,
   createSamplingPlan,
@@ -47,26 +48,28 @@ function requestTone(status: string) {
 
 const sampleTypes: SampleType[] = ["INDIVIDUAL", "COMPOSITE"];
 
-const initialPlanForm: SamplingPlanRequest = {
-  samplingMethod: "SQRT_N_PLUS_1",
-  sampleType: "COMPOSITE",
-  specId: "",
-  moaId: "",
-  totalContainers: 1,
-  containersToSample: 1,
-  individualSampleQuantity: 0,
-  compositeSampleQuantity: 0,
-  samplingLocation: "",
-  analystEmployeeCode: "",
-  samplingToolId: "",
-  photosensitiveHandlingRequired: false,
-  hygroscopicHandlingRequired: false,
-  coaBasedRelease: false,
-  rationale: "",
-  containerSamples: [],
-  createdBy: "admin",
-  updatedBy: "admin"
-};
+function createInitialPlanForm(currentUserName: string): SamplingPlanRequest {
+  return {
+    samplingMethod: "SQRT_N_PLUS_1",
+    sampleType: "COMPOSITE",
+    specId: "",
+    moaId: "",
+    totalContainers: 1,
+    containersToSample: 1,
+    individualSampleQuantity: 0,
+    compositeSampleQuantity: 0,
+    samplingLocation: "",
+    analystEmployeeCode: "",
+    samplingToolId: "",
+    photosensitiveHandlingRequired: false,
+    hygroscopicHandlingRequired: false,
+    coaBasedRelease: false,
+    rationale: "",
+    containerSamples: [],
+    createdBy: currentUserName,
+    updatedBy: currentUserName
+  };
+}
 
 function computeRequiredContainers(method: SamplingMethod, totalContainers: number) {
   switch (method) {
@@ -82,6 +85,7 @@ function computeRequiredContainers(method: SamplingMethod, totalContainers: numb
 }
 
 export function SamplingPage() {
+  const currentUserName = useAppShellStore((state) => state.currentUser.name);
   const [requests, setRequests] = useState<SamplingRequest[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -91,7 +95,7 @@ export function SamplingPage() {
   const [samplingTools, setSamplingTools] = useState<SamplingTool[]>([]);
   const [containersByRequest, setContainersByRequest] = useState<Record<string, GrnContainer[]>>({});
   const [selectedRequestId, setSelectedRequestId] = useState<string>("");
-  const [planForm, setPlanForm] = useState<SamplingPlanRequest>(initialPlanForm);
+  const [planForm, setPlanForm] = useState<SamplingPlanRequest>(() => createInitialPlanForm(currentUserName));
   const [qcRemarks, setQcRemarks] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -212,20 +216,20 @@ export function SamplingPage() {
           grnContainerId: sample.grnContainerId,
           sampledQuantity: sample.sampledQuantity
         })),
-        createdBy: "admin",
-        updatedBy: "admin"
+        createdBy: currentUserName,
+        updatedBy: currentUserName
       });
       return;
     }
 
     setPlanForm({
-      ...initialPlanForm,
+      ...createInitialPlanForm(currentUserName),
       totalContainers: selectedRequest.totalContainers,
       containersToSample: selectedRequest.totalContainers,
       photosensitiveHandlingRequired: selectedRequest.photosensitiveMaterial,
       hygroscopicHandlingRequired: selectedRequest.hygroscopicMaterial
     });
-  }, [selectedRequest]);
+  }, [currentUserName, selectedRequest]);
 
   useEffect(() => {
     if (!selectedMaterial) {
@@ -303,8 +307,8 @@ export function SamplingPage() {
         samplingLocation: planForm.samplingLocation.trim(),
         analystEmployeeCode: planForm.analystEmployeeCode.trim(),
         rationale: planForm.rationale?.trim() || undefined,
-        createdBy: (planForm.createdBy ?? "admin").trim(),
-        updatedBy: (planForm.updatedBy ?? "admin").trim()
+        createdBy: (planForm.createdBy ?? currentUserName).trim(),
+        updatedBy: (planForm.updatedBy ?? currentUserName).trim()
       };
 
       const updatedRequest = selectedRequest.plan
@@ -335,7 +339,7 @@ export function SamplingPage() {
     setIsSubmitting(true);
     setPlanError(null);
     try {
-      const updatedRequest = await completeSampling(selectedRequest.id, planForm.updatedBy ?? "admin");
+      const updatedRequest = await completeSampling(selectedRequest.id, planForm.updatedBy ?? currentUserName);
       setRequests((current) =>
         current.map((request) => (request.id === updatedRequest.id ? updatedRequest : request))
       );
@@ -364,7 +368,7 @@ export function SamplingPage() {
       const updatedRequest = await recordQcDecision(selectedRequest.id, {
         approved,
         remarks: qcRemarks.trim(),
-        updatedBy: planForm.updatedBy ?? "admin"
+        updatedBy: planForm.updatedBy ?? currentUserName
       });
       setRequests((current) =>
         current.map((request) => (request.id === updatedRequest.id ? updatedRequest : request))

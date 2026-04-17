@@ -11,6 +11,10 @@ public interface ShelfRepository extends JpaRepository<Shelf, UUID> {
 
     boolean existsByRackIdAndShelfCode(UUID rackId, String shelfCode);
 
+    boolean existsByIdAndIsActiveTrue(UUID id);
+
+    boolean existsByRackIdAndIsActiveTrue(UUID rackId);
+
     Page<Shelf> findByIsActiveTrue(Pageable pageable);
 
     Page<Shelf> findByRackIdAndIsActiveTrue(UUID rackId, Pageable pageable);

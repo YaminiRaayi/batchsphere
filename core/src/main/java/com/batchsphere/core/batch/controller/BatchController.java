@@ -42,7 +42,7 @@ public class BatchController {
         return ResponseEntity.ok(batchService.getAllBatches(pageable));
     }
 
-    @DeleteMapping
+    @DeleteMapping("/{id}")
     public ResponseEntity<Void> deactivateBatch(@PathVariable UUID id){
         batchService.deactivateBatch(id);
         return  ResponseEntity.noContent().build();

@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { SectionHeader } from "../../components/SectionHeader";
+import { useAppShellStore } from "../../stores/appShellStore";
 import {
   createGrn,
   fetchBatches,
@@ -70,38 +71,41 @@ const containerTypes: ContainerType[] = ["BAG", "DRUM", "BOX", "CAN", "BOTTLE", 
 const qcStatuses: QcStatus[] = ["PENDING", "APPROVED", "REJECTED", "PARTIALLY_APPROVED"];
 const PAGE_SIZE = 15;
 
-const initialForm: CreateGrnRequest = {
-  grnNumber: "",
-  supplierId: "",
-  vendorId: "",
-  vendorBusinessUnitId: "",
-  receiptDate: new Date().toISOString().slice(0, 10),
-  invoiceNumber: "",
-  remarks: "",
-  createdBy: "admin",
-  items: [
-    {
-      materialId: "",
-      receivedQuantity: 0,
-      acceptedQuantity: 0,
-      rejectedQuantity: 0,
-      uom: "KG",
-      palletId: "",
-      containerType: "BAG",
-      numberOfContainers: 1,
-      quantityPerContainer: 0,
-      vendorBatch: "",
-      manufactureDate: "",
-      expiryDate: "",
-      retestDate: "",
-      unitPrice: 0,
-      qcStatus: "PENDING",
-      description: ""
-    }
-  ]
-};
+function createInitialForm(currentUserName: string): CreateGrnRequest {
+  return {
+    grnNumber: "",
+    supplierId: "",
+    vendorId: "",
+    vendorBusinessUnitId: "",
+    receiptDate: new Date().toISOString().slice(0, 10),
+    invoiceNumber: "",
+    remarks: "",
+    createdBy: currentUserName,
+    items: [
+      {
+        materialId: "",
+        receivedQuantity: 0,
+        acceptedQuantity: 0,
+        rejectedQuantity: 0,
+        uom: "KG",
+        palletId: "",
+        containerType: "BAG",
+        numberOfContainers: 1,
+        quantityPerContainer: 0,
+        vendorBatch: "",
+        manufactureDate: "",
+        expiryDate: "",
+        retestDate: "",
+        unitPrice: 0,
+        qcStatus: "PENDING",
+        description: ""
+      }
+    ]
+  };
+}
 
 export function GrnPage() {
+  const currentUserName = useAppShellStore((state) => state.currentUser.name);
   const [page, setPage] = useState<PageResponse<Grn> | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -110,7 +114,7 @@ export function GrnPage() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [pallets, setPallets] = useState<Pallet[]>([]);
-  const [form, setForm] = useState<CreateGrnRequest>(initialForm);
+  const [form, setForm] = useState<CreateGrnRequest>(() => createInitialForm(currentUserName));
   const [selectedGrn, setSelectedGrn] = useState<Grn | null>(null);
   const [itemContainers, setItemContainers] = useState<Record<string, GrnContainer[]>>({});
   const [containerLabels, setContainerLabels] = useState<Record<string, MaterialLabel[]>>({});
@@ -311,7 +315,7 @@ export function GrnPage() {
           ? { ...current, content: [refreshedGrn, ...current.content], totalElements: current.totalElements + 1 }
           : null
       );
-      setForm(initialForm);
+      setForm(createInitialForm(currentUserName));
       setCreateDocumentDraft({
         documentName: "",
         documentType: "",
@@ -344,7 +348,7 @@ export function GrnPage() {
     setQueueMessage(null);
 
     try {
-      const updatedGrn = await receiveGrn(grnId, form.createdBy.trim() || "admin");
+      const updatedGrn = await receiveGrn(grnId, form.createdBy.trim() || currentUserName);
       const refreshedBatchPage = await fetchBatches();
       setBatches(refreshedBatchPage.content);
       await loadGrns(currentPage);

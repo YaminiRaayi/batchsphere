@@ -1,5 +1,6 @@
 package com.batchsphere.core.masterdata.vendorbusinessunit.service;
 
+import com.batchsphere.core.auth.service.AuthenticatedActorService;
 import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.masterdata.vendor.repository.VendorRepository;
 import com.batchsphere.core.masterdata.vendorbusinessunit.dto.CreateVendorBusinessUnitRequest;
@@ -20,9 +21,11 @@ public class VendorBusinessUnitServiceImpl implements VendorBusinessUnitService 
 
     private final VendorBusinessUnitRepository vendorBusinessUnitRepository;
     private final VendorRepository vendorRepository;
+    private final AuthenticatedActorService authenticatedActorService;
 
     @Override
     public VendorBusinessUnit createVendorBusinessUnit(UUID vendorId, CreateVendorBusinessUnitRequest request) {
+        String actor = authenticatedActorService.currentActor();
         validateVendorExists(vendorId);
 
         VendorBusinessUnit vendorBusinessUnit = VendorBusinessUnit.builder()
@@ -34,7 +37,7 @@ public class VendorBusinessUnitServiceImpl implements VendorBusinessUnitService 
                 .state(request.getState())
                 .country(request.getCountry())
                 .isActive(true)
-                .createdBy(request.getCreatedBy())
+                .createdBy(actor)
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -57,6 +60,7 @@ public class VendorBusinessUnitServiceImpl implements VendorBusinessUnitService 
 
     @Override
     public VendorBusinessUnit updateVendorBusinessUnit(UUID vendorId, UUID id, UpdateVendorBusinessUnitRequest request) {
+        String actor = authenticatedActorService.currentActor();
         VendorBusinessUnit existing = getVendorBusinessUnitById(id);
         validateVendorExists(vendorId);
 
@@ -66,7 +70,7 @@ public class VendorBusinessUnitServiceImpl implements VendorBusinessUnitService 
         existing.setCity(request.getCity());
         existing.setState(request.getState());
         existing.setCountry(request.getCountry());
-        existing.setUpdatedBy(request.getUpdatedBy());
+        existing.setUpdatedBy(actor);
         existing.setUpdatedAt(LocalDateTime.now());
 
         return vendorBusinessUnitRepository.save(existing);
@@ -74,8 +78,10 @@ public class VendorBusinessUnitServiceImpl implements VendorBusinessUnitService 
 
     @Override
     public void deactivateVendorBusinessUnit(UUID id) {
+        String actor = authenticatedActorService.currentActor();
         VendorBusinessUnit existing = getVendorBusinessUnitById(id);
         existing.setIsActive(false);
+        existing.setUpdatedBy(actor);
         existing.setUpdatedAt(LocalDateTime.now());
         vendorBusinessUnitRepository.save(existing);
     }

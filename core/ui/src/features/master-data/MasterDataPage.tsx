@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { SectionHeader } from "../../components/SectionHeader";
+import { useAppShellStore } from "../../stores/appShellStore";
 import {
   createMoa,
   createMaterial,
@@ -140,32 +141,38 @@ const warehouseFolders = [
   { id: "pallet" as const, label: "Pallet" }
 ];
 
-const initialForm: CreateSupplierRequest = {
-  supplierCode: "",
-  supplierName: "",
-  contactPerson: "",
-  email: "",
-  phone: "",
-  createdBy: "admin"
-};
+function createInitialSupplierForm(currentUserName: string): CreateSupplierRequest {
+  return {
+    supplierCode: "",
+    supplierName: "",
+    contactPerson: "",
+    email: "",
+    phone: "",
+    createdBy: currentUserName
+  };
+}
 
-const initialVendorForm: CreateVendorRequest = {
-  vendorCode: "",
-  vendorName: "",
-  contactPerson: "",
-  email: "",
-  phone: "",
-  createdBy: "admin"
-};
+function createInitialVendorForm(currentUserName: string): CreateVendorRequest {
+  return {
+    vendorCode: "",
+    vendorName: "",
+    contactPerson: "",
+    email: "",
+    phone: "",
+    createdBy: currentUserName
+  };
+}
 
-const initialVendorBusinessUnitForm: CreateVendorBusinessUnitRequest = {
-  unitName: "",
-  address: "",
-  city: "",
-  state: "",
-  country: "",
-  createdBy: "admin"
-};
+function createInitialVendorBusinessUnitForm(currentUserName: string): CreateVendorBusinessUnitRequest {
+  return {
+    unitName: "",
+    address: "",
+    city: "",
+    state: "",
+    country: "",
+    createdBy: currentUserName
+  };
+}
 
 const storageConditions: StorageCondition[] = [
   "AMBIENT",
@@ -183,81 +190,99 @@ const specSamplingMethods: SamplingMethod[] = [
   "COA_BASED_RELEASE"
 ];
 
-const initialMaterialForm: CreateMaterialRequest = {
-  materialCode: "",
-  materialName: "",
-  materialType: "CRITICAL",
-  uom: "KG",
-  storageCondition: "AMBIENT",
-  photosensitive: false,
-  hygroscopic: false,
-  hazardous: false,
-  selectiveMaterial: false,
-  vendorCoaReleaseAllowed: false,
-  samplingRequired: true,
-  description: "",
-  createdBy: "admin"
-};
+function createInitialMaterialForm(currentUserName: string): CreateMaterialRequest {
+  return {
+    materialCode: "",
+    materialName: "",
+    materialType: "CRITICAL",
+    uom: "KG",
+    storageCondition: "AMBIENT",
+    photosensitive: false,
+    hygroscopic: false,
+    hazardous: false,
+    selectiveMaterial: false,
+    vendorCoaReleaseAllowed: false,
+    samplingRequired: true,
+    description: "",
+    createdBy: currentUserName
+  };
+}
 
-const initialWarehouseForm: CreateWarehouseRequest = {
-  warehouseCode: "",
-  warehouseName: "",
-  description: "",
-  createdBy: "admin"
-};
+function createInitialWarehouseForm(currentUserName: string): CreateWarehouseRequest {
+  return {
+    warehouseCode: "",
+    warehouseName: "",
+    description: "",
+    createdBy: currentUserName
+  };
+}
 
-const initialRoomForm: CreateRoomRequest = {
-  roomCode: "",
-  roomName: "",
-  storageCondition: "AMBIENT",
-  description: "",
-  createdBy: "admin"
-};
+function createInitialRoomForm(currentUserName: string): CreateRoomRequest {
+  return {
+    roomCode: "",
+    roomName: "",
+    storageCondition: "AMBIENT",
+    description: "",
+    createdBy: currentUserName
+  };
+}
 
-const initialRackForm: CreateRackRequest = {
-  rackCode: "",
-  rackName: "",
-  description: "",
-  createdBy: "admin"
-};
+function createInitialRackForm(currentUserName: string): CreateRackRequest {
+  return {
+    rackCode: "",
+    rackName: "",
+    description: "",
+    createdBy: currentUserName
+  };
+}
 
-const initialShelfForm: CreateShelfRequest = {
-  shelfCode: "",
-  shelfName: "",
-  description: "",
-  createdBy: "admin"
-};
+function createInitialShelfForm(currentUserName: string): CreateShelfRequest {
+  return {
+    shelfCode: "",
+    shelfName: "",
+    description: "",
+    createdBy: currentUserName
+  };
+}
 
-const initialPalletForm: CreatePalletRequest = {
-  palletCode: "",
-  palletName: "",
-  description: "",
-  createdBy: "admin"
-};
+function createInitialPalletForm(currentUserName: string): CreatePalletRequest {
+  return {
+    palletCode: "",
+    palletName: "",
+    description: "",
+    createdBy: currentUserName
+  };
+}
 
-const initialSpecForm: CreateSpecRequest = {
-  specCode: "",
-  specName: "",
-  revision: "",
-  samplingMethod: "SQRT_N_PLUS_1",
-  referenceAttachment: "",
-  createdBy: "admin"
-};
+function createInitialSpecForm(currentUserName: string): CreateSpecRequest {
+  return {
+    specCode: "",
+    specName: "",
+    revision: "",
+    samplingMethod: "SQRT_N_PLUS_1",
+    referenceAttachment: "",
+    createdBy: currentUserName
+  };
+}
 
-const initialMoaForm: CreateMoaRequest = {
-  moaCode: "",
-  moaName: "",
-  revision: "",
-  referenceAttachment: "",
-  createdBy: "admin"
-};
+function createInitialMoaForm(currentUserName: string): CreateMoaRequest {
+  return {
+    moaCode: "",
+    moaName: "",
+    revision: "",
+    referenceAttachment: "",
+    createdBy: currentUserName
+  };
+}
 
-const initialSamplingToolForm: CreateSamplingToolRequest = {
-  toolCode: "",
-  toolName: "",
-  description: "",
-  createdBy: "admin"
-};
+function createInitialSamplingToolForm(currentUserName: string): CreateSamplingToolRequest {
+  return {
+    toolCode: "",
+    toolName: "",
+    description: "",
+    createdBy: currentUserName
+  };
+}
 
 function yesNoClass(flag: boolean) {
   return flag ? "bg-moss/15 text-moss" : "bg-ink/5 text-slate";
@@ -269,6 +294,7 @@ type MasterDataPageProps = {
 };
 
 export function MasterDataPage({ section, showHeader = true }: MasterDataPageProps) {
+  const currentUserName = useAppShellStore((state) => state.currentUser.name);
   const [selectedSection, setSelectedSection] = useState<MasterDataSection>(section ?? "supplier");
   const [selectedWarehouseFolder, setSelectedWarehouseFolder] = useState<WarehouseFolder>("warehouse");
   const [isRegistryOpen, setIsRegistryOpen] = useState(false);
@@ -284,19 +310,19 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
   const [specs, setSpecs] = useState<Spec[]>([]);
   const [moas, setMoas] = useState<Moa[]>([]);
   const [samplingTools, setSamplingTools] = useState<SamplingTool[]>([]);
-  const [form, setForm] = useState<CreateSupplierRequest>(initialForm);
-  const [vendorForm, setVendorForm] = useState<CreateVendorRequest>(initialVendorForm);
+  const [form, setForm] = useState<CreateSupplierRequest>(() => createInitialSupplierForm(currentUserName));
+  const [vendorForm, setVendorForm] = useState<CreateVendorRequest>(() => createInitialVendorForm(currentUserName));
   const [vendorBusinessUnitForm, setVendorBusinessUnitForm] =
-    useState<CreateVendorBusinessUnitRequest>(initialVendorBusinessUnitForm);
-  const [materialForm, setMaterialForm] = useState<CreateMaterialRequest>(initialMaterialForm);
-  const [warehouseForm, setWarehouseForm] = useState<CreateWarehouseRequest>(initialWarehouseForm);
-  const [roomForm, setRoomForm] = useState<CreateRoomRequest>(initialRoomForm);
-  const [rackForm, setRackForm] = useState<CreateRackRequest>(initialRackForm);
-  const [shelfForm, setShelfForm] = useState<CreateShelfRequest>(initialShelfForm);
-  const [palletForm, setPalletForm] = useState<CreatePalletRequest>(initialPalletForm);
-  const [specForm, setSpecForm] = useState<CreateSpecRequest>(initialSpecForm);
-  const [moaForm, setMoaForm] = useState<CreateMoaRequest>(initialMoaForm);
-  const [samplingToolForm, setSamplingToolForm] = useState<CreateSamplingToolRequest>(initialSamplingToolForm);
+    useState<CreateVendorBusinessUnitRequest>(() => createInitialVendorBusinessUnitForm(currentUserName));
+  const [materialForm, setMaterialForm] = useState<CreateMaterialRequest>(() => createInitialMaterialForm(currentUserName));
+  const [warehouseForm, setWarehouseForm] = useState<CreateWarehouseRequest>(() => createInitialWarehouseForm(currentUserName));
+  const [roomForm, setRoomForm] = useState<CreateRoomRequest>(() => createInitialRoomForm(currentUserName));
+  const [rackForm, setRackForm] = useState<CreateRackRequest>(() => createInitialRackForm(currentUserName));
+  const [shelfForm, setShelfForm] = useState<CreateShelfRequest>(() => createInitialShelfForm(currentUserName));
+  const [palletForm, setPalletForm] = useState<CreatePalletRequest>(() => createInitialPalletForm(currentUserName));
+  const [specForm, setSpecForm] = useState<CreateSpecRequest>(() => createInitialSpecForm(currentUserName));
+  const [moaForm, setMoaForm] = useState<CreateMoaRequest>(() => createInitialMoaForm(currentUserName));
+  const [samplingToolForm, setSamplingToolForm] = useState<CreateSamplingToolRequest>(() => createInitialSamplingToolForm(currentUserName));
   const [selectedVendorId, setSelectedVendorId] = useState("");
   const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
   const [selectedRoomMaterialId, setSelectedRoomMaterialId] = useState("");
@@ -1250,7 +1276,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       contactPerson: supplier.contactPerson ?? "",
       email: supplier.email ?? "",
       phone: supplier.phone ?? "",
-      createdBy: supplier.updatedBy ?? supplier.createdBy ?? "admin"
+      createdBy: supplier.updatedBy ?? supplier.createdBy ?? currentUserName
     });
     setSuccessMessage(null);
     setError(null);
@@ -1281,7 +1307,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       contactPerson: vendor.contactPerson ?? "",
       email: vendor.email ?? "",
       phone: vendor.phone ?? "",
-      createdBy: vendor.updatedBy ?? vendor.createdBy ?? "admin"
+      createdBy: vendor.updatedBy ?? vendor.createdBy ?? currentUserName
     });
     setVendorSuccessMessage(null);
     setVendorError(null);
@@ -1313,7 +1339,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       city: unit.city ?? "",
       state: unit.state ?? "",
       country: unit.country ?? "",
-      createdBy: unit.updatedBy ?? unit.createdBy ?? "admin"
+      createdBy: unit.updatedBy ?? unit.createdBy ?? currentUserName
     });
     setVendorBusinessUnitSuccessMessage(null);
     setVendorBusinessUnitError(null);
@@ -1353,7 +1379,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       vendorCoaReleaseAllowed: material.vendorCoaReleaseAllowed,
       samplingRequired: material.samplingRequired,
       description: material.description ?? "",
-      createdBy: material.updatedBy ?? material.createdBy ?? "admin"
+      createdBy: material.updatedBy ?? material.createdBy ?? currentUserName
     });
     setMaterialSuccessMessage(null);
     setMaterialError(null);
@@ -1383,7 +1409,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       warehouseCode: warehouse.warehouseCode,
       warehouseName: warehouse.warehouseName,
       description: warehouse.description ?? "",
-      createdBy: warehouse.updatedBy ?? warehouse.createdBy ?? "admin"
+      createdBy: warehouse.updatedBy ?? warehouse.createdBy ?? currentUserName
     });
     setWarehouseSuccessMessage(null);
     setWarehouseError(null);
@@ -1415,7 +1441,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       roomName: room.roomName,
       storageCondition: room.storageCondition,
       description: room.description ?? "",
-      createdBy: room.updatedBy ?? room.createdBy ?? "admin"
+      createdBy: room.updatedBy ?? room.createdBy ?? currentUserName
     });
     setRoomSuccessMessage(null);
     setRoomError(null);
@@ -1446,7 +1472,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       rackCode: rack.rackCode,
       rackName: rack.rackName,
       description: rack.description ?? "",
-      createdBy: rack.updatedBy ?? rack.createdBy ?? "admin"
+      createdBy: rack.updatedBy ?? rack.createdBy ?? currentUserName
     });
     setRackSuccessMessage(null);
     setRackError(null);
@@ -1477,7 +1503,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       shelfCode: shelf.shelfCode,
       shelfName: shelf.shelfName,
       description: shelf.description ?? "",
-      createdBy: shelf.updatedBy ?? shelf.createdBy ?? "admin"
+      createdBy: shelf.updatedBy ?? shelf.createdBy ?? currentUserName
     });
     setShelfSuccessMessage(null);
     setShelfError(null);
@@ -1508,7 +1534,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       palletCode: pallet.palletCode,
       palletName: pallet.palletName,
       description: pallet.description ?? "",
-      createdBy: pallet.updatedBy ?? pallet.createdBy ?? "admin"
+      createdBy: pallet.updatedBy ?? pallet.createdBy ?? currentUserName
     });
     setPalletSuccessMessage(null);
     setPalletError(null);
@@ -1539,7 +1565,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       revision: spec.revision ?? "",
       samplingMethod: spec.samplingMethod,
       referenceAttachment: spec.referenceAttachment ?? "",
-      createdBy: spec.updatedBy ?? spec.createdBy ?? "admin"
+      createdBy: spec.updatedBy ?? spec.createdBy ?? currentUserName
     });
     setSpecSuccessMessage(null);
     setSpecError(null);
@@ -1569,7 +1595,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       moaName: moa.moaName,
       revision: moa.revision ?? "",
       referenceAttachment: moa.referenceAttachment ?? "",
-      createdBy: moa.updatedBy ?? moa.createdBy ?? "admin"
+      createdBy: moa.updatedBy ?? moa.createdBy ?? currentUserName
     });
     setMoaSuccessMessage(null);
     setMoaError(null);
@@ -1598,7 +1624,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       toolCode: tool.toolCode,
       toolName: tool.toolName,
       description: tool.description ?? "",
-      createdBy: tool.updatedBy ?? tool.createdBy ?? "admin"
+      createdBy: tool.updatedBy ?? tool.createdBy ?? currentUserName
     });
     setSamplingToolSuccessMessage(null);
     setSamplingToolError(null);
@@ -1653,63 +1679,63 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
   }
 
   function resetSupplierForm() {
-    setForm(initialForm);
+    setForm(createInitialSupplierForm(currentUserName));
     setEditingSupplierId(null);
   }
 
   function resetVendorForm() {
-    setVendorForm(initialVendorForm);
+    setVendorForm(createInitialVendorForm(currentUserName));
     setEditingVendorId(null);
   }
 
   function resetVendorBusinessUnitForm() {
-    setVendorBusinessUnitForm(initialVendorBusinessUnitForm);
+    setVendorBusinessUnitForm(createInitialVendorBusinessUnitForm(currentUserName));
     setEditingVendorBusinessUnitId(null);
   }
 
   function resetMaterialForm() {
-    setMaterialForm(initialMaterialForm);
+    setMaterialForm(createInitialMaterialForm(currentUserName));
     setEditingMaterialId(null);
   }
 
   function resetWarehouseForm() {
-    setWarehouseForm(initialWarehouseForm);
+    setWarehouseForm(createInitialWarehouseForm(currentUserName));
     setEditingWarehouseId(null);
   }
 
   function resetRoomForm() {
-    setRoomForm(initialRoomForm);
+    setRoomForm(createInitialRoomForm(currentUserName));
     setEditingRoomId(null);
     setSelectedRoomMaterialId("");
   }
 
   function resetRackForm() {
-    setRackForm(initialRackForm);
+    setRackForm(createInitialRackForm(currentUserName));
     setEditingRackId(null);
   }
 
   function resetShelfForm() {
-    setShelfForm(initialShelfForm);
+    setShelfForm(createInitialShelfForm(currentUserName));
     setEditingShelfId(null);
   }
 
   function resetPalletForm() {
-    setPalletForm(initialPalletForm);
+    setPalletForm(createInitialPalletForm(currentUserName));
     setEditingPalletId(null);
   }
 
   function resetSpecForm() {
-    setSpecForm(initialSpecForm);
+    setSpecForm(createInitialSpecForm(currentUserName));
     setEditingSpecId(null);
   }
 
   function resetMoaForm() {
-    setMoaForm(initialMoaForm);
+    setMoaForm(createInitialMoaForm(currentUserName));
     setEditingMoaId(null);
   }
 
   function resetSamplingToolForm() {
-    setSamplingToolForm(initialSamplingToolForm);
+    setSamplingToolForm(createInitialSamplingToolForm(currentUserName));
     setEditingSamplingToolId(null);
   }
 
@@ -1862,7 +1888,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
                   setForm((current) => ({ ...current, createdBy: event.target.value }))
                 }
                 className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel"
-                placeholder="admin"
+                placeholder={currentUserName}
               />
             </label>
 
@@ -1999,7 +2025,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
                   setVendorForm((current) => ({ ...current, createdBy: event.target.value }))
                 }
                 className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel"
-                placeholder="admin"
+                placeholder={currentUserName}
               />
             </label>
 
@@ -2161,7 +2187,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
                   }))
                 }
                 className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel"
-                placeholder="admin"
+                placeholder={currentUserName}
               />
             </label>
 

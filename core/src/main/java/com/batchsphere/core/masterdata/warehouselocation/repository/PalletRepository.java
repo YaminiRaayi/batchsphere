@@ -11,6 +11,10 @@ public interface PalletRepository extends JpaRepository<Pallet, UUID> {
 
     boolean existsByShelfIdAndPalletCode(UUID shelfId, String palletCode);
 
+    boolean existsByIdAndIsActiveTrue(UUID id);
+
+    boolean existsByShelfIdAndIsActiveTrue(UUID shelfId);
+
     Page<Pallet> findByIsActiveTrue(Pageable pageable);
 
     Page<Pallet> findByShelfIdAndIsActiveTrue(UUID shelfId, Pageable pageable);

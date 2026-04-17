@@ -11,6 +11,10 @@ public interface RoomRepository extends JpaRepository<Room, UUID> {
 
     boolean existsByWarehouseIdAndRoomCode(UUID warehouseId, String roomCode);
 
+    boolean existsByIdAndIsActiveTrue(UUID id);
+
+    boolean existsByWarehouseIdAndIsActiveTrue(UUID warehouseId);
+
     Page<Room> findByIsActiveTrue(Pageable pageable);
 
     Page<Room> findByWarehouseIdAndIsActiveTrue(UUID warehouseId, Pageable pageable);

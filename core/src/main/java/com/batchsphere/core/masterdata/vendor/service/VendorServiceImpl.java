@@ -1,5 +1,6 @@
 package com.batchsphere.core.masterdata.vendor.service;
 
+import com.batchsphere.core.auth.service.AuthenticatedActorService;
 import com.batchsphere.core.exception.DuplicateResourceException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.masterdata.vendor.dto.VendorRequest;
@@ -18,9 +19,11 @@ import java.util.UUID;
 public class VendorServiceImpl implements VendorService {
 
     private final VendorRepository vendorRepository;
+    private final AuthenticatedActorService authenticatedActorService;
 
     @Override
     public Vendor createVendor(VendorRequest request) {
+        String actor = authenticatedActorService.currentActor();
         if (vendorRepository.existsByVendorCode(request.getVendorCode())) {
             throw new DuplicateResourceException("Vendor code already exists: " + request.getVendorCode());
         }
@@ -34,7 +37,7 @@ public class VendorServiceImpl implements VendorService {
                 .phone(request.getPhone())
                 .isApproved(false)
                 .isActive(true)
-                .createdBy(request.getCreatedBy())
+                .createdBy(actor)
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -54,6 +57,7 @@ public class VendorServiceImpl implements VendorService {
 
     @Override
     public Vendor updateVendor(UUID id, VendorRequest request) {
+        String actor = authenticatedActorService.currentActor();
         Vendor vendor = vendorRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Vendor not found with id: " + id));
 
@@ -67,7 +71,7 @@ public class VendorServiceImpl implements VendorService {
         vendor.setContactPerson(request.getContactPerson());
         vendor.setEmail(request.getEmail());
         vendor.setPhone(request.getPhone());
-        vendor.setUpdatedBy(request.getCreatedBy());
+        vendor.setUpdatedBy(actor);
         vendor.setUpdatedAt(LocalDateTime.now());
 
         return vendorRepository.save(vendor);
@@ -75,10 +79,12 @@ public class VendorServiceImpl implements VendorService {
 
     @Override
     public void deactivateVendor(UUID id) {
+        String actor = authenticatedActorService.currentActor();
         Vendor vendor = vendorRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Vendor not found with id: " + id));
 
         vendor.setIsActive(false);
+        vendor.setUpdatedBy(actor);
         vendor.setUpdatedAt(LocalDateTime.now());
 
         vendorRepository.save(vendor);

@@ -1,6 +1,6 @@
 package com.batchsphere.core.masterdata.spec.entity;
 
-import com.batchsphere.core.transcations.sampling.entity.SamplingMethod;
+import com.batchsphere.core.transactions.sampling.entity.SamplingMethod;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

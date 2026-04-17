@@ -1,5 +1,6 @@
 package com.batchsphere.core.masterdata.material.service;
 
+import com.batchsphere.core.auth.service.AuthenticatedActorService;
 import com.batchsphere.core.exception.DuplicateResourceException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.masterdata.material.dto.MaterialRequest;
@@ -19,9 +20,11 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class MaterialServiceImpl implements  MaterialServiceInterface{
     private final MaterialRepository materialRepository;
+    private final AuthenticatedActorService authenticatedActorService;
 
     @Override
     public Material createMaterial(MaterialRequest materialRequest) {
+        String actor = authenticatedActorService.currentActor();
         if(materialRepository.existsByMaterialCode(materialRequest.getMaterialCode())){
             throw new DuplicateResourceException("Matreila code already exists");
         }
@@ -41,7 +44,7 @@ public class MaterialServiceImpl implements  MaterialServiceInterface{
                 .samplingRequired(materialRequest.getSamplingRequired())
                 .description(materialRequest.getDescription())
                 .isActive(true)
-                .createdBy(materialRequest.getCreatedBy())
+                .createdBy(actor)
                 .createdAt(LocalDateTime.now()).build();
         return materialRepository.save(material);
     }
@@ -69,8 +72,10 @@ public class MaterialServiceImpl implements  MaterialServiceInterface{
      */
     @Override
     public void deactivateMaterial(UUID id) {
+        String actor = authenticatedActorService.currentActor();
         Material material = materialRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Material Not Found with id: " +id));
         material.setIsActive(false);
+        material.setUpdatedBy(actor);
         material.setUpdatedAt(LocalDateTime.now());
 
         materialRepository.save(material);
@@ -83,6 +88,7 @@ public class MaterialServiceImpl implements  MaterialServiceInterface{
      */
     @Override
     public Material updateMaterial(UUID id, MaterialRequest request) {
+        String actor = authenticatedActorService.currentActor();
         Material material = materialRepository.findById(id)
                 .orElseThrow(()->new ResourceNotFoundException("Materila not found with id: "+ id));
         if(!material.getMaterialCode().equals(request.getMaterialCode()) &&
@@ -102,7 +108,7 @@ public class MaterialServiceImpl implements  MaterialServiceInterface{
         material.setSamplingRequired(request.getSamplingRequired());
         material.setDescription(request.getDescription());
         material.setUpdatedAt(LocalDateTime.now());
-        material.setUpdatedBy(request.getCreatedBy());
+        material.setUpdatedBy(actor);
 
         return  materialRepository.save(material);
     }

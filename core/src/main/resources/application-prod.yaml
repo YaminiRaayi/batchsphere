@@ -1,0 +1,36 @@
+spring:
+  datasource:
+    url: ${BATCHSPHERE_DB_URL}
+    username: ${BATCHSPHERE_DB_USERNAME}
+    password: ${BATCHSPHERE_DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  flyway:
+    enabled: true
+    validate-on-migrate: true
+    out-of-order: false
+    baseline-on-migrate: false
+    locations: classpath:db/migration
+
+app:
+  auth:
+    jwt:
+      secret: ${BATCHSPHERE_JWT_SECRET}
+      expiration-seconds: ${BATCHSPHERE_JWT_EXPIRATION_SECONDS:3600}
+    bootstrap-admin:
+      username: ${BATCHSPHERE_BOOTSTRAP_ADMIN_USERNAME:admin}
+      email: ${BATCHSPHERE_BOOTSTRAP_ADMIN_EMAIL:admin@batchsphere.local}
+      password: ${BATCHSPHERE_BOOTSTRAP_ADMIN_PASSWORD}
+      role: ${BATCHSPHERE_BOOTSTRAP_ADMIN_ROLE:SUPER_ADMIN}
+  cors:
+    allowed-origins: ${BATCHSPHERE_WEB_ORIGIN}
+  storage:
+    root: ${BATCHSPHERE_STORAGE_ROOT:storage}

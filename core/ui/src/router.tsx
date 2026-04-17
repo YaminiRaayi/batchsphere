@@ -2,8 +2,15 @@ import { lazy, Suspense, type ReactNode } from "react";
 import { Navigate, createBrowserRouter } from "react-router-dom";
 import { PageErrorBoundary } from "./components/PageErrorBoundary";
 import { PageSkeleton } from "./components/PageSkeleton";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppShell } from "./shell/AppShell";
 
+const LoginPage = lazy(() =>
+  import("./features/auth/LoginPage").then((module) => ({ default: module.LoginPage }))
+);
+const AccessDeniedPage = lazy(() =>
+  import("./features/auth/AccessDeniedPage").then((module) => ({ default: module.AccessDeniedPage }))
+);
 const DashboardPage = lazy(() =>
   import("./features/dashboard/DashboardPage").then((module) => ({ default: module.DashboardPage }))
 );
@@ -36,62 +43,89 @@ function renderLazyRoute(element: ReactNode) {
 
 export const router = createBrowserRouter([
   {
-    path: "/",
-    element: <AppShell />,
-    handle: { breadcrumb: "Home" },
+    path: "/login",
+    element: renderLazyRoute(<LoginPage />)
+  },
+  {
+    path: "/forbidden",
+    element: renderLazyRoute(<AccessDeniedPage />)
+  },
+  {
+    element: <ProtectedRoute />,
     children: [
-      { index: true, element: renderLazyRoute(<DashboardPage />), handle: { breadcrumb: "Command Center" } },
       {
-        path: "master-data",
-        element: renderLazyRoute(<MasterDataLayout />),
-        handle: { breadcrumb: "Master Data" },
+        path: "/",
+        element: <AppShell />,
+        handle: { breadcrumb: "Home" },
         children: [
-          { index: true, element: <Navigate to="partners/suppliers" replace /> },
+          { index: true, element: renderLazyRoute(<DashboardPage />), handle: { breadcrumb: "Command Center" } },
           {
-            path: "partners",
-            handle: { breadcrumb: "Partners" },
+            path: "master-data",
+            element: renderLazyRoute(<MasterDataLayout />),
+            handle: { breadcrumb: "Master Data" },
             children: [
-              { path: "suppliers", element: renderLazyRoute(<SuppliersPage />), handle: { breadcrumb: "Suppliers" } },
-              { path: "vendors", element: renderLazyRoute(<VendorsPage />), handle: { breadcrumb: "Vendors" } },
+              { index: true, element: <Navigate to="materials/materials" replace /> },
               {
-                path: "vendor-business-units",
-                element: renderLazyRoute(<VendorBUsPage />),
-                handle: { breadcrumb: "Vendor BUs" }
+                element: <ProtectedRoute allowedRoles={["SUPER_ADMIN", "PROCUREMENT"]} />,
+                path: "partners",
+                handle: { breadcrumb: "Partners" },
+                children: [
+                  { path: "suppliers", element: renderLazyRoute(<SuppliersPage />), handle: { breadcrumb: "Suppliers" } },
+                  { path: "vendors", element: renderLazyRoute(<VendorsPage />), handle: { breadcrumb: "Vendors" } },
+                  {
+                    path: "vendor-business-units",
+                    element: renderLazyRoute(<VendorBUsPage />),
+                    handle: { breadcrumb: "Vendor BUs" }
+                  }
+                ]
+              },
+              {
+                element: <ProtectedRoute allowedRoles={["SUPER_ADMIN", "WAREHOUSE_OP", "QC_ANALYST", "QC_MANAGER"]} />,
+                path: "materials",
+                handle: { breadcrumb: "Materials" },
+                children: [
+                  { path: "materials", element: renderLazyRoute(<MaterialsPage />), handle: { breadcrumb: "Materials" } }
+                ]
+              },
+              {
+                element: <ProtectedRoute allowedRoles={["SUPER_ADMIN", "WAREHOUSE_OP", "QC_ANALYST", "QC_MANAGER"]} />,
+                path: "locations",
+                handle: { breadcrumb: "Locations" },
+                children: [
+                  { path: "warehouse", element: renderLazyRoute(<WarehousePage />), handle: { breadcrumb: "Warehouse" } }
+                ]
+              },
+              {
+                element: <ProtectedRoute allowedRoles={["SUPER_ADMIN", "QC_ANALYST", "QC_MANAGER"]} />,
+                path: "qc-refs",
+                handle: { breadcrumb: "QC Refs" },
+                children: [
+                  { path: "specs", element: renderLazyRoute(<SpecsPage />), handle: { breadcrumb: "Specs" } },
+                  { path: "moa", element: renderLazyRoute(<MoaPage />), handle: { breadcrumb: "MoA" } },
+                  {
+                    path: "sampling-tools",
+                    element: renderLazyRoute(<SamplingToolsPage />),
+                    handle: { breadcrumb: "Sampling Tools" }
+                  }
+                ]
               }
             ]
           },
           {
-            path: "materials",
-            handle: { breadcrumb: "Materials" },
+            element: <ProtectedRoute allowedRoles={["SUPER_ADMIN", "WAREHOUSE_OP"]} />,
             children: [
-              { path: "materials", element: renderLazyRoute(<MaterialsPage />), handle: { breadcrumb: "Materials" } }
+              { path: "inbound/grn", element: renderLazyRoute(<GrnPage />), handle: { breadcrumb: "Inbound GRN" } },
+              { path: "inventory", element: renderLazyRoute(<InventoryPage />), handle: { breadcrumb: "Inventory" } }
             ]
           },
           {
-            path: "locations",
-            handle: { breadcrumb: "Locations" },
+            element: <ProtectedRoute allowedRoles={["SUPER_ADMIN", "QC_ANALYST", "QC_MANAGER"]} />,
             children: [
-              { path: "warehouse", element: renderLazyRoute(<WarehousePage />), handle: { breadcrumb: "Warehouse" } }
-            ]
-          },
-          {
-            path: "qc-refs",
-            handle: { breadcrumb: "QC Refs" },
-            children: [
-              { path: "specs", element: renderLazyRoute(<SpecsPage />), handle: { breadcrumb: "Specs" } },
-              { path: "moa", element: renderLazyRoute(<MoaPage />), handle: { breadcrumb: "MoA" } },
-              {
-                path: "sampling-tools",
-                element: renderLazyRoute(<SamplingToolsPage />),
-                handle: { breadcrumb: "Sampling Tools" }
-              }
+              { path: "qc/sampling", element: renderLazyRoute(<SamplingPage />), handle: { breadcrumb: "Sampling & QC" } }
             ]
           }
         ]
-      },
-      { path: "inbound/grn", element: renderLazyRoute(<GrnPage />), handle: { breadcrumb: "Inbound GRN" } },
-      { path: "qc/sampling", element: renderLazyRoute(<SamplingPage />), handle: { breadcrumb: "Sampling & QC" } },
-      { path: "inventory", element: renderLazyRoute(<InventoryPage />), handle: { breadcrumb: "Inventory" } }
+      }
     ]
   }
 ]);

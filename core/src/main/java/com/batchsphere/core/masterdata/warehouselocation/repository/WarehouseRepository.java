@@ -11,5 +11,7 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, UUID> {
 
     boolean existsByWarehouseCode(String warehouseCode);
 
+    boolean existsByIdAndIsActiveTrue(UUID id);
+
     Page<Warehouse> findByIsActiveTrue(Pageable pageable);
 }

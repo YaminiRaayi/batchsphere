@@ -11,6 +11,10 @@ public interface RackRepository extends JpaRepository<Rack, UUID> {
 
     boolean existsByRoomIdAndRackCode(UUID roomId, String rackCode);
 
+    boolean existsByIdAndIsActiveTrue(UUID id);
+
+    boolean existsByRoomIdAndIsActiveTrue(UUID roomId);
+
     Page<Rack> findByIsActiveTrue(Pageable pageable);
 
     Page<Rack> findByRoomIdAndIsActiveTrue(UUID roomId, Pageable pageable);

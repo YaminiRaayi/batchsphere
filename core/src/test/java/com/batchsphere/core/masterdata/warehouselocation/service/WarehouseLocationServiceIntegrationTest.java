@@ -1,5 +1,9 @@
 package com.batchsphere.core.masterdata.warehouselocation.service;
 
+import com.batchsphere.core.auth.entity.User;
+import com.batchsphere.core.auth.entity.UserRole;
+import com.batchsphere.core.auth.security.AuthenticatedUser;
+import com.batchsphere.core.exception.BusinessConflictException;
 import com.batchsphere.core.exception.DuplicateResourceException;
 import com.batchsphere.core.masterdata.material.entity.StorageCondition;
 import com.batchsphere.core.masterdata.warehouselocation.dto.CreatePalletRequest;
@@ -13,11 +17,20 @@ import com.batchsphere.core.masterdata.warehouselocation.entity.Room;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Shelf;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Warehouse;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest
@@ -27,10 +40,34 @@ class WarehouseLocationServiceIntegrationTest {
     @Autowired
     private WarehouseLocationService warehouseLocationService;
 
+    @BeforeEach
+    void setUpAuthentication() {
+        AuthenticatedUser user = new AuthenticatedUser(User.builder()
+                .id(UUID.randomUUID())
+                .username("warehouse-tester")
+                .email("warehouse-tester@batchsphere.local")
+                .passwordHash("ignored")
+                .role(UserRole.SUPER_ADMIN)
+                .isActive(true)
+                .createdAt(LocalDateTime.now())
+                .build());
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities())
+        );
+    }
+
+    @AfterEach
+    void clearAuthentication() {
+        SecurityContextHolder.clearContext();
+    }
+
     @Test
     void allowsSameHierarchyCodesUnderDifferentWarehouses() {
         Warehouse warehouseOne = warehouseLocationService.createWarehouse(createWarehouseRequest("WH1"));
         Warehouse warehouseTwo = warehouseLocationService.createWarehouse(createWarehouseRequest("WH2"));
+
+        assertEquals("warehouse-tester", warehouseOne.getCreatedBy());
+        assertEquals("warehouse-tester", warehouseTwo.getCreatedBy());
 
         Room roomOne = warehouseLocationService.createRoom(warehouseOne.getId(), createRoomRequest("ROOM1"));
         Room roomTwo = assertDoesNotThrow(() ->
@@ -66,6 +103,44 @@ class WarehouseLocationServiceIntegrationTest {
                 () -> warehouseLocationService.createShelf(rack.getId(), createShelfRequest("SHELF-DUP")));
         assertThrows(DuplicateResourceException.class,
                 () -> warehouseLocationService.createPallet(shelf.getId(), createPalletRequest(pallet.getPalletCode())));
+    }
+
+    @Test
+    void rejectsDeactivatingParentLocationWhileActiveChildrenExist() {
+        Warehouse warehouse = warehouseLocationService.createWarehouse(createWarehouseRequest("WH-ACTIVE"));
+        Room room = warehouseLocationService.createRoom(warehouse.getId(), createRoomRequest("ROOM-ACTIVE"));
+        Rack rack = warehouseLocationService.createRack(room.getId(), createRackRequest("RACK-ACTIVE"));
+        Shelf shelf = warehouseLocationService.createShelf(rack.getId(), createShelfRequest("SHELF-ACTIVE"));
+        warehouseLocationService.createPallet(shelf.getId(), createPalletRequest("PALLET-ACTIVE"));
+
+        assertThrows(BusinessConflictException.class,
+                () -> warehouseLocationService.deactivateWarehouse(warehouse.getId()));
+        assertThrows(BusinessConflictException.class,
+                () -> warehouseLocationService.deactivateRoom(room.getId()));
+        assertThrows(BusinessConflictException.class,
+                () -> warehouseLocationService.deactivateRack(rack.getId()));
+        assertThrows(BusinessConflictException.class,
+                () -> warehouseLocationService.deactivateShelf(shelf.getId()));
+    }
+
+    @Test
+    void rejectsCreatingChildrenUnderInactiveParentsAndTracksDeletedTimestamp() {
+        Warehouse warehouse = warehouseLocationService.createWarehouse(createWarehouseRequest("WH-INACTIVE"));
+        warehouseLocationService.deactivateWarehouse(warehouse.getId());
+
+        Warehouse deactivatedWarehouse = warehouseLocationService.getWarehouseById(warehouse.getId());
+        assertNotNull(deactivatedWarehouse.getDeletedAt());
+        assertThrows(BusinessConflictException.class,
+                () -> warehouseLocationService.createRoom(warehouse.getId(), createRoomRequest("ROOM-BLOCKED")));
+
+        Warehouse activeWarehouse = warehouseLocationService.createWarehouse(createWarehouseRequest("WH-PARENT"));
+        Room room = warehouseLocationService.createRoom(activeWarehouse.getId(), createRoomRequest("ROOM-PARENT"));
+        warehouseLocationService.deactivateRoom(room.getId());
+
+        Room deactivatedRoom = warehouseLocationService.getRoomById(room.getId());
+        assertNotNull(deactivatedRoom.getDeletedAt());
+        assertThrows(BusinessConflictException.class,
+                () -> warehouseLocationService.createRack(room.getId(), createRackRequest("RACK-BLOCKED")));
     }
 
     private CreateWarehouseRequest createWarehouseRequest(String code) {
