@@ -4,5 +4,6 @@ public enum InventoryTransactionType {
     INBOUND,
     OUTBOUND,
     ADJUSTMENT,
-    STATUS_CHANGE
+    STATUS_CHANGE,
+    TRANSFER
 }

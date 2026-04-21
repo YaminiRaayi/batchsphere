@@ -20,8 +20,10 @@ import com.batchsphere.core.transactions.grn.dto.GrnDocumentResponse;
 import com.batchsphere.core.transactions.grn.dto.GrnDocumentUploadRequest;
 import com.batchsphere.core.transactions.grn.dto.GrnItemRequest;
 import com.batchsphere.core.transactions.grn.dto.GrnItemResponse;
+import com.batchsphere.core.transactions.grn.dto.GrnLabelPrintDataResponse;
 import com.batchsphere.core.transactions.grn.dto.MaterialLabelResponse;
 import com.batchsphere.core.transactions.grn.dto.GrnResponse;
+import com.batchsphere.core.transactions.grn.dto.GrnSummaryResponse;
 import com.batchsphere.core.transactions.grn.dto.UpdateGrnRequest;
 import com.batchsphere.core.transactions.grn.entity.GrnContainer;
 import com.batchsphere.core.transactions.grn.entity.GrnDocument;
@@ -69,8 +71,11 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -131,6 +136,25 @@ public class GrnServiceImpl implements GrnService {
 
     @Override
     @Transactional(readOnly = true)
+    public GrnSummaryResponse getGrnSummary() {
+        Map<GrnStatus, Long> counts = new LinkedHashMap<>();
+        for (GrnStatus status : GrnStatus.values()) {
+            counts.put(status, 0L);
+        }
+
+        for (Object[] row : grnRepository.countActiveByStatus()) {
+            GrnStatus status = (GrnStatus) row[0];
+            Long count = (Long) row[1];
+            counts.put(status, count);
+        }
+
+        return GrnSummaryResponse.builder()
+                .countsByStatus(counts)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public GrnResponse getGrnById(UUID id) {
         Grn grn = getActiveGrn(id);
         List<GrnItem> items = grnItemRepository.findByGrnIdAndIsActiveTrueOrderByLineNumber(id);
@@ -150,6 +174,7 @@ public class GrnServiceImpl implements GrnService {
         String actor = authenticatedActorService.currentActor();
         Grn existing = getActiveGrn(id);
         ensureDraft(existing, "Only draft GRNs can be updated");
+        List<GrnItem> existingItems = grnItemRepository.findByGrnIdOrderByLineNumber(id);
 
         if (!existing.getGrnNumber().equals(request.getGrnNumber())
                 && grnRepository.existsByGrnNumber(request.getGrnNumber())) {
@@ -169,7 +194,7 @@ public class GrnServiceImpl implements GrnService {
         existing.setUpdatedAt(LocalDateTime.now());
 
         Grn savedGrn = grnRepository.save(existing);
-        deactivateExistingItems(existing.getId(), actor);
+        replaceExistingDraftItems(existingItems);
         List<GrnItem> savedItems = createItems(existing.getId(), request.getItems(), actor);
 
         return toResponse(savedGrn, savedItems);
@@ -204,9 +229,70 @@ public class GrnServiceImpl implements GrnService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<GrnDocumentResponse> getDocumentsByGrnId(UUID grnId) {
+        getActiveGrn(grnId);
+        return grnDocumentRepository.findByGrnIdAndIsActiveTrueOrderByCreatedAtDesc(grnId)
+                .stream()
+                .map(this::toDocumentResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MaterialLabelResponse> getLabelsByGrnId(UUID grnId) {
+        getActiveGrn(grnId);
+        List<UUID> containerIds = grnContainerRepository.findByGrnIdAndIsActiveTrueOrderByContainerNumber(grnId).stream()
+                .map(GrnContainer::getId)
+                .toList();
+        if (containerIds.isEmpty()) {
+            return List.of();
+        }
+        return materialLabelRepository.findByGrnContainerIdInAndIsActiveTrueOrderByGeneratedAtAsc(containerIds)
+                .stream()
+                .map(this::toLabelResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<MaterialLabelResponse> getLabelsByContainerId(UUID containerId) {
-        return materialLabelRepository.findByGrnContainerIdAndIsActiveTrue(containerId)
+        return materialLabelRepository.findByGrnContainerIdAndIsActiveTrueOrderByGeneratedAtAsc(containerId)
                 .stream().map(this::toLabelResponse).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public GrnLabelPrintDataResponse getLabelPrintData(UUID id) {
+        Grn grn = getActiveGrn(id);
+        List<GrnItem> items = grnItemRepository.findByGrnIdAndIsActiveTrueOrderByLineNumber(id);
+        List<GrnContainer> containers = grnContainerRepository.findByGrnIdAndIsActiveTrueOrderByContainerNumber(id);
+        List<UUID> containerIds = containers.stream().map(GrnContainer::getId).toList();
+        List<MaterialLabel> labels = containerIds.isEmpty()
+                ? List.of()
+                : materialLabelRepository.findByGrnContainerIdInAndIsActiveTrueOrderByGeneratedAtAsc(containerIds);
+
+        Map<UUID, GrnItem> itemById = new HashMap<>();
+        for (GrnItem item : items) {
+            itemById.put(item.getId(), item);
+        }
+
+        Map<UUID, GrnContainer> containerById = new HashMap<>();
+        for (GrnContainer container : containers) {
+            containerById.put(container.getId(), container);
+        }
+
+        List<GrnLabelPrintDataResponse.LabelPrintEntry> entries = labels.stream()
+                .map(label -> toLabelPrintEntry(label, containerById.get(label.getGrnContainerId()), itemById))
+                .toList();
+
+        return GrnLabelPrintDataResponse.builder()
+                .grnId(grn.getId())
+                .grnNumber(grn.getGrnNumber())
+                .receiptDate(grn.getReceiptDate())
+                .invoiceNumber(grn.getInvoiceNumber())
+                .status(grn.getStatus())
+                .entries(entries)
+                .build();
     }
 
     @Override
@@ -218,6 +304,9 @@ public class GrnServiceImpl implements GrnService {
 
         if (!Boolean.TRUE.equals(container.getIsActive())) {
             throw new ResourceNotFoundException("GRN container not found with id: " + containerId);
+        }
+        if (Boolean.TRUE.equals(container.getSampled())) {
+            throw new BusinessConflictException("Sampling label has already been applied to this container");
         }
         if (request.getSampledQuantity().compareTo(container.getQuantity()) > 0) {
             throw new BusinessConflictException("Sampled quantity cannot exceed container quantity");
@@ -264,14 +353,16 @@ public class GrnServiceImpl implements GrnService {
         if (!Boolean.TRUE.equals(grnItem.getIsActive())) {
             throw new ResourceNotFoundException("GRN item not found with id: " + grnItemId);
         }
+        String documentName = normalizeRequiredDocumentField(request.getDocumentName(), "Document name is required");
+        String documentType = normalizeRequiredDocumentField(request.getDocumentType(), "Document type is required");
         String documentPath = localStorageService.store("grn", "line-items/" + grnItem.getId() + "/documents", file);
 
         GrnDocument document = GrnDocument.builder()
                 .id(UUID.randomUUID())
                 .grnId(grnItem.getGrnId())
                 .grnItemId(grnItemId)
-                .documentName(request.getDocumentName().trim())
-                .documentType(request.getDocumentType().trim())
+                .documentName(documentName)
+                .documentType(documentType)
                 .fileName(file.getOriginalFilename() == null ? "document" : file.getOriginalFilename())
                 .documentPath(documentPath)
                 .documentUrl(request.getDocumentUrl())
@@ -285,14 +376,20 @@ public class GrnServiceImpl implements GrnService {
 
     @Override
     @Transactional
-    public GrnResponse cancelGrn(UUID id, String updatedBy) {
+    public GrnResponse cancelGrn(UUID id, String updatedBy, String reason) {
         String actor = authenticatedActorService.currentActor();
         Grn grn = getActiveGrn(id);
-        if (grn.getStatus() == GrnStatus.RECEIVED) {
-            throw new BusinessConflictException("Received GRN cannot be cancelled");
-        }
+        ensureDraft(grn, "Only draft GRNs can be cancelled");
 
         grn.setStatus(GrnStatus.CANCELLED);
+        String normalizedReason = reason == null ? "" : reason.trim();
+        if (!normalizedReason.isEmpty()) {
+            String existingRemarks = grn.getRemarks();
+            String cancelRemarks = "Cancellation reason: " + normalizedReason;
+            grn.setRemarks(existingRemarks == null || existingRemarks.isBlank()
+                    ? cancelRemarks
+                    : existingRemarks + System.lineSeparator() + cancelRemarks);
+        }
         grn.setUpdatedBy(actor);
         grn.setUpdatedAt(LocalDateTime.now());
 
@@ -323,6 +420,12 @@ public class GrnServiceImpl implements GrnService {
             item.setUpdatedAt(now);
         }
         grnItemRepository.saveAll(items);
+
+        List<GrnDocument> documents = grnDocumentRepository.findByGrnIdAndIsActiveTrueOrderByCreatedAtDesc(id);
+        for (GrnDocument document : documents) {
+            document.setIsActive(false);
+        }
+        grnDocumentRepository.saveAll(documents);
     }
 
     private List<GrnItem> createItems(UUID grnId, List<GrnItemRequest> requests, String actor) {
@@ -373,8 +476,7 @@ public class GrnServiceImpl implements GrnService {
         return grnItemRepository.saveAll(items);
     }
 
-    private void deactivateExistingItems(UUID grnId, String updatedBy) {
-        List<GrnItem> items = grnItemRepository.findByGrnIdAndIsActiveTrueOrderByLineNumber(grnId);
+    private void deactivateExistingItems(List<GrnItem> items, String updatedBy) {
         LocalDateTime now = LocalDateTime.now();
         for (GrnItem item : items) {
             item.setIsActive(false);
@@ -382,6 +484,19 @@ public class GrnServiceImpl implements GrnService {
             item.setUpdatedAt(now);
         }
         grnItemRepository.saveAll(items);
+
+        deactivateDocumentsForItems(items);
+    }
+
+    private void replaceExistingDraftItems(List<GrnItem> items) {
+        List<UUID> itemIds = items.stream().map(GrnItem::getId).toList();
+        if (!itemIds.isEmpty()) {
+            List<GrnDocument> documents = grnDocumentRepository.findByGrnItemIdIn(itemIds);
+            grnDocumentRepository.deleteAll(documents);
+            grnDocumentRepository.flush();
+        }
+        grnItemRepository.deleteAll(items);
+        grnItemRepository.flush();
     }
 
     private void validateHeader(UUID supplierId, UUID vendorId, UUID vendorBusinessUnitId) {
@@ -556,6 +671,26 @@ public class GrnServiceImpl implements GrnService {
         if (grn.getStatus() != GrnStatus.DRAFT) {
             throw new BusinessConflictException(message);
         }
+    }
+
+    private void deactivateDocumentsForItems(List<GrnItem> items) {
+        List<UUID> itemIds = items.stream().map(GrnItem::getId).toList();
+        if (itemIds.isEmpty()) {
+            return;
+        }
+
+        List<GrnDocument> documents = grnDocumentRepository.findByGrnItemIdInAndIsActiveTrue(itemIds);
+        for (GrnDocument document : documents) {
+            document.setIsActive(false);
+        }
+        grnDocumentRepository.saveAll(documents);
+    }
+
+    private String normalizeRequiredDocumentField(String value, String message) {
+        if (value == null || value.trim().isEmpty()) {
+            throw new BusinessConflictException(message);
+        }
+        return value.trim();
     }
 
     private GrnResponse toResponse(Grn grn, List<GrnItem> items) {
@@ -777,6 +912,47 @@ public class GrnServiceImpl implements GrnService {
                 .generatedAt(label.getGeneratedAt())
                 .appliedBy(label.getAppliedBy())
                 .appliedAt(label.getAppliedAt())
+                .build();
+    }
+
+    private GrnLabelPrintDataResponse.LabelPrintEntry toLabelPrintEntry(
+            MaterialLabel label,
+            GrnContainer container,
+            Map<UUID, GrnItem> itemById
+    ) {
+        if (container == null) {
+            throw new ResourceNotFoundException("GRN container not found with id: " + label.getGrnContainerId());
+        }
+
+        GrnItem item = itemById.get(container.getGrnItemId());
+        if (item == null) {
+            throw new ResourceNotFoundException("GRN item not found with id: " + container.getGrnItemId());
+        }
+
+        Material material = getActiveMaterial(container.getMaterialId());
+        Pallet pallet = getActivePallet(container.getPalletId());
+        String batchNumber = container.getBatchId() == null ? null : getActiveBatch(container.getBatchId()).getBatchNumber();
+
+        return GrnLabelPrintDataResponse.LabelPrintEntry.builder()
+                .grnItemId(item.getId())
+                .lineNumber(item.getLineNumber())
+                .materialId(material.getId())
+                .materialName(material.getMaterialName())
+                .batchId(container.getBatchId())
+                .batchNumber(batchNumber)
+                .palletId(pallet.getId())
+                .palletCode(pallet.getPalletCode())
+                .containerId(container.getId())
+                .containerNumber(container.getContainerNumber())
+                .internalLot(container.getInternalLot())
+                .quantity(container.getQuantity())
+                .uom(container.getUom())
+                .labelType(label.getLabelType())
+                .labelStatus(label.getLabelStatus())
+                .labelContent(label.getLabelContent())
+                .qrPayload(label.getQrPayload())
+                .qrCodeDataUrl(label.getQrCodeDataUrl())
+                .generatedAt(label.getGeneratedAt())
                 .build();
     }
 

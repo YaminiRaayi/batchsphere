@@ -1,8 +1,9 @@
 import type { Batch } from "../types/batch";
 import type { LoginResponse } from "../types/auth";
 import type { CreateMoaRequest, Moa } from "../types/moa";
-import type { InventoryRecord, InventoryTransaction } from "../types/inventory";
+import type { InventoryRecord, InventorySummary, InventoryTransaction } from "../types/inventory";
 import type {
+  AvailablePallet,
   CreatePalletRequest,
   CreateRackRequest,
   CreateRoomRequest,
@@ -12,7 +13,8 @@ import type {
   Rack,
   Room,
   Shelf,
-  Warehouse
+  Warehouse,
+  WarehouseTreeNode
 } from "../types/location";
 import type { CreateMaterialRequest, Material } from "../types/material";
 import type { CreateSamplingToolRequest, SamplingTool } from "../types/sampling-tool";
@@ -22,11 +24,13 @@ import type {
   CreateGrnRequest,
   Grn,
   GrnContainer,
+  GrnLabelPrintData,
   GrnDocument,
+  GrnSummary,
   MaterialLabel,
   PageResponse
 } from "../types/grn";
-import type { SamplingPlanRequest, SamplingRequest } from "../types/sampling";
+import type { SamplingPlanRequest, SamplingRequest, SamplingSummary } from "../types/sampling";
 import type {
   CreateVendorBusinessUnitRequest,
   VendorBusinessUnit
@@ -267,8 +271,19 @@ export async function receiveGrn(id: string, updatedBy: string) {
   });
 }
 
+export async function cancelGrn(id: string, updatedBy: string, reason?: string) {
+  return requestMutation<Grn>(`/api/grns/${id}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ updatedBy, reason })
+  });
+}
+
 export async function fetchGrnById(id: string) {
   return requestJson<Grn>(`/api/grns/${id}`);
+}
+
+export async function fetchGrnSummary() {
+  return requestJson<GrnSummary>("/api/grns/summary");
 }
 
 export async function fetchGrnItemContainers(grnItemId: string) {
@@ -277,6 +292,18 @@ export async function fetchGrnItemContainers(grnItemId: string) {
 
 export async function fetchContainerLabels(containerId: string) {
   return requestJson<MaterialLabel[]>(`/api/grns/containers/${containerId}/labels`);
+}
+
+export async function fetchGrnDocuments(id: string) {
+  return requestJson<GrnDocument[]>(`/api/grns/${id}/documents`);
+}
+
+export async function fetchGrnLabels(id: string) {
+  return requestJson<MaterialLabel[]>(`/api/grns/${id}/labels`);
+}
+
+export async function fetchGrnLabelPrintData(id: string) {
+  return requestJson<GrnLabelPrintData>(`/api/grns/${id}/labels/print-data`);
 }
 
 export async function uploadGrnDocument(
@@ -513,6 +540,10 @@ export async function fetchWarehouses(page = 0, size = 50) {
   return requestJson<PageResponse<Warehouse>>(`/api/warehouses?${params.toString()}`);
 }
 
+export async function fetchWarehouseTree() {
+  return requestJson<WarehouseTreeNode[]>("/api/warehouses/tree");
+}
+
 export async function createWarehouse(payload: CreateWarehouseRequest) {
   return requestMutation<Warehouse>("/api/warehouses", {
     method: "POST",
@@ -662,6 +693,15 @@ export async function fetchPallets(page = 0, size = 50, shelfId?: string) {
   return requestJson<PageResponse<Pallet>>(`/api/pallets?${params.toString()}`);
 }
 
+export async function fetchAvailablePallets(storageCondition?: string) {
+  const params = new URLSearchParams();
+  if (storageCondition) {
+    params.set("storageCondition", storageCondition);
+  }
+  const query = params.toString();
+  return requestJson<AvailablePallet[]>(query ? `/api/pallets/available?${query}` : "/api/pallets/available");
+}
+
 export async function createPallet(shelfId: string, payload: CreatePalletRequest) {
   return requestMutation<Pallet>(`/api/shelves/${shelfId}/pallets`, {
     method: "POST",
@@ -726,6 +766,32 @@ export async function updateInventoryStatus(id: string, status: InventoryRecord[
   });
 }
 
+export async function adjustInventory(id: string, quantityDelta: number, reason: string, increase: boolean) {
+  return requestMutation<InventoryRecord>(`/api/inventory/${id}/adjust`, {
+    method: "POST",
+    body: JSON.stringify({
+      quantityDelta,
+      reason,
+      increase
+    })
+  });
+}
+
+export async function transferInventory(id: string, destinationPalletId: string, quantity: number, remarks?: string) {
+  return requestMutation<InventoryRecord>(`/api/inventory/${id}/transfer`, {
+    method: "POST",
+    body: JSON.stringify({
+      destinationPalletId,
+      quantity,
+      remarks
+    })
+  });
+}
+
+export async function fetchInventorySummary() {
+  return requestJson<InventorySummary>("/api/inventory/summary");
+}
+
 export async function fetchSamplingRequests(page = 0, size = 20) {
   const params = new URLSearchParams({
     page: String(page),
@@ -735,6 +801,10 @@ export async function fetchSamplingRequests(page = 0, size = 20) {
   return requestJson<PageResponse<SamplingRequest>>(
     `/api/sampling-requests?${params.toString()}`
   );
+}
+
+export async function fetchSamplingSummary() {
+  return requestJson<SamplingSummary>("/api/sampling-requests/summary");
 }
 
 export async function createSamplingPlan(

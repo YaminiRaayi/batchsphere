@@ -81,6 +81,10 @@ export type SamplingRequest = {
   plan: SamplingPlan | null;
 };
 
+export type SamplingSummary = {
+  countsByStatus: Record<string, number>;
+};
+
 export type SamplingContainerSample = {
   id: string;
   grnContainerId: string;

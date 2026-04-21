@@ -8,4 +8,10 @@ import java.util.UUID;
 
 public interface GrnDocumentRepository extends JpaRepository<GrnDocument, UUID> {
     List<GrnDocument> findByGrnItemIdAndIsActiveTrueOrderByCreatedAtDesc(UUID grnItemId);
+
+    List<GrnDocument> findByGrnIdAndIsActiveTrueOrderByCreatedAtDesc(UUID grnId);
+
+    List<GrnDocument> findByGrnItemIdInAndIsActiveTrue(List<UUID> grnItemIds);
+
+    List<GrnDocument> findByGrnItemIdIn(List<UUID> grnItemIds);
 }

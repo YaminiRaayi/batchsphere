@@ -1,11 +1,12 @@
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { SectionHeader } from "../../components/SectionHeader";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppShellStore } from "../../stores/appShellStore";
 import {
+  cancelGrn,
   createGrn,
   fetchBatches,
   fetchContainerLabels,
   fetchGrnById,
+  fetchGrnLabelPrintData,
   fetchGrns,
   fetchGrnItemContainers,
   fetchMaterials,
@@ -13,7 +14,6 @@ import {
   fetchSuppliers,
   fetchVendorBusinessUnits,
   fetchVendors,
-  getApiBaseUrl,
   receiveGrn,
   uploadGrnDocument
 } from "../../lib/api";
@@ -24,8 +24,10 @@ import type { Supplier } from "../../types/supplier";
 import type {
   ContainerType,
   CreateGrnRequest,
+  CreateGrnItemRequest,
   Grn,
   GrnContainer,
+  GrnLabelPrintData,
   MaterialLabel,
   PageResponse,
   QcStatus
@@ -39,6 +41,13 @@ type DocumentDraft = {
   documentUrl: string;
   file: File | null;
 };
+
+type CancelDraft = {
+  grnId: string;
+  grnNumber: string;
+};
+
+type QueueFilter = "ALL" | Grn["status"];
 
 function formatQuantity(value: number, uom: string) {
   return `${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value)} ${uom}`;
@@ -55,21 +64,130 @@ function sumQuantity(grn: Grn, key: "receivedQuantity" | "acceptedQuantity") {
   return formatQuantity(total, primaryUom);
 }
 
-function statusTone(status: Grn["status"]) {
+function statusPill(status: Grn["status"]) {
   switch (status) {
     case "RECEIVED":
-      return "bg-moss/15 text-moss";
+      return "bg-green-100 text-green-700";
     case "CANCELLED":
-      return "bg-redoxide/15 text-redoxide";
+      return "bg-red-100 text-red-700";
     case "DRAFT":
     default:
-      return "bg-amber/15 text-amber";
+      return "bg-amber-100 text-amber-700";
   }
+}
+
+function formatDisplayDate(value: string | null | undefined) {
+  if (!value) {
+    return "Not set";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
+}
+
+function formatDisplayDateTime(value: string | null | undefined) {
+  if (!value) {
+    return "Not set";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function escapePrintHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function buildLabelPrintHtml(data: GrnLabelPrintData) {
+  const entries = data.entries
+    .map(
+      (entry) => `
+        <article class="label-card">
+          <div class="meta">GRN ${escapePrintHtml(data.grnNumber)} • Line ${entry.lineNumber}</div>
+          <h2>${escapePrintHtml(entry.materialName)}</h2>
+          <p><strong>Container:</strong> ${escapePrintHtml(entry.containerNumber)}</p>
+          <p><strong>Pallet:</strong> ${escapePrintHtml(entry.palletCode)}</p>
+          <p><strong>Batch:</strong> ${escapePrintHtml(entry.batchNumber ?? "Pending")}</p>
+          <p><strong>Qty:</strong> ${entry.quantity} ${escapePrintHtml(entry.uom)}</p>
+          <pre>${escapePrintHtml(entry.labelContent)}</pre>
+        </article>
+      `
+    )
+    .join("");
+
+  return `<!doctype html>
+  <html>
+    <head>
+      <meta charset="utf-8" />
+      <title>GRN ${escapePrintHtml(data.grnNumber)} Labels</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 24px; color: #1f2937; }
+        h1 { margin: 0 0 8px; font-size: 24px; }
+        .sub { margin: 0 0 24px; color: #475569; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+        .label-card { border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; break-inside: avoid; }
+        .label-card h2 { margin: 0 0 12px; font-size: 18px; }
+        .label-card p { margin: 6px 0; font-size: 14px; }
+        .label-card pre { margin: 12px 0 0; white-space: pre-wrap; font-size: 12px; background: #f8fafc; padding: 12px; border-radius: 8px; }
+        .meta { margin-bottom: 8px; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; }
+        @media print { body { margin: 12mm; } }
+      </style>
+    </head>
+    <body>
+      <h1>GRN Label Print</h1>
+      <p class="sub">GRN ${escapePrintHtml(data.grnNumber)} • Receipt ${escapePrintHtml(data.receiptDate)}</p>
+      <section class="grid">${entries}</section>
+    </body>
+  </html>`;
 }
 
 const containerTypes: ContainerType[] = ["BAG", "DRUM", "BOX", "CAN", "BOTTLE", "FIBER_DRUM"];
 const qcStatuses: QcStatus[] = ["PENDING", "APPROVED", "REJECTED", "PARTIALLY_APPROVED"];
 const PAGE_SIZE = 15;
+
+function createEmptyGrnItem(): CreateGrnItemRequest {
+  return {
+    materialId: "",
+    receivedQuantity: 0,
+    acceptedQuantity: 0,
+    rejectedQuantity: 0,
+    uom: "KG",
+    palletId: "",
+    containerType: "BAG",
+    numberOfContainers: 1,
+    quantityPerContainer: 0,
+    vendorBatch: "",
+    manufactureDate: "",
+    expiryDate: "",
+    retestDate: "",
+    unitPrice: 0,
+    qcStatus: "PENDING",
+    description: ""
+  };
+}
 
 function createInitialForm(currentUserName: string): CreateGrnRequest {
   return {
@@ -81,26 +199,7 @@ function createInitialForm(currentUserName: string): CreateGrnRequest {
     invoiceNumber: "",
     remarks: "",
     createdBy: currentUserName,
-    items: [
-      {
-        materialId: "",
-        receivedQuantity: 0,
-        acceptedQuantity: 0,
-        rejectedQuantity: 0,
-        uom: "KG",
-        palletId: "",
-        containerType: "BAG",
-        numberOfContainers: 1,
-        quantityPerContainer: 0,
-        vendorBatch: "",
-        manufactureDate: "",
-        expiryDate: "",
-        retestDate: "",
-        unitPrice: 0,
-        qcStatus: "PENDING",
-        description: ""
-      }
-    ]
+    items: [createEmptyGrnItem()]
   };
 }
 
@@ -108,6 +207,8 @@ export function GrnPage() {
   const currentUserName = useAppShellStore((state) => state.currentUser.name);
   const [page, setPage] = useState<PageResponse<Grn> | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
+  const [isCreateMode, setIsCreateMode] = useState(false);
+  const [isQueueVisible, setIsQueueVisible] = useState(true);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [vendorBusinessUnits, setVendorBusinessUnits] = useState<VendorBusinessUnit[]>([]);
@@ -122,15 +223,20 @@ export function GrnPage() {
   const [isReferenceLoading, setIsReferenceLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [receivingGrnId, setReceivingGrnId] = useState<string | null>(null);
+  const [cancellingGrnId, setCancellingGrnId] = useState<string | null>(null);
+  const [printingGrnId, setPrintingGrnId] = useState<string | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [queueMessage, setQueueMessage] = useState<string | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [isQueueModalOpen, setIsQueueModalOpen] = useState(false);
   const [activeLabelContainer, setActiveLabelContainer] = useState<GrnContainer | null>(null);
   const [isDetailHighlighted, setIsDetailHighlighted] = useState(false);
+  const [cancelDraft, setCancelDraft] = useState<CancelDraft | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [containerPage, setContainerPage] = useState(0);
+  const [queueFilter, setQueueFilter] = useState<QueueFilter>("ALL");
+  const [queueSearch, setQueueSearch] = useState("");
   const detailSectionRef = useRef<HTMLElement | null>(null);
   const [createDocumentDraft, setCreateDocumentDraft] = useState<DocumentDraft>({
     documentName: "",
@@ -208,16 +314,56 @@ export function GrnPage() {
   const filteredVendorBusinessUnits = vendorBusinessUnits.filter(
     (unit) => !form.vendorId || unit.vendorId === form.vendorId
   );
-  const selectedMaterial = materials.find((material) => material.id === form.items[0].materialId);
-  const filteredPallets = pallets.filter(
-    (pallet) =>
-      !selectedMaterial || pallet.storageCondition === selectedMaterial.storageCondition
+  const supplierById = useMemo(() => new Map(suppliers.map((supplier) => [supplier.id, supplier])), [suppliers]);
+  const vendorById = useMemo(() => new Map(vendors.map((vendor) => [vendor.id, vendor])), [vendors]);
+  const vendorBusinessUnitById = useMemo(
+    () => new Map(vendorBusinessUnits.map((unit) => [unit.id, unit])),
+    [vendorBusinessUnits]
   );
+  const materialById = useMemo(() => new Map(materials.map((material) => [material.id, material])), [materials]);
+  const batchById = useMemo(() => new Map(batches.map((batch) => [batch.id, batch])), [batches]);
+  const palletById = useMemo(() => new Map(pallets.map((pallet) => [pallet.id, pallet])), [pallets]);
+  const queueItems = useMemo(() => {
+    const entries = page?.content ?? [];
+    const search = queueSearch.trim().toLowerCase();
+
+    return entries.filter((grn) => {
+      const matchesFilter = queueFilter === "ALL" || grn.status === queueFilter;
+      const supplierName = supplierById.get(grn.supplierId)?.supplierName?.toLowerCase() ?? "";
+      const matchesSearch =
+        search.length === 0 ||
+        grn.grnNumber.toLowerCase().includes(search) ||
+        (grn.invoiceNumber ?? "").toLowerCase().includes(search) ||
+        supplierName.includes(search) ||
+        grn.items.some((item) => {
+          const material = materialById.get(item.materialId);
+          return material
+            ? `${material.materialCode} ${material.materialName}`.toLowerCase().includes(search)
+            : false;
+        });
+      return matchesFilter && matchesSearch;
+    });
+  }, [materialById, page?.content, queueFilter, queueSearch, supplierById]);
+
+  const queueCounts = useMemo(() => {
+    const counts: Record<QueueFilter, number> = {
+      ALL: page?.content.length ?? 0,
+      DRAFT: 0,
+      RECEIVED: 0,
+      CANCELLED: 0
+    };
+
+    for (const grn of page?.content ?? []) {
+      counts[grn.status] += 1;
+    }
+
+    return counts;
+  }, [page?.content]);
 
   async function handleSelectGrn(grnId: string, options?: { focusDetail?: boolean }) {
     setIsDetailLoading(true);
     setError(null);
-    setIsDetailOpen(true);
+    setIsQueueVisible(false);
 
     try {
       const grn = await fetchGrnById(grnId);
@@ -251,23 +397,47 @@ export function GrnPage() {
     }
   }
 
+  useEffect(() => {
+    setContainerPage(0);
+  }, [selectedGrn?.id]);
+
+  useEffect(() => {
+    if (isCreateMode || queueSearch.trim().length === 0 || queueItems.length !== 1) {
+      return;
+    }
+
+    const onlyMatch = queueItems[0];
+    if (selectedGrn?.id === onlyMatch.id) {
+      return;
+    }
+
+    void handleSelectGrn(onlyMatch.id);
+  }, [handleSelectGrn, isCreateMode, queueItems, queueSearch, selectedGrn?.id]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
     setFormError(null);
     setSuccessMessage(null);
 
-    const item = form.items[0];
-    if (item.quantityPerContainer * item.numberOfContainers !== item.receivedQuantity) {
+    const invalidContainerQuantityIndex = form.items.findIndex(
+      (item) => item.quantityPerContainer * item.numberOfContainers !== item.receivedQuantity
+    );
+    if (invalidContainerQuantityIndex >= 0) {
       setFormError(
-        "Quantity per container multiplied by number of containers must equal received quantity."
+        `Line item ${invalidContainerQuantityIndex + 1}: quantity per container multiplied by number of containers must equal received quantity.`
       );
       setIsSubmitting(false);
       return;
     }
 
-    if (item.acceptedQuantity + item.rejectedQuantity > item.receivedQuantity) {
-      setFormError("Accepted and rejected quantities cannot exceed received quantity.");
+    const invalidAcceptedRejectedIndex = form.items.findIndex(
+      (item) => item.acceptedQuantity + item.rejectedQuantity > item.receivedQuantity
+    );
+    if (invalidAcceptedRejectedIndex >= 0) {
+      setFormError(
+        `Line item ${invalidAcceptedRejectedIndex + 1}: accepted and rejected quantities cannot exceed received quantity.`
+      );
       setIsSubmitting(false);
       return;
     }
@@ -329,7 +499,8 @@ export function GrnPage() {
       );
       setQueueMessage(null);
       setSelectedGrn(refreshedGrn);
-      setIsDetailOpen(true);
+      setIsCreateMode(false);
+      setIsQueueVisible(false);
       setItemContainers({});
       setContainerLabels({});
       await loadGrns(currentPage);
@@ -365,861 +536,1344 @@ export function GrnPage() {
     }
   }
 
+  async function handlePrintLabels(grnId: string) {
+    setPrintingGrnId(grnId);
+    setError(null);
+
+    try {
+      const printData = await fetchGrnLabelPrintData(grnId);
+      if (printData.entries.length === 0) {
+        setError("No labels are available for printing on this GRN yet.");
+        return;
+      }
+
+      const printWindow = window.open("", "_blank", "noopener,noreferrer,width=1100,height=800");
+      if (!printWindow) {
+        setError("Unable to open the print window. Please allow pop-ups and try again.");
+        return;
+      }
+
+      printWindow.document.open();
+      printWindow.document.write(buildLabelPrintHtml(printData));
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+    } catch (printError) {
+      const message =
+        printError instanceof Error ? printError.message : "Unknown error while preparing GRN labels";
+      setError(message);
+    } finally {
+      setPrintingGrnId(null);
+    }
+  }
+
+  async function handleConfirmCancel() {
+    if (!cancelDraft) {
+      return;
+    }
+
+    setCancellingGrnId(cancelDraft.grnId);
+    setError(null);
+    setQueueMessage(null);
+
+    try {
+      const updatedGrn = await cancelGrn(
+        cancelDraft.grnId,
+        form.createdBy.trim() || currentUserName,
+        cancelReason.trim() || undefined
+      );
+      await loadGrns(currentPage);
+      if (selectedGrn?.id === cancelDraft.grnId) {
+        await handleSelectGrn(cancelDraft.grnId);
+      }
+      setQueueMessage(`GRN ${updatedGrn.grnNumber} cancelled successfully.`);
+      setCancelDraft(null);
+      setCancelReason("");
+    } catch (cancelError) {
+      const message =
+        cancelError instanceof Error ? cancelError.message : "Unknown error while cancelling GRN";
+      setError(message);
+    } finally {
+      setCancellingGrnId(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <SectionHeader
-        eyebrow="Inbound"
-        title="GRN operations should feel like a workflow--ToDO"
-        description="You can update ."
-      />
-
-      <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <article className="panel px-6 py-6">
+      <section className="rounded-[28px] border border-blue-100 bg-white px-6 py-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h4 className="text-lg font-semibold text-ink">Create GRN</h4>
-            <p className="mt-1 text-sm text-slate">
-              This first version creates a single-line-item GRN using the setup data already entered in master data.
+            <p className="text-xs text-slate-400">
+              {isCreateMode ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateMode(false)}
+                    className="font-medium text-blue-700 hover:underline"
+                  >
+                    GRN / Inbound
+                  </button>
+                  <span className="mx-1">/</span>
+                  <span className="font-medium text-slate-700">Create New GRN</span>
+                </>
+              ) : (
+                <>
+                  Operations / <span className="font-medium text-blue-700">GRN / Inbound</span>
+                </>
+              )}
             </p>
+            <h1 className="mt-2 text-2xl font-bold text-slate-800">
+              {isCreateMode ? "Create New GRN" : "GRN Inbound"}
+            </h1>
           </div>
-
-          <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-ink">GRN number</span>
-                <input
-                  required
-                  value={form.grnNumber}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, grnNumber: event.target.value }))
-                  }
-                  className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                  placeholder="GRN-001"
-                />
-              </label>
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-ink">Receipt date</span>
-                <input
-                  required
-                  type="date"
-                  value={form.receiptDate}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, receiptDate: event.target.value }))
-                  }
-                  className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                />
-              </label>
+          {isCreateMode ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsCreateMode(false)}
+                className="rounded-lg border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-600 hover:bg-blue-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="grn-create-form"
+                disabled={isSubmitting || isReferenceLoading}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+              >
+                {isSubmitting ? "Submitting..." : "Submit GRN →"}
+              </button>
             </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-ink">Supplier</span>
-                <select
-                  required
-                  value={form.supplierId}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, supplierId: event.target.value }))
-                  }
-                  className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                >
-                  <option value="">Select supplier</option>
-                  {suppliers.map((supplier) => (
-                    <option key={supplier.id} value={supplier.id}>
-                      {supplier.supplierCode} - {supplier.supplierName}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-ink">Vendor</span>
-                <select
-                  required
-                  value={form.vendorId}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      vendorId: event.target.value,
-                      vendorBusinessUnitId: ""
-                    }))
-                  }
-                  className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                >
-                  <option value="">Select vendor</option>
-                  {vendors.map((vendor) => (
-                    <option key={vendor.id} value={vendor.id}>
-                      {vendor.vendorCode} - {vendor.vendorName}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-ink">Vendor business unit</span>
-                <select
-                  required
-                  value={form.vendorBusinessUnitId}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, vendorBusinessUnitId: event.target.value }))
-                  }
-                  className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                >
-                  <option value="">Select business unit</option>
-                  {filteredVendorBusinessUnits.map((unit) => (
-                    <option key={unit.id} value={unit.id}>
-                      {unit.unitName}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-ink">Invoice number</span>
-                <input
-                  value={form.invoiceNumber}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, invoiceNumber: event.target.value }))
-                  }
-                  className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                  placeholder="INV-001"
-                />
-              </label>
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-ink">Created by</span>
-                <input
-                  required
-                  value={form.createdBy}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, createdBy: event.target.value }))
-                  }
-                  className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                />
-              </label>
-            </div>
-
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-ink">Remarks</span>
-              <textarea
-                value={form.remarks}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, remarks: event.target.value }))
-                }
-                className="min-h-24 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                placeholder="Initial inward receipt"
-              />
-            </label>
-
-            <div className="rounded-3xl border border-ink/10 bg-mist/80 p-5">
-              <h5 className="text-base font-semibold text-ink">Line item</h5>
-              <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">Material</span>
-                  <select
-                    required
-                    value={form.items[0].materialId}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        items: [
-                          {
-                            ...current.items[0],
-                            materialId: event.target.value,
-                            uom:
-                              materials.find((material) => material.id === event.target.value)?.uom ??
-                              current.items[0].uom
-                          }
-                        ]
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                  >
-                    <option value="">Select material</option>
-                    {materials.map((material) => (
-                      <option key={material.id} value={material.id}>
-                        {material.materialCode} - {material.materialName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">In-house batch</span>
-                  <input
-                    readOnly
-                    value="Auto-generated from GRN receipt"
-                    className="w-full rounded-2xl border border-ink/10 bg-mist px-4 py-3 text-sm text-slate outline-none"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">Pallet</span>
-                  <select
-                    required
-                    value={form.items[0].palletId}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        items: [{ ...current.items[0], palletId: event.target.value }]
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                  >
-                    <option value="">Select pallet</option>
-                    {filteredPallets.map((pallet) => (
-                      <option key={pallet.id} value={pallet.id}>
-                        {pallet.palletCode} - {pallet.palletName} ({pallet.storageCondition})
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">Material type</span>
-                  <input
-                    readOnly
-                    value={selectedMaterial?.materialType ?? "Select material first"}
-                    className="w-full rounded-2xl border border-ink/10 bg-mist px-4 py-3 text-sm text-ink outline-none"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">Received qty</span>
-                  <input
-                    required
-                    type="number"
-                    min="0"
-                    step="0.001"
-                    value={form.items[0].receivedQuantity}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        items: [
-                          { ...current.items[0], receivedQuantity: Number(event.target.value) }
-                        ]
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">Accepted qty</span>
-                  <input
-                    required
-                    type="number"
-                    min="0"
-                    step="0.001"
-                    value={form.items[0].acceptedQuantity}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        items: [
-                          { ...current.items[0], acceptedQuantity: Number(event.target.value) }
-                        ]
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">Rejected qty</span>
-                  <input
-                    required
-                    type="number"
-                    min="0"
-                    step="0.001"
-                    value={form.items[0].rejectedQuantity}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        items: [
-                          { ...current.items[0], rejectedQuantity: Number(event.target.value) }
-                        ]
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">UOM</span>
-                  <input
-                    required
-                    value={form.items[0].uom}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        items: [{ ...current.items[0], uom: event.target.value }]
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">Container type</span>
-                  <select
-                    value={form.items[0].containerType}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        items: [
-                          {
-                            ...current.items[0],
-                            containerType: event.target.value as ContainerType
-                          }
-                        ]
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                  >
-                    {containerTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">Containers</span>
-                  <input
-                    required
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={form.items[0].numberOfContainers}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        items: [
-                          { ...current.items[0], numberOfContainers: Number(event.target.value) }
-                        ]
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">Qty per container</span>
-                  <input
-                    required
-                    type="number"
-                    min="0"
-                    step="0.001"
-                    value={form.items[0].quantityPerContainer}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        items: [
-                          { ...current.items[0], quantityPerContainer: Number(event.target.value) }
-                        ]
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">Vendor batch</span>
-                  <input
-                    required
-                    value={form.items[0].vendorBatch}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        items: [{ ...current.items[0], vendorBatch: event.target.value }]
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">Unit price</span>
-                  <input
-                    required
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.items[0].unitPrice}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        items: [{ ...current.items[0], unitPrice: Number(event.target.value) }]
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">QC status</span>
-                  <select
-                    value={form.items[0].qcStatus}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        items: [{ ...current.items[0], qcStatus: event.target.value as QcStatus }]
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                  >
-                    {qcStatuses.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              <div className="mt-4 grid gap-4 md:grid-cols-3">
-                {["manufactureDate", "expiryDate", "retestDate"].map((field) => (
-                  <label key={field} className="block">
-                    <span className="mb-2 block text-sm font-medium capitalize text-ink">
-                      {field.replace(/([A-Z])/g, " $1")}
-                    </span>
-                    <input
-                      type="date"
-                      value={form.items[0][field as keyof (typeof form.items)[0]] as string}
-                      onChange={(event) =>
-                        setForm((current) => ({
-                          ...current,
-                          items: [{ ...current.items[0], [field]: event.target.value }]
-                        }))
-                      }
-                      className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                    />
-                  </label>
-                ))}
-              </div>
-
-              <label className="mt-4 block">
-                <span className="mb-2 block text-sm font-medium text-ink">Description</span>
-                <textarea
-                  value={form.items[0].description}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      items: [{ ...current.items[0], description: event.target.value }]
-                    }))
-                  }
-                  className="min-h-24 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                />
-              </label>
-
-              <div className="mt-4 rounded-2xl border border-ink/10 bg-white p-4">
-                <h6 className="text-sm font-semibold text-ink">Line item document</h6>
-                <p className="mt-1 text-sm text-slate">
-                  Upload the line item document here while creating the GRN.
-                </p>
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <input
-                    value={createDocumentDraft.documentName}
-                    onChange={(event) =>
-                      setCreateDocumentDraft((current) => ({
-                        ...current,
-                        documentName: event.target.value
-                      }))
-                    }
-                    className="rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                    placeholder="Document name"
-                  />
-                  <input
-                    value={createDocumentDraft.documentType}
-                    onChange={(event) =>
-                      setCreateDocumentDraft((current) => ({
-                        ...current,
-                        documentType: event.target.value
-                      }))
-                    }
-                    className="rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                    placeholder="Document type"
-                  />
-                </div>
-                <div className="mt-4 grid gap-4 md:grid-cols-[1.2fr_1fr]">
-                  <input
-                    value={createDocumentDraft.documentUrl}
-                    onChange={(event) =>
-                      setCreateDocumentDraft((current) => ({
-                        ...current,
-                        documentUrl: event.target.value
-                      }))
-                    }
-                    className="rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
-                    placeholder="Optional URL/path"
-                  />
-                  <input
-                    type="file"
-                    onChange={(event) =>
-                      setCreateDocumentDraft((current) => ({
-                        ...current,
-                        file: event.target.files?.[0] ?? null
-                      }))
-                    }
-                    className="rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {successMessage ? (
-              <div className="rounded-2xl border border-moss/20 bg-moss/10 px-4 py-4 text-sm text-moss">
-                {successMessage}
-              </div>
-            ) : null}
-
-            {formError ? (
-              <div className="rounded-2xl border border-redoxide/20 bg-redoxide/10 px-4 py-4 text-sm text-redoxide">
-                {formError}
-              </div>
-            ) : null}
-
-            <button
-              type="submit"
-              disabled={isSubmitting || isReferenceLoading}
-              className="rounded-2xl bg-ink px-4 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-ink/50"
-            >
-              {isSubmitting ? "Creating GRN..." : "Create GRN"}
-            </button>
-          </form>
-        </article>
-
-        <article className="panel px-6 py-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h4 className="text-lg font-semibold text-ink">GRN queue</h4>
-              <p className="mt-1 text-sm text-slate">
-                Keep the creation screen clean and open the queue only when you want to inspect or receive records.
-              </p>
-            </div>
-          </div>
-          <div className="mt-5 rounded-[22px] bg-[#f3f6f8] px-5 py-5 text-sm text-slate">
-            <p>
-              Queue is hidden by default. Use the highlighted link to open the GRN queue and select a record.
-            </p>
+          ) : (
             <button
               type="button"
-              onClick={() => setIsQueueModalOpen(true)}
-              className="mt-4 text-sm font-semibold text-steel underline underline-offset-4"
+              onClick={() => setIsCreateMode(true)}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700"
             >
-              Open GRN Queue
+              + New GRN
             </button>
+          )}
+        </div>
+      </section>
+
+      {!isCreateMode && queueCounts.DRAFT > 0 ? (
+        <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <span className="text-sm text-amber-800">
+            <strong>{queueCounts.DRAFT} draft GRNs</strong> are waiting to be received or cancelled.
+          </span>
+        </section>
+      ) : null}
+
+      {queueMessage ? (
+        <section className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          {queueMessage}
+        </section>
+      ) : null}
+
+      {error ? (
+        <section className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </section>
+      ) : null}
+
+      {!isCreateMode ? (
+      <section className="grid gap-4 xl:grid-cols-4">
+        {[
+          ["All GRNs", queueCounts.ALL, "border-l-blue-500"],
+          ["Draft", queueCounts.DRAFT, "border-l-amber-400"],
+          ["Received", queueCounts.RECEIVED, "border-l-green-500"],
+          ["Cancelled", queueCounts.CANCELLED, "border-l-red-400"]
+        ].map(([label, value, tone]) => (
+          <article key={label} className={`rounded-2xl border border-blue-100 border-l-4 bg-white p-4 shadow-sm ${tone}`}>
+            <p className="text-xs text-slate-500">{label}</p>
+            <p className="mt-2 text-3xl font-bold text-slate-800">{isLoading ? "--" : value}</p>
+          </article>
+        ))}
+      </section>
+      ) : null}
+
+      {!isCreateMode ? (
+      <section>
+        {isQueueVisible ? (
+        <aside className="overflow-hidden rounded-[24px] border border-blue-100 bg-white shadow-sm">
+          <div className="border-b border-blue-100 px-4 py-4">
+            <p className="text-sm font-semibold text-slate-700">GRN queue</p>
+            <input
+              value={queueSearch}
+              onChange={(event) => setQueueSearch(event.target.value)}
+              placeholder="Search GRN, material, supplier..."
+              className="mt-3 w-full rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-slate-700 outline-none focus:border-blue-300"
+            />
+            <div className="mt-3 flex flex-wrap gap-2">
+              {(["ALL", "DRAFT", "RECEIVED", "CANCELLED"] as QueueFilter[]).map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  onClick={() => setQueueFilter(filter)}
+                  className={[
+                    "rounded-full px-3 py-1 text-[11px] font-semibold transition",
+                    queueFilter === filter
+                      ? "bg-blue-600 text-white"
+                      : "bg-blue-50 text-slate-500 hover:bg-blue-100"
+                  ].join(" ")}
+                >
+                  {filter === "ALL"
+                    ? `All`
+                    : filter === "DRAFT"
+                      ? "Pending QC"
+                      : filter === "RECEIVED"
+                        ? "Released"
+                        : "Rejected"}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {queueMessage ? (
-            <div className="mt-5">
-              <div className="rounded-2xl border border-moss/20 bg-moss/10 px-4 py-4 text-sm text-moss">
-                {queueMessage}
+          <div className="max-h-[780px] overflow-y-auto">
+            {isLoading ? (
+              <p className="px-4 py-6 text-sm text-slate-500">Loading GRNs...</p>
+            ) : queueItems.length === 0 ? (
+              <p className="px-4 py-6 text-sm text-slate-500">No GRNs match the current filter.</p>
+            ) : (
+              queueItems.map((grn) => (
+                <button
+                  key={grn.id}
+                  type="button"
+                  onClick={() => void handleSelectGrn(grn.id, { focusDetail: true })}
+                  className={[
+                    "w-full border-b border-slate-100 px-4 py-4 text-left transition",
+                    selectedGrn?.id === grn.id ? "border-l-[3px] border-l-blue-600 bg-blue-50" : "hover:bg-slate-50"
+                  ].join(" ")}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="font-mono text-xs font-bold text-blue-700">{grn.grnNumber}</span>
+                    <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusPill(grn.status)}`}>
+                      {grn.status === "DRAFT" ? "QC Pending" : grn.status === "RECEIVED" ? "Released" : "Rejected"}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs font-semibold text-slate-800">
+                    {grn.items[0] ? materialById.get(grn.items[0].materialId)?.materialName ?? summarizeMaterials(grn) : summarizeMaterials(grn)}
+                  </p>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    {(supplierById.get(grn.supplierId)?.supplierName ?? "Supplier")} · {formatDisplayDate(grn.receiptDate)}
+                  </p>
+                  <p className="mt-1 text-[10px] text-slate-400">
+                    {sumQuantity(grn, "receivedQuantity")} · {grn.items.reduce((total, item) => total + item.numberOfContainers, 0)} containers
+                  </p>
+                </button>
+              ))
+            )}
+          </div>
+
+          {page ? (
+            <div className="flex items-center justify-between gap-3 border-t border-blue-100 px-4 py-3 text-xs text-slate-500">
+              <span>
+                Page {page.number + 1} of {Math.max(page.totalPages, 1)}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((current) => Math.max(0, current - 1))}
+                  disabled={page.first}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-slate-700 disabled:cursor-not-allowed disabled:text-slate-300"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((current) => current + 1)}
+                  disabled={page.last}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-slate-700 disabled:cursor-not-allowed disabled:text-slate-300"
+                >
+                  Next
+                </button>
               </div>
             </div>
           ) : null}
-        </article>
-
-      </section>
-
-      <section
-        ref={detailSectionRef}
-        className={`panel px-6 py-6 transition-all duration-300 ${
-          isDetailHighlighted ? "ring-2 ring-steel/60 bg-steel/5" : ""
-        }`}
-      >
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h4 className="text-lg font-semibold text-ink">GRN detail, containers, and labels</h4>
-            <p className="mt-1 text-sm text-slate">
-              Select a GRN from the list, then open this section to inspect line items, generated containers, and label history.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {selectedGrn ? (
-              <span className={`status-pill ${statusTone(selectedGrn.status)}`}>{selectedGrn.status}</span>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setIsDetailOpen((current) => !current)}
-              disabled={!selectedGrn}
-              className="rounded-2xl bg-mist px-4 py-3 text-sm font-medium text-slate disabled:cursor-not-allowed disabled:text-slate/50"
-            >
-              {isDetailOpen ? "Hide Detail" : "Open Detail"}
-            </button>
-          </div>
-        </div>
-
-        {isDetailLoading ? <p className="mt-6 text-sm text-slate">Loading GRN detail...</p> : null}
-
-        {!isDetailLoading && !selectedGrn ? (
-          <p className="mt-6 text-sm text-slate">No GRN selected yet.</p>
-        ) : null}
-
-        {!isDetailLoading && selectedGrn && !isDetailOpen ? (
-          <p className="mt-6 text-sm text-slate">GRN detail is hidden. Click Open Detail to view the selected record.</p>
-        ) : null}
-
-        {!isDetailLoading && selectedGrn && isDetailOpen ? (
-          <div className="mt-6 space-y-6">
-            {isDetailHighlighted ? (
-              <div className="rounded-2xl border border-steel/20 bg-steel/10 px-4 py-3 text-sm text-steel">
-                Selected GRN opened below. Use the container links to view sampling label details.
+        </aside>
+        ) : (
+        <section
+          ref={detailSectionRef}
+          className={`rounded-[24px] border border-blue-100 bg-white p-5 shadow-sm transition-all duration-300 ${
+            isDetailHighlighted ? "ring-2 ring-blue-300" : ""
+          }`}
+        >
+          {selectedGrn ? (
+            <>
+              <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setIsQueueVisible(true)}
+                    className="mb-3 rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50"
+                  >
+                    ← Back to GRNs
+                  </button>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h2 className="font-mono text-2xl font-bold text-slate-800">{selectedGrn.grnNumber}</h2>
+                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusPill(selectedGrn.status)}`}>
+                      {selectedGrn.status === "DRAFT" ? "QC Pending" : selectedGrn.status === "RECEIVED" ? "Released" : "Rejected"}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-500">
+                    Received {formatDisplayDateTime(selectedGrn.receiptDate)} · Created by {selectedGrn.createdBy}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="rounded-full bg-green-50 px-3 py-1 text-[11px] font-semibold text-green-700">
+                      Accepted: {sumQuantity(selectedGrn, "acceptedQuantity")}
+                    </span>
+                    <span className="rounded-full bg-red-50 px-3 py-1 text-[11px] font-semibold text-red-700">
+                      Rejected: {formatQuantity(selectedGrn.items.reduce((sum, item) => sum + (item.rejectedQuantity ?? 0), 0), selectedGrn.items[0]?.uom ?? "")}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedGrn.status === "RECEIVED" ? (
+                    <button
+                      type="button"
+                      onClick={() => void handlePrintLabels(selectedGrn.id)}
+                      disabled={printingGrnId === selectedGrn.id}
+                      className="rounded-xl border border-blue-200 px-4 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                    >
+                      {printingGrnId === selectedGrn.id ? "Preparing..." : "Print Labels"}
+                    </button>
+                  ) : null}
+                  {selectedGrn.status === "RECEIVED" ? (
+                    <button
+                      type="button"
+                      className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm"
+                    >
+                      Send to QC →
+                    </button>
+                  ) : null}
+                  {selectedGrn.status === "DRAFT" ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => void handleReceive(selectedGrn.id)}
+                        disabled={receivingGrnId === selectedGrn.id}
+                        className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+                      >
+                        {receivingGrnId === selectedGrn.id ? "Receiving..." : "Receive"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCancelDraft({ grnId: selectedGrn.id, grnNumber: selectedGrn.grnNumber });
+                          setCancelReason("");
+                        }}
+                        className="rounded-xl border border-red-200 px-4 py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : null}
+                </div>
               </div>
-            ) : null}
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-2xl border border-ink/10 px-4 py-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate">GRN</p>
-                <p className="mt-2 text-lg font-semibold text-ink">{selectedGrn.grnNumber}</p>
+
+              <div className="rounded-2xl border border-blue-100 bg-white px-4 py-4">
+              <div className="flex items-center gap-3 overflow-x-auto">
+                {[
+                  { label: "GRN Created", done: true },
+                  { label: "Items Received", done: selectedGrn.status !== "DRAFT" },
+                  { label: "QC Sampling", done: selectedGrn.status === "RECEIVED" },
+                  { label: "QC Decision", done: selectedGrn.status === "RECEIVED" },
+                  { label: "Released", done: false }
+                ].map((step, index) => (
+                  <div key={step.label} className="flex min-w-max items-center gap-3">
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${step.done ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-500"}`}>
+                      {index + 1}
+                    </div>
+                    <span className={`text-xs font-semibold ${step.done ? "text-blue-700" : "text-slate-400"}`}>{step.label}</span>
+                    {index < 4 ? <div className={`h-0.5 w-8 ${step.done ? "bg-blue-300" : "bg-slate-200"}`} /> : null}
+                  </div>
+                ))}
               </div>
-              <div className="rounded-2xl border border-ink/10 px-4 py-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate">Receipt date</p>
-                <p className="mt-2 text-lg font-semibold text-ink">{selectedGrn.receiptDate}</p>
               </div>
-              <div className="rounded-2xl border border-ink/10 px-4 py-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate">Invoice</p>
-                <p className="mt-2 text-lg font-semibold text-ink">
-                  {selectedGrn.invoiceNumber || "Not set"}
+
+              {isDetailLoading ? (
+                <p className="mt-6 text-sm text-slate-500">Loading GRN detail...</p>
+              ) : (
+                <div className="mt-6 space-y-5">
+                  {selectedGrn.items[0] ? (() => {
+                    const allDocs = selectedGrn.items.flatMap((item) => item.documents);
+                    const allContainers = selectedGrn.items.flatMap((item) => itemContainers[item.id] ?? []);
+                    const CONTAINERS_PER_PAGE = 5;
+                    const totalContainerPages = Math.ceil(allContainers.length / CONTAINERS_PER_PAGE);
+                    const pagedContainers = allContainers.slice(
+                      containerPage * CONTAINERS_PER_PAGE,
+                      (containerPage + 1) * CONTAINERS_PER_PAGE
+                    );
+
+                    return (
+                      <div className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+                        {/* Left column: Supplier & Material + Attached Documents */}
+                        <div className="space-y-4">
+                          <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+                            <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                              <div className="h-4 w-1 rounded bg-blue-500" />
+                              Supplier & Material
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                              {[
+                                { label: "Supplier", value: supplierById.get(selectedGrn.supplierId)?.supplierName ?? "Not linked", mono: false },
+                                { label: "Vendor", value: vendorById.get(selectedGrn.vendorId)?.vendorName ?? "Not linked", mono: false },
+                                { label: "Invoice No.", value: selectedGrn.invoiceNumber || "Pending", mono: true },
+                                { label: "Vendor BU", value: vendorBusinessUnitById.get(selectedGrn.vendorBusinessUnitId)?.unitName ?? "Not linked", mono: false },
+                                { label: "Material", value: materialById.get(selectedGrn.items[0].materialId)?.materialName ?? "Pending", mono: false },
+                                { label: "Material Code", value: materialById.get(selectedGrn.items[0].materialId)?.materialCode ?? "Pending", mono: true, accent: true },
+                                { label: "Supplier Batch", value: selectedGrn.items[0].vendorBatch || "Pending", mono: true },
+                                { label: "Receipt Time", value: formatDisplayDateTime(selectedGrn.receiptDate), mono: false },
+                                { label: "Expiry Date", value: formatDisplayDate(selectedGrn.items[0].expiryDate), mono: false },
+                                { label: "MFG Date", value: formatDisplayDate(selectedGrn.items[0].manufactureDate), mono: false },
+                                { label: "Total Received", value: sumQuantity(selectedGrn, "receivedQuantity"), mono: false, bold: true },
+                                { label: "Total Accepted", value: sumQuantity(selectedGrn, "acceptedQuantity"), mono: false, bold: true },
+                                { label: "Remarks", value: selectedGrn.remarks || "No remarks", mono: false },
+                                {
+                                  label: "Audit Trail",
+                                  value: selectedGrn.updatedBy
+                                    ? `Created by ${selectedGrn.createdBy} · Last updated by ${selectedGrn.updatedBy}`
+                                    : `Created by ${selectedGrn.createdBy}`,
+                                  mono: false
+                                },
+                              ].map(({ label, value, mono, accent, bold }) => (
+                                <div key={label}>
+                                  <div className="text-[10px] font-semibold uppercase text-slate-400">{label}</div>
+                                  <div className={`mt-0.5 text-[13px] leading-5 ${mono ? "font-mono" : ""} ${accent ? "text-blue-600" : bold ? "font-bold text-blue-700" : "font-semibold text-slate-800"}`}>
+                                    {value}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Attached Documents – only shown when docs exist */}
+                          {allDocs.length > 0 ? (
+                            <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+                              <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                                <div className="h-4 w-1 rounded bg-violet-500" />
+                                Attached Documents
+                              </div>
+                              <div className="space-y-2">
+                                {allDocs.map((doc) => (
+                                  <div key={doc.id} className="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2.5">
+                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-red-100 text-[10px] font-bold text-red-500">
+                                      PDF
+                                    </div>
+                                    <span className="flex-1 truncate text-xs font-medium text-slate-700">{doc.documentName}</span>
+                                    <span className="shrink-0 text-[10px] text-slate-400">{doc.documentType}</span>
+                                    {doc.documentUrl ? (
+                                      <a href={doc.documentUrl} target="_blank" rel="noopener noreferrer"
+                                        className="shrink-0 text-[10px] font-semibold text-blue-600 hover:underline">
+                                        View
+                                      </a>
+                                    ) : null}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+
+                        {/* Right column: Containers with pagination */}
+                        <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+                          <div className="mb-4 flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                              <div className="h-4 w-1 rounded bg-indigo-500" />
+                              Containers ({allContainers.length})
+                            </div>
+                          </div>
+
+                          {allContainers.length === 0 ? (
+                            <p className="py-4 text-sm text-slate-500">No containers generated yet.</p>
+                          ) : (
+                            <>
+                              <div className="overflow-hidden rounded-xl border border-blue-100">
+                                <div className="overflow-x-auto">
+                                  <table className="min-w-full divide-y divide-blue-100 text-left">
+                                    <thead className="bg-blue-50/70">
+                                      <tr className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
+                                        <th className="px-3 py-3">Container</th>
+                                        <th className="px-3 py-3">Type</th>
+                                        <th className="px-3 py-3">Quantity</th>
+                                        <th className="px-3 py-3">Label</th>
+                                        <th className="px-3 py-3">Pallet</th>
+                                        <th className="px-3 py-3">Status</th>
+                                        <th className="px-3 py-3 text-right">Action</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-blue-50 bg-white">
+                                      {pagedContainers.map((container) => {
+                                        const statusLabel = container.sampled ? "Sampling" : container.labelStatus;
+                                        const statusCls = container.sampled
+                                          ? "bg-amber-100 text-amber-700"
+                                          : container.labelStatus === "APPLIED"
+                                            ? "bg-green-100 text-green-700"
+                                            : "bg-slate-100 text-slate-600";
+                                        return (
+                                          <tr key={container.id} className="text-xs text-slate-700">
+                                            <td className="px-3 py-3 font-semibold text-slate-800">
+                                              {container.containerNumber}
+                                            </td>
+                                            <td className="px-3 py-3">
+                                              <span className="rounded bg-blue-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-blue-700">
+                                                {container.containerType}
+                                              </span>
+                                            </td>
+                                            <td className="px-3 py-3">
+                                              {container.quantity} {container.uom}
+                                            </td>
+                                            <td className="px-3 py-3 font-mono text-[11px] text-blue-600">
+                                              {container.internalLot}
+                                            </td>
+                                            <td className="px-3 py-3 text-[11px] text-slate-500">
+                                              {palletById.get(container.palletId)?.palletCode ?? "Pending"}
+                                            </td>
+                                            <td className="px-3 py-3">
+                                              <span
+                                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold ${statusCls}`}
+                                              >
+                                                <span
+                                                  className={`h-1.5 w-1.5 rounded-full ${
+                                                    container.sampled
+                                                      ? "bg-amber-500"
+                                                      : container.labelStatus === "APPLIED"
+                                                        ? "bg-green-500"
+                                                        : "bg-slate-400"
+                                                  }`}
+                                                />
+                                                {statusLabel}
+                                              </span>
+                                            </td>
+                                            <td className="px-3 py-3 text-right">
+                                              <button
+                                                type="button"
+                                                onClick={() => setActiveLabelContainer(container)}
+                                                className="text-[11px] font-semibold text-blue-600 hover:underline"
+                                              >
+                                                Label Details
+                                              </button>
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+
+                              {totalContainerPages > 1 ? (
+                                <div className="mt-3 flex items-center justify-between border-t border-blue-50 pt-3">
+                                  <span className="text-[11px] text-slate-400">
+                                    {containerPage * CONTAINERS_PER_PAGE + 1}–{Math.min((containerPage + 1) * CONTAINERS_PER_PAGE, allContainers.length)} of {allContainers.length}
+                                  </span>
+                                  <div className="flex gap-1.5">
+                                    <button
+                                      type="button"
+                                      disabled={containerPage === 0}
+                                      onClick={() => setContainerPage((p) => p - 1)}
+                                      className="rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] text-slate-600 disabled:cursor-not-allowed disabled:text-slate-300"
+                                    >
+                                      ← Prev
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={containerPage >= totalContainerPages - 1}
+                                      onClick={() => setContainerPage((p) => p + 1)}
+                                      className="rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] text-slate-600 disabled:cursor-not-allowed disabled:text-slate-300"
+                                    >
+                                      Next →
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : null}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })() : null}
+
+                  {/* Line items – clean mini-card per line */}
+                  {selectedGrn.items.map((item) => {
+                    const material = materialById.get(item.materialId);
+                    const batch = item.batchId ? batchById.get(item.batchId) : null;
+                    const pallet = item.palletId ? palletById.get(item.palletId) : null;
+
+                    return (
+                      <article key={item.id} className="rounded-2xl border border-blue-100 bg-slate-50/60 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Line {item.lineNumber}</p>
+                            <p className="mt-1 text-sm font-semibold text-slate-800">
+                              {material ? `${material.materialCode} – ${material.materialName}` : item.materialId}
+                            </p>
+                          </div>
+                          <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-semibold ${
+                            item.qcStatus === "APPROVED" ? "bg-green-100 text-green-700"
+                            : item.qcStatus === "REJECTED" ? "bg-red-100 text-red-700"
+                            : "bg-amber-100 text-amber-700"
+                          }`}>
+                            {item.qcStatus}
+                          </span>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                          {[
+                            { label: "Batch", value: batch?.batchNumber ?? item.batchId ?? "Pending", mono: true },
+                            { label: "Pallet", value: pallet?.palletCode ?? item.palletId ?? "Pending", mono: true },
+                            { label: "Received", value: `${item.receivedQuantity} ${item.uom}` },
+                            { label: "Accepted", value: `${item.acceptedQuantity} ${item.uom}`, accent: "green" },
+                            { label: "Containers", value: String(item.numberOfContainers) },
+                          ].map(({ label, value, mono, accent }) => (
+                            <div key={label} className="rounded-xl border border-blue-100 bg-white px-3 py-2.5">
+                              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{label}</div>
+                              <div className={`mt-1 text-xs font-semibold ${mono ? "font-mono" : ""} ${accent === "green" ? "text-green-700" : "text-slate-800"}`}>
+                                {value}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {item.documents.length > 0 ? (
+                          <div className="mt-3 space-y-1.5">
+                            {item.documents.map((doc) => (
+                              <div key={doc.id} className="flex items-center gap-3 rounded-xl border border-blue-100 bg-white px-3 py-2">
+                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-red-100 text-[9px] font-bold text-red-500">PDF</div>
+                                <span className="flex-1 truncate text-xs text-slate-700">{doc.documentName}</span>
+                                <span className="text-[10px] text-slate-400">{doc.documentType}</span>
+                                {doc.documentUrl ? (
+                                  <a href={doc.documentUrl} target="_blank" rel="noopener noreferrer"
+                                    className="text-[10px] font-semibold text-blue-600 hover:underline">View</a>
+                                ) : null}
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </article>
+                    );
+                  })}
+
+                  <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+                    <div className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                      <div className="h-4 w-1 rounded bg-slate-400" />
+                      Audit Trail
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-blue-500 ring-4 ring-blue-50" />
+                        <div>
+                          <p className="text-xs font-semibold text-slate-700">GRN Created</p>
+                          <p className="mt-0.5 text-[11px] text-slate-500">
+                            by {selectedGrn.createdBy} · {formatDisplayDate(selectedGrn.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                      {selectedGrn.updatedBy ? (
+                        <div className="flex items-start gap-3">
+                          <div className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-indigo-500 ring-4 ring-indigo-50" />
+                          <div>
+                            <p className="text-xs font-semibold text-slate-700">
+                              {selectedGrn.status === "RECEIVED"
+                                ? "Received / Released"
+                                : selectedGrn.status === "CANCELLED"
+                                  ? "Cancelled"
+                                  : "Updated"}
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-slate-500">
+                              by {selectedGrn.updatedBy} · {formatDisplayDate(selectedGrn.updatedAt)}
+                            </p>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex min-h-[420px] items-center justify-center rounded-[22px] border border-dashed border-blue-200 bg-blue-50/40 px-6 text-center">
+              <div>
+                <p className="text-sm font-semibold text-slate-700">No GRN selected</p>
+                <p className="mt-2 text-sm text-slate-500">
+                  Return to the queue and select a GRN to view receipt data, line items, generated containers, and label history.
                 </p>
+                <button
+                  type="button"
+                  onClick={() => setIsQueueVisible(true)}
+                  className="mt-4 rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50"
+                >
+                  Open GRN Queue
+                </button>
               </div>
-              <div className="rounded-2xl border border-ink/10 px-4 py-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-slate">Items</p>
-                <p className="mt-2 text-lg font-semibold text-ink">{selectedGrn.items.length}</p>
+            </div>
+          )}
+        </section>
+        )}
+      </section>
+      ) : (
+      <section className="overflow-hidden rounded-[24px] border border-blue-100 bg-white shadow-sm">
+        <form id="grn-create-form" className="space-y-4" onSubmit={handleSubmit}>
+          <div className="grid gap-0 xl:grid-cols-[220px_minmax(0,1fr)]">
+            <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Progress</p>
+              <div className="mt-4 space-y-2">
+                {[
+                  ["1", "Header Info", "Supplier & invoice"],
+                  ["2", "Material Details", "Material & batch"],
+                  ["3", "Containers", "Qty & container types"],
+                  ["4", "Documents", "CoA and attachments"],
+                  ["5", "Review & Submit", "Finalize GRN"]
+                ].map(([step, title, note], index) => (
+                  <div
+                    key={step}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2 ${
+                      index === 0 ? "border border-blue-200 bg-white" : ""
+                    }`}
+                  >
+                    <div
+                      className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
+                        index === 0 ? "bg-blue-600 text-white shadow-sm" : "bg-slate-200 text-slate-500"
+                      }`}
+                    >
+                      {step}
+                    </div>
+                    <div>
+                      <div className={`text-xs font-bold ${index === 0 ? "text-blue-700" : "text-slate-600"}`}>
+                        {title}
+                      </div>
+                      <div className="text-[10px] text-slate-400">{note}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-5 rounded-xl border border-blue-100 bg-white p-3">
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Auto-assigned</div>
+                <div className="mt-2 text-[10px] text-slate-500">GRN number</div>
+                <div className="text-xs font-semibold text-blue-700">{form.grnNumber || "Will be assigned"}</div>
+                <div className="mt-2 text-[10px] text-slate-500">Created by</div>
+                <div className="text-xs font-semibold text-slate-700">{currentUserName}</div>
+                <div className="mt-2 text-[10px] text-slate-500">Receipt date</div>
+                <div className="text-xs font-semibold text-slate-700">{formatDisplayDate(form.receiptDate)}</div>
               </div>
             </div>
 
-            {selectedGrn.items.map((item) => {
-              const material = materials.find((entry) => entry.id === item.materialId);
-              const batch = item.batchId ? batches.find((entry) => entry.id === item.batchId) : null;
-              const pallet = item.palletId ? pallets.find((entry) => entry.id === item.palletId) : null;
-              const containers = itemContainers[item.id] ?? [];
+            <div className="space-y-4 bg-[#f7faff] p-6">
+              <div className="mx-auto w-full max-w-4xl space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">GRN number</span>
+                  <input
+                    required
+                    value={form.grnNumber}
+                    onChange={(event) => setForm((current) => ({ ...current, grnNumber: event.target.value }))}
+                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                    placeholder="GRN-001"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Receipt date</span>
+                  <input
+                    required
+                    type="date"
+                    value={form.receiptDate}
+                    onChange={(event) => setForm((current) => ({ ...current, receiptDate: event.target.value }))}
+                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                  />
+                </label>
+              </div>
 
-              return (
-                <article key={item.id} className="rounded-3xl border border-ink/10 bg-white/70 p-5">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-slate">
-                        Line {item.lineNumber}
-                      </p>
-                      <p className="mt-2 text-lg font-semibold text-ink">
-                        {material
-                          ? `${material.materialCode} - ${material.materialName}`
-                          : item.materialId}
-                      </p>
-                    </div>
-                    <span className="status-pill bg-ink/5 text-ink">{item.qcStatus}</span>
-                  </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Supplier</span>
+                  <select
+                    required
+                    value={form.supplierId}
+                    onChange={(event) => setForm((current) => ({ ...current, supplierId: event.target.value }))}
+                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                  >
+                    <option value="">Select supplier</option>
+                    {suppliers.map((supplier) => (
+                      <option key={supplier.id} value={supplier.id}>
+                        {supplier.supplierCode} - {supplier.supplierName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Vendor</span>
+                  <select
+                    required
+                    value={form.vendorId}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        vendorId: event.target.value,
+                        vendorBusinessUnitId: ""
+                      }))
+                    }
+                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                  >
+                    <option value="">Select vendor</option>
+                    {vendors.map((vendor) => (
+                      <option key={vendor.id} value={vendor.id}>
+                        {vendor.vendorCode} - {vendor.vendorName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Vendor business unit</span>
+                  <select
+                    required
+                    value={form.vendorBusinessUnitId}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, vendorBusinessUnitId: event.target.value }))
+                    }
+                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                  >
+                    <option value="">Select business unit</option>
+                    {filteredVendorBusinessUnits.map((unit) => (
+                      <option key={unit.id} value={unit.id}>
+                        {unit.unitName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
 
-                  <div className="mt-4 grid gap-3 text-sm text-slate md:grid-cols-2 xl:grid-cols-5">
-                    <p>Batch: {batch ? batch.batchNumber : item.batchId || "Not set"}</p>
-                    <p>Pallet: {pallet ? pallet.palletCode : item.palletId || "Not set"}</p>
-                    <p>Received: {item.receivedQuantity} {item.uom}</p>
-                    <p>Accepted: {item.acceptedQuantity} {item.uom}</p>
-                    <p>Containers: {item.numberOfContainers}</p>
-                  </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Invoice number</span>
+                  <input
+                    value={form.invoiceNumber}
+                    onChange={(event) => setForm((current) => ({ ...current, invoiceNumber: event.target.value }))}
+                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                    placeholder="INV-001"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Created by</span>
+                  <input
+                    required
+                    value={form.createdBy}
+                    onChange={(event) => setForm((current) => ({ ...current, createdBy: event.target.value }))}
+                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                  />
+                </label>
+              </div>
 
-                  <div className="mt-5 space-y-4">
-                    <div className="rounded-3xl border border-ink/10 bg-white p-5">
-                      <h5 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate">
-                        Line Item Documents
-                      </h5>
-                      <div className="mt-4 space-y-3 text-sm">
-                        {item.documents.length === 0 ? (
-                          <p className="text-slate">No documents uploaded for this line item yet.</p>
-                        ) : (
-                          item.documents.map((document) => (
-                            <div key={document.id} className="rounded-2xl border border-ink/10 px-4 py-4">
-                              <p className="font-medium text-ink">{document.documentName}</p>
-                              <p className="mt-1 text-slate">{document.documentType} • {document.fileName}</p>
-                              <p className="mt-1 text-slate">
-                                {document.documentPath ?? document.documentUrl ?? "Path unavailable"}
-                              </p>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-ink">Remarks</span>
+                <textarea
+                  value={form.remarks}
+                  onChange={(event) => setForm((current) => ({ ...current, remarks: event.target.value }))}
+                  className="min-h-24 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                  placeholder="Initial inward receipt"
+                />
+              </label>
 
-                    <h5 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate">
-                      Containers
-                    </h5>
-                    {containers.length === 0 ? (
-                      <p className="text-sm text-slate">No containers generated yet for this line item.</p>
-                    ) : (
-                      containers.map((container) => (
-                        <div key={container.id} className="rounded-2xl border border-ink/10 px-4 py-4">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                              <p className="text-sm font-semibold text-ink">
-                                {container.containerNumber} / {container.internalLot}
-                              </p>
-                              <p className="mt-1 text-sm text-slate">
-                                {container.quantity} {container.uom} • {container.inventoryStatus}
-                              </p>
-                            </div>
-                            <span className="status-pill bg-steel/15 text-steel">
-                              {container.labelStatus}
-                            </span>
+              <div className="rounded-3xl border border-blue-100 bg-blue-50/40 p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <h5 className="text-base font-semibold text-ink">Line items</h5>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((current) => ({ ...current, items: [...current.items, createEmptyGrnItem()] }))
+                    }
+                    className="rounded-xl border border-blue-200 bg-white px-4 py-2 text-sm font-medium text-blue-700"
+                  >
+                    Add Item
+                  </button>
+                </div>
+
+                <div className="mt-4 space-y-5">
+                  {form.items.map((item, index) => {
+                    const selectedMaterial = materials.find((material) => material.id === item.materialId);
+                    const filteredPallets = pallets.filter(
+                      (pallet) =>
+                        !selectedMaterial || pallet.storageCondition === selectedMaterial.storageCondition
+                    );
+
+                    return (
+                      <div key={`line-item-${index}`} className="rounded-2xl border border-blue-100 bg-white p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-ink">Line item {index + 1}</p>
+                            <p className="text-xs text-slate">Material, pallet, quantities, dates, and pricing.</p>
                           </div>
-
-                          <div className="mt-4 space-y-3">
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate">
-                              Sampling labels
-                            </p>
-                            <button
-                              type="button"
-                              onClick={() => setActiveLabelContainer(container)}
-                              className="text-sm font-semibold text-steel underline underline-offset-4"
-                            >
-                              View Sampling Label Details
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setForm((current) => ({
+                                ...current,
+                                items:
+                                  current.items.length === 1
+                                    ? current.items
+                                    : current.items.filter((_, itemIndex) => itemIndex !== index)
+                              }))
+                            }
+                            disabled={form.items.length === 1}
+                            className="rounded-xl border border-ink/10 px-3 py-2 text-sm text-slate disabled:cursor-not-allowed disabled:text-slate/40"
+                          >
+                            Remove
+                          </button>
                         </div>
-                      ))
-                    )}
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        ) : null}
-      </section>
 
-      {isQueueModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/30 px-4" onClick={() => setIsQueueModalOpen(false)}>
+                        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                          <label className="block">
+                            <span className="mb-2 block text-sm font-medium text-ink">Material</span>
+                            <select
+                              required
+                              value={item.materialId}
+                              onChange={(event) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  items: current.items.map((currentItem, itemIndex) =>
+                                    itemIndex === index
+                                      ? {
+                                          ...currentItem,
+                                          materialId: event.target.value,
+                                          uom:
+                                            materials.find((material) => material.id === event.target.value)?.uom ??
+                                            currentItem.uom
+                                        }
+                                      : currentItem
+                                  )
+                                }))
+                              }
+                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                            >
+                              <option value="">Select material</option>
+                              {materials.map((material) => (
+                                <option key={material.id} value={material.id}>
+                                  {material.materialCode} - {material.materialName}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="block">
+                            <span className="mb-2 block text-sm font-medium text-ink">In-house batch</span>
+                            <input
+                              readOnly
+                              value="Auto-generated from GRN receipt"
+                              className="w-full rounded-2xl border border-ink/10 bg-mist px-4 py-3 text-sm text-slate outline-none"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-2 block text-sm font-medium text-ink">Pallet</span>
+                            <select
+                              required
+                              value={item.palletId}
+                              onChange={(event) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  items: current.items.map((currentItem, itemIndex) =>
+                                    itemIndex === index
+                                      ? { ...currentItem, palletId: event.target.value }
+                                      : currentItem
+                                  )
+                                }))
+                              }
+                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                            >
+                              <option value="">Select pallet</option>
+                              {filteredPallets.map((pallet) => (
+                                <option key={pallet.id} value={pallet.id}>
+                                  {pallet.palletCode} - {pallet.palletName} ({pallet.storageCondition})
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="block">
+                            <span className="mb-2 block text-sm font-medium text-ink">Material type</span>
+                            <input
+                              readOnly
+                              value={selectedMaterial?.materialType ?? "Select material first"}
+                              className="w-full rounded-2xl border border-ink/10 bg-mist px-4 py-3 text-sm text-ink outline-none"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-2 block text-sm font-medium text-ink">Received qty</span>
+                            <input
+                              required
+                              type="number"
+                              min="0"
+                              step="0.001"
+                              value={item.receivedQuantity}
+                              onChange={(event) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  items: current.items.map((currentItem, itemIndex) =>
+                                    itemIndex === index
+                                      ? { ...currentItem, receivedQuantity: Number(event.target.value) }
+                                      : currentItem
+                                  )
+                                }))
+                              }
+                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-2 block text-sm font-medium text-ink">Accepted qty</span>
+                            <input
+                              required
+                              type="number"
+                              min="0"
+                              step="0.001"
+                              value={item.acceptedQuantity}
+                              onChange={(event) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  items: current.items.map((currentItem, itemIndex) =>
+                                    itemIndex === index
+                                      ? { ...currentItem, acceptedQuantity: Number(event.target.value) }
+                                      : currentItem
+                                  )
+                                }))
+                              }
+                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-2 block text-sm font-medium text-ink">Rejected qty</span>
+                            <input
+                              required
+                              type="number"
+                              min="0"
+                              step="0.001"
+                              value={item.rejectedQuantity}
+                              onChange={(event) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  items: current.items.map((currentItem, itemIndex) =>
+                                    itemIndex === index
+                                      ? { ...currentItem, rejectedQuantity: Number(event.target.value) }
+                                      : currentItem
+                                  )
+                                }))
+                              }
+                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-2 block text-sm font-medium text-ink">UOM</span>
+                            <input
+                              required
+                              value={item.uom}
+                              onChange={(event) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  items: current.items.map((currentItem, itemIndex) =>
+                                    itemIndex === index ? { ...currentItem, uom: event.target.value } : currentItem
+                                  )
+                                }))
+                              }
+                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-2 block text-sm font-medium text-ink">Container type</span>
+                            <select
+                              value={item.containerType}
+                              onChange={(event) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  items: current.items.map((currentItem, itemIndex) =>
+                                    itemIndex === index
+                                      ? { ...currentItem, containerType: event.target.value as ContainerType }
+                                      : currentItem
+                                  )
+                                }))
+                              }
+                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                            >
+                              {containerTypes.map((type) => (
+                                <option key={type} value={type}>
+                                  {type}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="block">
+                            <span className="mb-2 block text-sm font-medium text-ink">Containers</span>
+                            <input
+                              required
+                              type="number"
+                              min="1"
+                              step="1"
+                              value={item.numberOfContainers}
+                              onChange={(event) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  items: current.items.map((currentItem, itemIndex) =>
+                                    itemIndex === index
+                                      ? { ...currentItem, numberOfContainers: Number(event.target.value) }
+                                      : currentItem
+                                  )
+                                }))
+                              }
+                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-2 block text-sm font-medium text-ink">Qty per container</span>
+                            <input
+                              required
+                              type="number"
+                              min="0"
+                              step="0.001"
+                              value={item.quantityPerContainer}
+                              onChange={(event) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  items: current.items.map((currentItem, itemIndex) =>
+                                    itemIndex === index
+                                      ? { ...currentItem, quantityPerContainer: Number(event.target.value) }
+                                      : currentItem
+                                  )
+                                }))
+                              }
+                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-2 block text-sm font-medium text-ink">Vendor batch</span>
+                            <input
+                              required
+                              value={item.vendorBatch}
+                              onChange={(event) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  items: current.items.map((currentItem, itemIndex) =>
+                                    itemIndex === index
+                                      ? { ...currentItem, vendorBatch: event.target.value }
+                                      : currentItem
+                                  )
+                                }))
+                              }
+                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-2 block text-sm font-medium text-ink">Unit price</span>
+                            <input
+                              required
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.unitPrice}
+                              onChange={(event) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  items: current.items.map((currentItem, itemIndex) =>
+                                    itemIndex === index
+                                      ? { ...currentItem, unitPrice: Number(event.target.value) }
+                                      : currentItem
+                                  )
+                                }))
+                              }
+                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-2 block text-sm font-medium text-ink">QC status</span>
+                            <select
+                              value={item.qcStatus}
+                              onChange={(event) =>
+                                setForm((current) => ({
+                                  ...current,
+                                  items: current.items.map((currentItem, itemIndex) =>
+                                    itemIndex === index
+                                      ? { ...currentItem, qcStatus: event.target.value as QcStatus }
+                                      : currentItem
+                                  )
+                                }))
+                              }
+                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                            >
+                              {qcStatuses.map((status) => (
+                                <option key={status} value={status}>
+                                  {status}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        </div>
+
+                        <div className="mt-4 grid gap-4 md:grid-cols-3">
+                          {["manufactureDate", "expiryDate", "retestDate"].map((field) => (
+                            <label key={field} className="block">
+                              <span className="mb-2 block text-sm font-medium capitalize text-ink">
+                                {field.replace(/([A-Z])/g, " $1")}
+                              </span>
+                              <input
+                                type="date"
+                                value={item[field as keyof CreateGrnItemRequest] as string}
+                                onChange={(event) =>
+                                  setForm((current) => ({
+                                    ...current,
+                                    items: current.items.map((currentItem, itemIndex) =>
+                                      itemIndex === index
+                                        ? { ...currentItem, [field]: event.target.value }
+                                        : currentItem
+                                    )
+                                  }))
+                                }
+                                className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                              />
+                            </label>
+                          ))}
+                        </div>
+
+                        <label className="mt-4 block">
+                          <span className="mb-2 block text-sm font-medium text-ink">Description</span>
+                          <textarea
+                            value={item.description}
+                            onChange={(event) =>
+                              setForm((current) => ({
+                                ...current,
+                                items: current.items.map((currentItem, itemIndex) =>
+                                  itemIndex === index
+                                    ? { ...currentItem, description: event.target.value }
+                                    : currentItem
+                                )
+                              }))
+                            }
+                            className="min-h-24 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                          />
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-blue-100 bg-white p-4">
+                  <h6 className="text-sm font-semibold text-ink">Line item document</h6>
+                  <p className="mt-1 text-sm text-slate">Optional document upload for the first created line item.</p>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <input
+                      value={createDocumentDraft.documentName}
+                      onChange={(event) =>
+                        setCreateDocumentDraft((current) => ({ ...current, documentName: event.target.value }))
+                      }
+                      className="rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                      placeholder="Document name"
+                    />
+                    <input
+                      value={createDocumentDraft.documentType}
+                      onChange={(event) =>
+                        setCreateDocumentDraft((current) => ({ ...current, documentType: event.target.value }))
+                      }
+                      className="rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                      placeholder="Document type"
+                    />
+                  </div>
+                  <div className="mt-4 grid gap-4 md:grid-cols-[1.2fr_1fr]">
+                    <input
+                      value={createDocumentDraft.documentUrl}
+                      onChange={(event) =>
+                        setCreateDocumentDraft((current) => ({ ...current, documentUrl: event.target.value }))
+                      }
+                      className="rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
+                      placeholder="Optional URL/path"
+                    />
+                    <input
+                      type="file"
+                      onChange={(event) =>
+                        setCreateDocumentDraft((current) => ({
+                          ...current,
+                          file: event.target.files?.[0] ?? null
+                        }))
+                      }
+                      className="rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+              </div>
+            </div>
+          </div>
+
+          {successMessage ? (
+            <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-4 text-sm text-green-700">
+              {successMessage}
+            </div>
+          ) : null}
+          {formError ? (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700">
+              {formError}
+            </div>
+          ) : null}
+
+        </form>
+      </section>
+      )}
+
+      {cancelDraft ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-navy/30 px-4"
+          onClick={() => {
+            if (!cancellingGrnId) {
+              setCancelDraft(null);
+              setCancelReason("");
+            }
+          }}
+        >
           <div
-            className="max-h-[85vh] w-full max-w-6xl overflow-hidden rounded-[28px] border border-ink/10 bg-white shadow-float"
+            className="w-full max-w-xl rounded-[28px] border border-ink/10 bg-white p-6 shadow-float"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-ink/10 px-6 py-5">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <h4 className="text-lg font-semibold text-ink">GRN Queue</h4>
-                <p className="mt-1 text-sm text-slate">Open a GRN, review it, or receive it from this popup.</p>
+                <h4 className="text-lg font-semibold text-ink">Cancel GRN</h4>
+                <p className="mt-1 text-sm text-slate">
+                  Confirm cancellation for {cancelDraft.grnNumber}. Add a reason to preserve the decision context.
+                </p>
               </div>
               <button
                 type="button"
-                onClick={() => setIsQueueModalOpen(false)}
+                onClick={() => {
+                  if (!cancellingGrnId) {
+                    setCancelDraft(null);
+                    setCancelReason("");
+                  }
+                }}
                 className="rounded-full border border-ink/10 px-3 py-2 text-sm text-ink"
               >
                 Close
               </button>
             </div>
-            <div className="max-h-[68vh] overflow-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead className="bg-ink/5 text-slate">
-                  <tr>
-                    <th className="px-6 py-4 font-medium">GRN</th>
-                    <th className="px-6 py-4 font-medium">Receipt Date</th>
-                    <th className="px-6 py-4 font-medium">Items</th>
-                    <th className="px-6 py-4 font-medium">Received</th>
-                    <th className="px-6 py-4 font-medium">Accepted</th>
-                    <th className="px-6 py-4 font-medium">Status</th>
-                    <th className="px-6 py-4 font-medium">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoading ? (
-                    <tr className="border-t border-ink/10">
-                      <td className="px-6 py-8 text-slate" colSpan={7}>
-                        Loading GRNs from {getApiBaseUrl()}
-                      </td>
-                    </tr>
-                  ) : null}
 
-                  {!isLoading && error ? (
-                    <tr className="border-t border-ink/10">
-                      <td className="px-6 py-8" colSpan={7}>
-                        <div className="rounded-2xl border border-redoxide/20 bg-redoxide/10 px-4 py-4 text-sm text-redoxide">
-                          Could not load GRNs. {error}. Confirm the backend is running on {getApiBaseUrl()}.
-                        </div>
-                      </td>
-                    </tr>
-                  ) : null}
+            <label className="mt-5 block">
+              <span className="mb-2 block text-sm font-medium text-ink">Reason</span>
+              <textarea
+                value={cancelReason}
+                onChange={(event) => setCancelReason(event.target.value)}
+                className="min-h-28 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-steel"
+                placeholder="Explain why this draft GRN is being cancelled."
+              />
+            </label>
 
-                  {!isLoading && !error && page?.content.length === 0 ? (
-                    <tr className="border-t border-ink/10">
-                      <td className="px-6 py-8 text-slate" colSpan={7}>
-                        No GRNs found yet.
-                      </td>
-                    </tr>
-                  ) : null}
-
-                  {!isLoading &&
-                    !error &&
-                    page?.content.map((grn) => (
-                      <tr key={grn.id} className="border-t border-ink/10">
-                        <td className="px-6 py-4 text-ink">
-                          <div>
-                            <p className="font-semibold">{grn.grnNumber}</p>
-                            <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate">
-                              {grn.invoiceNumber}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-ink">{grn.receiptDate}</td>
-                        <td className="px-6 py-4 text-ink">{summarizeMaterials(grn)}</td>
-                        <td className="px-6 py-4 text-ink">{sumQuantity(grn, "receivedQuantity")}</td>
-                        <td className="px-6 py-4 text-ink">{sumQuantity(grn, "acceptedQuantity")}</td>
-                        <td className="px-6 py-4 text-ink">
-                          <span className={`status-pill ${statusTone(grn.status)}`}>{grn.status}</span>
-                        </td>
-                        <td className="px-6 py-4 text-ink">
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                void handleSelectGrn(grn.id, { focusDetail: true });
-                                setIsQueueModalOpen(false);
-                              }}
-                              className="rounded-2xl border border-ink/10 bg-white px-4 py-2 text-sm font-medium text-ink"
-                            >
-                              View Details
-                            </button>
-                            {grn.status === "DRAFT" ? (
-                              <button
-                                type="button"
-                                onClick={() => handleReceive(grn.id)}
-                                disabled={receivingGrnId === grn.id}
-                                className="rounded-2xl bg-steel px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-steel/50"
-                              >
-                                {receivingGrnId === grn.id ? "Receiving..." : "Receive"}
-                              </button>
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setCancelDraft(null);
+                  setCancelReason("");
+                }}
+                disabled={Boolean(cancellingGrnId)}
+                className="rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm font-medium text-ink disabled:cursor-not-allowed disabled:text-slate/40"
+              >
+                Keep Draft
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleConfirmCancel()}
+                disabled={Boolean(cancellingGrnId)}
+                className="rounded-2xl bg-redoxide px-4 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-redoxide/50"
+              >
+                {cancellingGrnId === cancelDraft.grnId ? "Cancelling..." : "Confirm Cancel"}
+              </button>
             </div>
-            {!isLoading && !error && page ? (
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink/10 px-6 py-4 text-sm text-slate">
-                <p>
-                  Showing {page.content.length} of {page.totalElements} GRNs
-                </p>
-                <div className="flex items-center gap-3">
-                  <p>
-                    Page {page.number + 1} of {Math.max(page.totalPages, 1)}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((current) => Math.max(0, current - 1))}
-                    disabled={page.first}
-                    className="rounded-2xl border border-ink/10 px-4 py-2 text-ink disabled:cursor-not-allowed disabled:text-slate/50"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((current) => current + 1)}
-                    disabled={page.last}
-                    className="rounded-2xl border border-ink/10 px-4 py-2 text-ink disabled:cursor-not-allowed disabled:text-slate/50"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            ) : null}
           </div>
         </div>
       ) : null}

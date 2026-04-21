@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BatchSphere – Create GRN</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #f0f4ff; color: #1e293b; }
+  .sidebar { background: #1e3a8a; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #bfdbfe; transition: all 0.15s; }
+  .nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .nav-item.active { background: rgba(255,255,255,0.15); color: #fff; font-weight: 600; }
+  .nav-section { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: #60a5fa; text-transform: uppercase; padding: 14px 14px 4px; }
+  .card { background: #fff; border: 1px solid #dbeafe; border-radius: 14px; }
+  .field-label { font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; }
+  .field-required::after { content: " *"; color: #ef4444; }
+  .field-input { background: #f8faff; border: 1.5px solid #dbeafe; border-radius: 8px; padding: 9px 12px; font-size: 13px; color: #1e293b; width: 100%; transition: all 0.15s; }
+  .field-input:focus { outline: none; border-color: #3b82f6; background: #fff; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+  .field-select { background: #f8faff; border: 1.5px solid #dbeafe; border-radius: 8px; padding: 9px 12px; font-size: 13px; color: #1e293b; width: 100%; }
+  .field-select:focus { outline: none; border-color: #3b82f6; }
+  .step-circle { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+  .step-active { background: #2563eb; color: white; box-shadow: 0 0 0 4px rgba(37,99,235,0.15); }
+  .step-done { background: #16a34a; color: white; }
+  .step-pending { background: #e2e8f0; color: #94a3b8; }
+  .section-divider { border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 20px; }
+  .container-row { background: #f8faff; border: 1.5px solid #dbeafe; border-radius: 10px; padding: 14px; position: relative; }
+  .container-row:hover { border-color: #93c5fd; }
+  .remove-btn { position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; border-radius: 50%; background: #fee2e2; color: #ef4444; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; border: none; font-weight: bold; }
+  .remove-btn:hover { background: #fca5a5; }
+  .hint { font-size: 11px; color: #94a3b8; margin-top: 3px; }
+  .doc-item { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap-3; }
+</style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+<!-- Sidebar -->
+<aside class="sidebar w-60 flex-shrink-0 flex flex-col overflow-y-auto">
+  <div class="p-4 border-b border-blue-700">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-white flex items-center justify-center font-bold text-blue-700 text-sm shadow">BS</div>
+      <div><div class="font-bold text-white text-sm">BatchSphere</div><div class="text-[10px] text-blue-300">Pharma ERP v2.1</div></div>
+    </div>
+  </div>
+  <nav class="flex-1 p-3 space-y-0.5">
+    <div class="nav-section">Operations</div>
+    <div class="nav-item active">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/></svg>
+      Create GRN
+    </div>
+    <div class="nav-section">Navigate</div>
+    <a href="01-dashboard.html" class="nav-item">← Dashboard</a>
+    <a href="02-grn.html" class="nav-item" style="color:#93c5fd">📦 GRN List</a>
+    <a href="03-qms.html" class="nav-item" style="color:#fcd34d">→ QMS</a>
+    <a href="04-wms.html" class="nav-item" style="color:#a5b4fc">→ Warehouse</a>
+    <a href="05-documents.html" class="nav-item" style="color:#c4b5fd">→ Documents</a>
+    <a href="06-hrms.html" class="nav-item" style="color:#fda4af">→ HRMS</a>
+    <a href="07-vms.html" class="nav-item" style="color:#fdba74">→ Vendors</a>
+    <a href="08-materials.html" class="nav-item" style="color:#5eead4">→ Materials</a>
+  </nav>
+</aside>
+
+<!-- Main -->
+<main class="flex-1 flex flex-col overflow-hidden">
+  <header class="h-14 bg-white border-b border-blue-100 flex items-center px-6 flex-shrink-0 shadow-sm">
+    <div class="text-xs text-slate-400">
+      <a href="02-grn.html" class="text-blue-600 hover:underline">GRN / Inbound</a>
+      <span class="mx-1">/</span>
+      <span class="text-slate-700 font-semibold">Create New GRN</span>
+    </div>
+    <div class="ml-auto flex items-center gap-2">
+      <a href="02-grn.html" class="text-xs border border-blue-200 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50">Cancel</a>
+      <button class="text-xs bg-slate-400 text-white px-4 py-1.5 rounded-lg font-semibold">Save as Draft</button>
+      <button class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg font-semibold shadow-sm">Submit GRN →</button>
+    </div>
+  </header>
+
+  <div class="flex-1 flex overflow-hidden">
+
+    <!-- Step Sidebar -->
+    <div class="w-56 flex-shrink-0 bg-white border-r border-blue-100 p-5">
+      <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Progress</div>
+      <div class="space-y-1">
+        <div class="flex items-center gap-3 p-2 rounded-xl bg-blue-50 border border-blue-200">
+          <div class="step-circle step-active text-sm">1</div>
+          <div>
+            <div class="text-xs font-bold text-blue-700">Header Info</div>
+            <div class="text-[10px] text-blue-400">Supplier & Invoice</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 p-2 rounded-xl">
+          <div class="step-circle step-pending text-sm">2</div>
+          <div>
+            <div class="text-xs font-medium text-slate-500">Material Details</div>
+            <div class="text-[10px] text-slate-400">Material & Batch</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 p-2 rounded-xl">
+          <div class="step-circle step-pending text-sm">3</div>
+          <div>
+            <div class="text-xs font-medium text-slate-500">Containers</div>
+            <div class="text-[10px] text-slate-400">Qty & container types</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 p-2 rounded-xl">
+          <div class="step-circle step-pending text-sm">4</div>
+          <div>
+            <div class="text-xs font-medium text-slate-500">Documents</div>
+            <div class="text-[10px] text-slate-400">CoA, MSDS, Invoice</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 p-2 rounded-xl">
+          <div class="step-circle step-pending text-sm">5</div>
+          <div>
+            <div class="text-xs font-medium text-slate-500">Review & Submit</div>
+            <div class="text-[10px] text-slate-400">Confirm & sign off</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-6 pt-5 border-t border-blue-100">
+        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Auto-assigned</div>
+        <div class="bg-blue-50 rounded-xl p-3 border border-blue-100">
+          <div class="text-[10px] text-slate-500">GRN Number</div>
+          <div class="text-sm font-mono font-bold text-blue-700">GRN-2026-0048</div>
+          <div class="text-[10px] text-slate-500 mt-2">Date</div>
+          <div class="text-xs font-semibold text-slate-700">17 Apr 2026</div>
+          <div class="text-[10px] text-slate-500 mt-2">Created by</div>
+          <div class="text-xs font-semibold text-slate-700">Yamini Raayi</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form Area -->
+    <div class="flex-1 overflow-y-auto p-6">
+      <div class="max-w-3xl mx-auto space-y-6">
+
+        <!-- Section 1: Header Info -->
+        <div class="card p-6 shadow-sm">
+          <div class="flex items-center gap-3 mb-5">
+            <div class="step-circle step-active">1</div>
+            <div>
+              <div class="font-bold text-slate-700">Header Information</div>
+              <div class="text-xs text-slate-400">Supplier details and purchase order reference</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <div class="field-label field-required">Supplier</div>
+              <select class="field-select">
+                <option value="">Select supplier…</option>
+                <option selected>Sigma-Aldrich</option>
+                <option>Merck KGaA</option>
+                <option>Lanxess India</option>
+                <option>SRL Pharma</option>
+                <option>Tata Chemicals</option>
+              </select>
+              <div class="hint">Only approved vendors from AVL</div>
+            </div>
+            <div>
+              <div class="field-label">Vendor Business Unit</div>
+              <select class="field-select">
+                <option value="">Select VBU…</option>
+                <option selected>Sigma-Aldrich India Pvt Ltd</option>
+              </select>
+            </div>
+            <div>
+              <div class="field-label field-required">Supplier Invoice No.</div>
+              <input class="field-input" type="text" placeholder="e.g. INV-SA-20260417" value="INV-SA-20260417">
+            </div>
+            <div>
+              <div class="field-label field-required">Invoice Date</div>
+              <input class="field-input" type="date" value="2026-04-17">
+            </div>
+            <div>
+              <div class="field-label">Purchase Order No.</div>
+              <input class="field-input" type="text" placeholder="e.g. PO-2026-0123" value="PO-2026-0123">
+            </div>
+            <div>
+              <div class="field-label field-required">Received Date & Time</div>
+              <input class="field-input" type="datetime-local" value="2026-04-17T09:15">
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Material Details -->
+        <div class="card p-6 shadow-sm">
+          <div class="flex items-center gap-3 mb-5">
+            <div class="step-circle step-active">2</div>
+            <div>
+              <div class="font-bold text-slate-700">Material Details</div>
+              <div class="text-xs text-slate-400">What material was received</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div class="col-span-2">
+              <div class="field-label field-required">Material</div>
+              <input class="field-input" type="text" placeholder="Search material by name or code…" value="Paracetamol BP">
+              <div class="hint">Start typing to search from material master</div>
+            </div>
+            <div>
+              <div class="field-label">Material Code</div>
+              <input class="field-input" type="text" value="MAT-0091" readonly style="background:#f1f5f9; color:#64748b">
+            </div>
+            <div>
+              <div class="field-label">Pharmacopoeia Grade</div>
+              <input class="field-input" type="text" value="BP" readonly style="background:#f1f5f9; color:#64748b">
+            </div>
+            <div>
+              <div class="field-label field-required">Supplier Batch No.</div>
+              <input class="field-input" type="text" placeholder="As on CoA" value="SA-2026-PCM-004">
+            </div>
+            <div>
+              <div class="field-label field-required">Manufacturing Date</div>
+              <input class="field-input" type="month" value="2026-01">
+            </div>
+            <div>
+              <div class="field-label field-required">Expiry Date</div>
+              <input class="field-input" type="month" value="2027-12">
+            </div>
+            <div>
+              <div class="field-label field-required">Total Quantity Received</div>
+              <div class="flex gap-2">
+                <input class="field-input" type="number" value="500" style="flex:2">
+                <select class="field-select" style="flex:1">
+                  <option>kg</option>
+                  <option>g</option>
+                  <option>L</option>
+                  <option>units</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Linked Spec & MoA -->
+          <div class="mt-4 p-3 bg-blue-50 rounded-xl border border-blue-200">
+            <div class="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-2">Auto-linked QC References</div>
+            <div class="flex gap-4">
+              <div class="flex items-center gap-2">
+                <div class="w-5 h-5 rounded bg-blue-600 flex items-center justify-center">
+                  <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <span class="text-xs text-slate-700">Spec: <span class="font-semibold text-blue-700">USP-Para-001 v3.0</span></span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-5 h-5 rounded bg-blue-600 flex items-center justify-center">
+                  <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <span class="text-xs text-slate-700">MoA: <span class="font-semibold text-blue-700">MoA-Para-HPLC-02</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Containers -->
+        <div class="card p-6 shadow-sm">
+          <div class="flex items-center justify-between mb-5">
+            <div class="flex items-center gap-3">
+              <div class="step-circle step-active">3</div>
+              <div>
+                <div class="font-bold text-slate-700">Container / Package Details</div>
+                <div class="text-xs text-slate-400">Record each container individually for traceability</div>
+              </div>
+            </div>
+            <button onclick="addContainer()" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg font-semibold">+ Add Container</button>
+          </div>
+
+          <div id="containers-list" class="space-y-3">
+            <!-- Container 1 -->
+            <div class="container-row">
+              <button class="remove-btn" title="Remove">×</button>
+              <div class="text-xs font-bold text-blue-600 mb-3">Container #1</div>
+              <div class="grid grid-cols-4 gap-3">
+                <div>
+                  <div class="field-label">Type</div>
+                  <select class="field-select text-xs">
+                    <option>DRUM</option>
+                    <option>BAG</option>
+                    <option>BOX</option>
+                    <option>CAN</option>
+                    <option>BOTTLE</option>
+                    <option>FIBER_DRUM</option>
+                  </select>
+                </div>
+                <div>
+                  <div class="field-label">Container ID</div>
+                  <input class="field-input text-xs" type="text" placeholder="e.g. C-001" value="C-001">
+                </div>
+                <div>
+                  <div class="field-label">Quantity</div>
+                  <input class="field-input text-xs" type="number" placeholder="Qty" value="100">
+                </div>
+                <div>
+                  <div class="field-label">Condition</div>
+                  <select class="field-select text-xs">
+                    <option>Good</option>
+                    <option>Minor damage</option>
+                    <option>Major damage</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Container 2 -->
+            <div class="container-row">
+              <button class="remove-btn">×</button>
+              <div class="text-xs font-bold text-blue-600 mb-3">Container #2</div>
+              <div class="grid grid-cols-4 gap-3">
+                <div>
+                  <div class="field-label">Type</div>
+                  <select class="field-select text-xs"><option selected>DRUM</option><option>BAG</option><option>BOX</option></select>
+                </div>
+                <div>
+                  <div class="field-label">Container ID</div>
+                  <input class="field-input text-xs" type="text" value="C-002">
+                </div>
+                <div>
+                  <div class="field-label">Quantity</div>
+                  <input class="field-input text-xs" type="number" value="100">
+                </div>
+                <div>
+                  <div class="field-label">Condition</div>
+                  <select class="field-select text-xs"><option>Good</option></select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Container 3 -->
+            <div class="container-row">
+              <button class="remove-btn">×</button>
+              <div class="text-xs font-bold text-blue-600 mb-3">Container #3</div>
+              <div class="grid grid-cols-4 gap-3">
+                <div>
+                  <div class="field-label">Type</div>
+                  <select class="field-select text-xs"><option selected>DRUM</option></select>
+                </div>
+                <div>
+                  <div class="field-label">Container ID</div>
+                  <input class="field-input text-xs" type="text" value="C-003">
+                </div>
+                <div>
+                  <div class="field-label">Quantity</div>
+                  <input class="field-input text-xs" type="number" value="100">
+                </div>
+                <div>
+                  <div class="field-label">Condition</div>
+                  <select class="field-select text-xs"><option>Good</option></select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Totals -->
+          <div class="mt-4 p-3 bg-green-50 rounded-xl border border-green-200 flex items-center gap-6">
+            <div><span class="text-[10px] text-slate-500 uppercase font-semibold">Total Containers</span><div class="text-lg font-bold text-green-700">3</div></div>
+            <div><span class="text-[10px] text-slate-500 uppercase font-semibold">Total Qty Entered</span><div class="text-lg font-bold text-green-700">300 kg</div></div>
+            <div><span class="text-[10px] text-slate-500 uppercase font-semibold">Invoice Qty</span><div class="text-lg font-bold text-slate-600">500 kg</div></div>
+            <div class="bg-amber-100 border border-amber-300 rounded-lg px-3 py-2">
+              <div class="text-[10px] text-amber-700 font-bold">⚠ Remaining</div>
+              <div class="text-base font-bold text-amber-700">200 kg unaccounted</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 4: Documents -->
+        <div class="card p-6 shadow-sm">
+          <div class="flex items-center gap-3 mb-5">
+            <div class="step-circle step-active">4</div>
+            <div>
+              <div class="font-bold text-slate-700">Supporting Documents</div>
+              <div class="text-xs text-slate-400">Attach CoA, MSDS, invoice copy — required for QC release</div>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <!-- Required docs checklist -->
+            <div class="grid grid-cols-3 gap-3 mb-4">
+              <div class="p-3 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-100 transition-all">
+                <div class="text-2xl mb-1">📋</div>
+                <div class="text-xs font-bold text-blue-700">Certificate of Analysis</div>
+                <div class="text-[10px] text-blue-500 mt-0.5">Required</div>
+                <div class="mt-2 text-[10px] text-blue-600 font-semibold">Click to upload</div>
+              </div>
+              <div class="p-3 rounded-xl border-2 border-green-300 bg-green-50 text-center">
+                <div class="text-2xl mb-1">☣️</div>
+                <div class="text-xs font-bold text-green-700">MSDS / SDS</div>
+                <div class="text-[10px] text-green-600 mt-0.5">✓ Uploaded</div>
+                <div class="mt-2 text-[10px] text-green-600 font-semibold">MSDS_Para.pdf · 890 KB</div>
+              </div>
+              <div class="p-3 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 text-center cursor-pointer hover:border-slate-400 transition-all">
+                <div class="text-2xl mb-1">🧾</div>
+                <div class="text-xs font-bold text-slate-600">Invoice Copy</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Optional</div>
+                <div class="mt-2 text-[10px] text-slate-500 font-semibold">Click to upload</div>
+              </div>
+            </div>
+
+            <!-- Drop Zone -->
+            <div class="border-2 border-dashed border-blue-200 rounded-xl p-6 text-center hover:border-blue-400 hover:bg-blue-50 transition-all cursor-pointer">
+              <div class="text-3xl mb-2">📁</div>
+              <div class="text-sm font-semibold text-slate-600">Drag & drop files here or <span class="text-blue-600">browse</span></div>
+              <div class="text-xs text-slate-400 mt-1">Supports PDF, JPG, PNG · Max 10MB per file</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 5: Review & Submit -->
+        <div class="card p-6 shadow-sm">
+          <div class="flex items-center gap-3 mb-5">
+            <div class="step-circle step-active">5</div>
+            <div>
+              <div class="font-bold text-slate-700">Review & Submit</div>
+              <div class="text-xs text-slate-400">Confirm details and electronic sign-off</div>
+            </div>
+          </div>
+
+          <!-- Summary -->
+          <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-5">
+            <div class="grid grid-cols-3 gap-4 text-sm">
+              <div><span class="text-[10px] text-slate-500 uppercase font-semibold block mb-0.5">Supplier</span><span class="font-semibold text-slate-800">Sigma-Aldrich</span></div>
+              <div><span class="text-[10px] text-slate-500 uppercase font-semibold block mb-0.5">Material</span><span class="font-semibold text-slate-800">Paracetamol BP</span></div>
+              <div><span class="text-[10px] text-slate-500 uppercase font-semibold block mb-0.5">Total Qty</span><span class="font-semibold text-blue-700">500 kg</span></div>
+              <div><span class="text-[10px] text-slate-500 uppercase font-semibold block mb-0.5">Containers</span><span class="font-semibold text-slate-800">3 (+ 2 pending)</span></div>
+              <div><span class="text-[10px] text-slate-500 uppercase font-semibold block mb-0.5">Documents</span><span class="font-semibold text-amber-600">1/2 required uploaded</span></div>
+              <div><span class="text-[10px] text-slate-500 uppercase font-semibold block mb-0.5">GRN No.</span><span class="font-mono font-bold text-blue-700">GRN-2026-0048</span></div>
+            </div>
+          </div>
+
+          <!-- Validation Warnings -->
+          <div class="space-y-2 mb-5">
+            <div class="flex items-center gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+              <svg class="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+              <span class="text-xs text-amber-700"><strong>CoA not uploaded</strong> — required before QC release, but you can submit GRN now and attach later</span>
+            </div>
+            <div class="flex items-center gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+              <svg class="w-4 h-4 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+              <span class="text-xs text-amber-700"><strong>200 kg unaccounted</strong> — total container quantities don't match invoice. Please add 2 more containers.</span>
+            </div>
+          </div>
+
+          <!-- Electronic Signature -->
+          <div class="border-t border-blue-100 pt-5">
+            <div class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+              Electronic Sign-Off
+            </div>
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <div class="grid grid-cols-3 gap-4 mb-4">
+                <div>
+                  <div class="text-[10px] text-slate-500 uppercase font-semibold mb-1">Signing as</div>
+                  <div class="text-sm font-bold text-slate-800">Yamini Raayi</div>
+                </div>
+                <div>
+                  <div class="text-[10px] text-slate-500 uppercase font-semibold mb-1">Role</div>
+                  <div class="text-sm font-semibold text-slate-700">QC Manager</div>
+                </div>
+                <div>
+                  <div class="text-[10px] text-slate-500 uppercase font-semibold mb-1">Date & Time</div>
+                  <div class="text-sm font-semibold text-slate-700">17 Apr 2026, 10:30 AM</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <input class="flex-1 bg-white border-2 border-blue-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-blue-500 font-mono" type="password" placeholder="Enter your password to confirm…">
+                <button class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg text-sm font-bold shadow">Sign & Submit GRN</button>
+              </div>
+              <div class="text-[10px] text-slate-400 mt-2">This action will be recorded in the audit trail per 21 CFR Part 11 / EU GMP Annex 11 requirements.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  let containerCount = 3;
+  function addContainer() {
+    containerCount++;
+    const div = document.createElement('div');
+    div.className = 'container-row';
+    div.innerHTML = `
+      <button class="remove-btn" onclick="this.parentElement.remove()">×</button>
+      <div class="text-xs font-bold text-blue-600 mb-3">Container #${containerCount}</div>
+      <div class="grid grid-cols-4 gap-3">
+        <div><div class="field-label">Type</div><select class="field-select text-xs"><option>DRUM</option><option>BAG</option><option>BOX</option><option>CAN</option><option>BOTTLE</option><option>FIBER_DRUM</option></select></div>
+        <div><div class="field-label">Container ID</div><input class="field-input text-xs" type="text" placeholder="C-00${containerCount}"></div>
+        <div><div class="field-label">Quantity</div><input class="field-input text-xs" type="number" placeholder="Qty"></div>
+        <div><div class="field-label">Condition</div><select class="field-select text-xs"><option>Good</option><option>Minor damage</option><option>Major damage</option></select></div>
+      </div>`;
+    document.getElementById('containers-list').appendChild(div);
+  }
+</script>
+</body>
+</html>

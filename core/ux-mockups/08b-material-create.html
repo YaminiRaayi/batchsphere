@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BatchSphere – New Material</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #f0f9ff; color: #1e293b; }
+  .sidebar { background: #1e3a8a; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #bfdbfe; transition: all 0.15s; }
+  .nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .nav-item.active { background: rgba(255,255,255,0.15); color: #fff; font-weight: 600; }
+  .nav-section { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: #60a5fa; text-transform: uppercase; padding: 14px 14px 4px; }
+  .card { background: #fff; border: 1px solid #bae6fd; border-radius: 14px; }
+  .field-label { font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; }
+  .field-required::after { content: " *"; color: #ef4444; }
+  .field-input { background: #f8faff; border: 1.5px solid #bae6fd; border-radius: 8px; padding: 9px 12px; font-size: 13px; color: #1e293b; width: 100%; transition: all 0.15s; }
+  .field-input:focus { outline: none; border-color: #0284c7; background: #fff; box-shadow: 0 0 0 3px rgba(2,132,199,0.1); }
+  .field-select { background: #f8faff; border: 1.5px solid #bae6fd; border-radius: 8px; padding: 9px 12px; font-size: 13px; color: #1e293b; width: 100%; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394a3b8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 14px; padding-right: 32px; }
+  .field-select:focus { outline: none; border-color: #0284c7; }
+  .field-textarea { background: #f8faff; border: 1.5px solid #bae6fd; border-radius: 8px; padding: 9px 12px; font-size: 13px; color: #1e293b; width: 100%; resize: vertical; min-height: 72px; }
+  .field-textarea:focus { outline: none; border-color: #0284c7; background: #fff; }
+  .section-title { font-size: 13px; font-weight: 700; color: #0c4a6e; padding-bottom: 12px; border-bottom: 1.5px solid #e0f2fe; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .step-pill { display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .step-pill.done { background: #dcfce7; color: #15803d; }
+  .step-pill.active { background: #0284c7; color: white; }
+  .step-pill.pending { background: #f1f5f9; color: #94a3b8; }
+  .hint { font-size: 11px; color: #94a3b8; margin-top: 3px; }
+  .vendor-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 600; background: #fff7ed; border: 1.5px solid #fed7aa; color: #c2410c; }
+  .param-row { background: #f8faff; border: 1.5px solid #bae6fd; border-radius: 10px; padding: 12px 14px; }
+  .toggle { width: 36px; height: 20px; border-radius: 10px; background: #cbd5e1; position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
+  .toggle.on { background: #0284c7; }
+  .toggle::after { content: ''; position: absolute; width: 14px; height: 14px; border-radius: 50%; background: white; top: 3px; left: 3px; transition: left 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+  .toggle.on::after { left: 19px; }
+</style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+<aside class="sidebar w-60 flex-shrink-0 flex flex-col overflow-y-auto">
+  <div class="p-4 border-b border-blue-700">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-white flex items-center justify-center font-bold text-blue-700 text-sm shadow">BS</div>
+      <div><div class="font-bold text-white text-sm">BatchSphere</div><div class="text-[10px] text-blue-300">Pharma ERP v2.1</div></div>
+    </div>
+  </div>
+  <nav class="flex-1 p-3 space-y-0.5">
+    <div class="nav-section">Master Data</div>
+    <a href="10-masterdata.html" class="nav-item">← Master Data Hub</a>
+    <a href="08-materials.html" class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
+      Materials List
+    </a>
+    <div class="nav-item active">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      New Material
+    </div>
+    <div class="nav-section">Navigate</div>
+    <a href="01-dashboard.html" class="nav-item">← Dashboard</a>
+  </nav>
+  <div class="p-3 border-t border-blue-800 text-[10px] text-blue-400 text-center">BatchSphere © 2026</div>
+</aside>
+
+<main class="flex-1 flex flex-col overflow-hidden">
+  <header class="h-14 bg-white border-b border-sky-100 flex items-center px-6 gap-4 flex-shrink-0 shadow-sm">
+    <div class="text-xs text-slate-400">Master Data / <a href="08-materials.html" class="text-sky-700 hover:underline">Materials</a> / <span class="text-slate-700 font-medium">New Material</span></div>
+    <div class="ml-auto flex items-center gap-3">
+      <div class="text-xs text-slate-400 bg-sky-50 px-3 py-1.5 rounded-xl border border-sky-100">Fri, 18 Apr 2026</div>
+    </div>
+  </header>
+
+  <div class="flex-1 overflow-y-auto p-6">
+    <!-- Page Header -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-xl font-bold text-slate-800">New Material</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Fill all required fields. Material code is auto-generated on save.</p>
+      </div>
+      <div class="flex gap-2">
+        <a href="08-materials.html" class="px-4 py-2 text-xs font-semibold border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50">Cancel</a>
+        <button class="px-4 py-2 text-xs font-semibold bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200">Save as Draft</button>
+        <button class="px-4 py-2 text-xs font-semibold bg-sky-600 text-white rounded-xl hover:bg-sky-700">Save &amp; Activate</button>
+      </div>
+    </div>
+
+    <!-- Step Pills -->
+    <div class="flex items-center gap-3 mb-6 overflow-x-auto pb-1">
+      <div class="step-pill active">
+        <div class="w-5 h-5 rounded-full bg-white text-sky-700 flex items-center justify-center font-bold text-[10px]">1</div>
+        Basic Info
+      </div>
+      <div class="text-slate-300 font-bold">——</div>
+      <div class="step-pill pending">
+        <div class="w-5 h-5 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center font-bold text-[10px]">2</div>
+        Storage &amp; Handling
+      </div>
+      <div class="text-slate-300 font-bold">——</div>
+      <div class="step-pill pending">
+        <div class="w-5 h-5 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center font-bold text-[10px]">3</div>
+        Specifications
+      </div>
+      <div class="text-slate-300 font-bold">——</div>
+      <div class="step-pill pending">
+        <div class="w-5 h-5 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center font-bold text-[10px]">4</div>
+        Approved Vendors
+      </div>
+      <div class="text-slate-300 font-bold">——</div>
+      <div class="step-pill pending">
+        <div class="w-5 h-5 rounded-full bg-slate-200 text-slate-400 flex items-center justify-center font-bold text-[10px]">5</div>
+        Review &amp; Save
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-5">
+      <!-- Main Form -->
+      <div class="col-span-2 space-y-5">
+
+        <!-- Section 1: Basic Information -->
+        <div class="card p-5 shadow-sm">
+          <div class="section-title">
+            <div class="w-6 h-6 rounded-full bg-sky-500 text-white flex items-center justify-center text-[10px] font-bold">1</div>
+            Basic Information
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <div class="field-label field-required">Material Name</div>
+              <input class="field-input" type="text" placeholder="e.g. Paracetamol">
+              <div class="hint">Use the INN / IUPAC name. Avoid brand names.</div>
+            </div>
+            <div>
+              <div class="field-label">Generic / Other Names</div>
+              <input class="field-input" type="text" placeholder="e.g. Acetaminophen, 4-Acetamidophenol">
+            </div>
+            <div>
+              <div class="field-label field-required">Material Category</div>
+              <select class="field-select">
+                <option value="">— Select category —</option>
+                <option>API (Active Pharmaceutical Ingredient)</option>
+                <option>Excipient</option>
+                <option>Solvent</option>
+                <option>Packaging Material</option>
+                <option>Finished Goods</option>
+                <option>Reference Standard</option>
+              </select>
+            </div>
+            <div>
+              <div class="field-label field-required">Material Type</div>
+              <select class="field-select">
+                <option value="">— Select type —</option>
+                <option>Raw Material (RM)</option>
+                <option>Packaging Material (PM)</option>
+                <option>Finished Goods (FG)</option>
+                <option>In-Process Material</option>
+              </select>
+            </div>
+            <div>
+              <div class="field-label field-required">Unit of Measure (UOM)</div>
+              <select class="field-select">
+                <option>kg</option>
+                <option>g</option>
+                <option>mg</option>
+                <option>L</option>
+                <option>mL</option>
+                <option>pcs</option>
+                <option>strips</option>
+                <option>rolls</option>
+              </select>
+            </div>
+            <div>
+              <div class="field-label">HSN Code</div>
+              <input class="field-input" type="text" placeholder="e.g. 29242990">
+              <div class="hint">Harmonized System of Nomenclature code for GST.</div>
+            </div>
+            <div>
+              <div class="field-label">CAS Number</div>
+              <input class="field-input" type="text" placeholder="e.g. 103-90-2">
+            </div>
+            <div>
+              <div class="field-label">Pharmacopoeial Ref.</div>
+              <select class="field-select">
+                <option>IP 2022</option>
+                <option>BP 2024</option>
+                <option>USP-NF 2024</option>
+                <option>EP 10th Edition</option>
+                <option>Non-Pharmacopoeial</option>
+                <option>In-house</option>
+              </select>
+            </div>
+            <div class="col-span-2">
+              <div class="field-label">Description / Remarks</div>
+              <textarea class="field-textarea" placeholder="Additional notes, physical description, special handling instructions…"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Storage & Handling -->
+        <div class="card p-5 shadow-sm">
+          <div class="section-title">
+            <div class="w-6 h-6 rounded-full bg-sky-500 text-white flex items-center justify-center text-[10px] font-bold">2</div>
+            Storage &amp; Handling
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <div class="field-label field-required">Storage Condition</div>
+              <select class="field-select">
+                <option>Ambient (15–30°C)</option>
+                <option>Cool / Controlled (8–15°C)</option>
+                <option>Cold / Refrigerated (2–8°C)</option>
+                <option>Frozen (–20°C)</option>
+                <option>Deep Frozen (–80°C)</option>
+                <option>Flammable Store</option>
+              </select>
+            </div>
+            <div>
+              <div class="field-label">Max Humidity (%RH)</div>
+              <input class="field-input" type="text" placeholder="e.g. NMT 65%">
+            </div>
+            <div>
+              <div class="field-label">Light Sensitivity</div>
+              <select class="field-select">
+                <option>Not sensitive</option>
+                <option>Protect from light</option>
+                <option>Store in amber container</option>
+                <option>Store in dark</option>
+              </select>
+            </div>
+            <div>
+              <div class="field-label">Hygroscopic</div>
+              <select class="field-select">
+                <option>No</option>
+                <option>Yes – store with desiccant</option>
+                <option>Yes – keep sealed</option>
+              </select>
+            </div>
+            <div>
+              <div class="field-label field-required">Shelf Life (months)</div>
+              <input class="field-input" type="number" placeholder="e.g. 36">
+            </div>
+            <div>
+              <div class="field-label">Retest Period (months)</div>
+              <input class="field-input" type="number" placeholder="e.g. 24">
+              <div class="hint">For APIs and critical excipients.</div>
+            </div>
+            <div>
+              <div class="field-label">Reorder Level</div>
+              <input class="field-input" type="text" placeholder="e.g. 50 kg">
+            </div>
+            <div>
+              <div class="field-label">Lead Time (days)</div>
+              <input class="field-input" type="number" placeholder="e.g. 14">
+            </div>
+            <div class="col-span-2 flex gap-4">
+              <div class="flex items-center gap-3 p-3 rounded-xl border border-sky-100 bg-sky-50 flex-1">
+                <div class="toggle on"></div>
+                <div>
+                  <div class="text-xs font-semibold text-slate-800">Controlled Substance</div>
+                  <div class="text-[10px] text-slate-400">Requires narcotics register if enabled</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3 p-3 rounded-xl border border-sky-100 bg-sky-50 flex-1">
+                <div class="toggle"></div>
+                <div>
+                  <div class="text-xs font-semibold text-slate-800">Hazardous Material</div>
+                  <div class="text-[10px] text-slate-400">Triggers MSDS requirement on GRN</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Default Storage Location -->
+          <div class="mt-5 pt-5 border-t border-sky-100">
+            <div class="flex items-center gap-2 mb-4">
+              <svg class="w-4 h-4 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4"/></svg>
+              <span class="text-xs font-bold text-sky-800 uppercase tracking-wide">Default Storage Location</span>
+              <span class="ml-1 text-[10px] bg-sky-100 text-sky-600 px-2 py-0.5 rounded-full font-medium">Auto-suggested during GRN putaway</span>
+            </div>
+            <div class="grid grid-cols-3 gap-4 mb-3">
+              <div>
+                <div class="field-label field-required">Warehouse</div>
+                <select class="field-select">
+                  <option>— Select warehouse —</option>
+                  <option>WH-A · Raw Material Store</option>
+                  <option>WH-B · Packaging Store</option>
+                  <option>WH-C · Quarantine Store</option>
+                  <option>WH-D · Cold Storage (2–8°C)</option>
+                </select>
+              </div>
+              <div>
+                <div class="field-label">Preferred Room / Zone</div>
+                <select class="field-select">
+                  <option>— Auto from condition —</option>
+                  <option>R-01 · Ambient General</option>
+                  <option>R-02 · Ambient API</option>
+                  <option>R-03 · Cold Store</option>
+                  <option>R-04 · Flammable Store</option>
+                </select>
+              </div>
+              <div>
+                <div class="field-label">Preferred Rack (optional)</div>
+                <select class="field-select">
+                  <option>— System assigns —</option>
+                  <option>Rack A-01</option>
+                  <option>Rack A-02</option>
+                  <option>Rack B-01</option>
+                  <option>Rack C-01</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <div class="field-label">Quarantine Location</div>
+                <select class="field-select">
+                  <option>WH-C · Quarantine (default)</option>
+                  <option>WH-A / R-01 / Quarantine Bay</option>
+                  <option>WH-D · Cold Quarantine</option>
+                </select>
+                <div class="hint">Where this material is held after GRN before QC release.</div>
+              </div>
+              <div>
+                <div class="field-label">Rejected Material Location</div>
+                <select class="field-select">
+                  <option>WH-C / Rejected Bay (default)</option>
+                  <option>Destruction Room</option>
+                  <option>Return-to-Vendor Staging</option>
+                </select>
+                <div class="hint">Where lots go after QC rejection.</div>
+              </div>
+            </div>
+            <div class="mt-3 p-3 bg-sky-50 border border-sky-100 rounded-xl flex items-start gap-3">
+              <svg class="w-4 h-4 text-sky-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <div class="text-[11px] text-sky-700">
+                <strong>How this works:</strong> When a GRN is raised for this material, the system will auto-suggest the Warehouse and Room above. The storekeeper can override at the time of putaway. If the preferred room is full, the system suggests the next available compatible zone.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Specifications -->
+        <div class="card p-5 shadow-sm">
+          <div class="section-title">
+            <div class="w-6 h-6 rounded-full bg-sky-500 text-white flex items-center justify-center text-[10px] font-bold">3</div>
+            Specification &amp; Testing
+          </div>
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <div class="field-label">Link Existing Spec</div>
+              <select class="field-select">
+                <option>— Search / select spec —</option>
+                <option>SP-2024-PARA · Paracetamol API</option>
+                <option>SP-2024-IBU · Ibuprofen API</option>
+                <option>SP-2023-MCC · MCC PH102</option>
+              </select>
+            </div>
+            <div class="flex items-end">
+              <button class="field-input bg-violet-50 border-violet-200 text-violet-700 font-semibold text-xs cursor-pointer hover:bg-violet-100 text-center">+ Create New Spec →</button>
+            </div>
+          </div>
+          <div class="text-xs font-semibold text-slate-600 mb-2">Key Test Parameters (preview)</div>
+          <div class="space-y-2">
+            <div class="param-row flex items-center gap-3">
+              <div class="w-4 h-4 rounded bg-sky-100 flex items-center justify-center text-sky-600 text-[9px] font-bold flex-shrink-0">T</div>
+              <div class="flex-1 text-xs text-slate-700">Description · Visual · White crystalline powder</div>
+              <span class="text-[10px] text-slate-400">IP 2022</span>
+            </div>
+            <div class="param-row flex items-center gap-3">
+              <div class="w-4 h-4 rounded bg-sky-100 flex items-center justify-center text-sky-600 text-[9px] font-bold flex-shrink-0">T</div>
+              <div class="flex-1 text-xs text-slate-700">Assay (HPLC) · 98.0 – 101.0%</div>
+              <span class="text-[10px] text-slate-400">IP 2022</span>
+            </div>
+            <div class="param-row flex items-center gap-3">
+              <div class="w-4 h-4 rounded bg-sky-100 flex items-center justify-center text-sky-600 text-[9px] font-bold flex-shrink-0">T</div>
+              <div class="flex-1 text-xs text-slate-700">Loss on Drying · NMT 0.5%</div>
+              <span class="text-[10px] text-slate-400">IP 2022</span>
+            </div>
+            <div class="text-[11px] text-slate-400 pl-1">+ 4 more parameters in spec SP-2024-PARA</div>
+          </div>
+        </div>
+
+        <!-- Section 4: Approved Vendors -->
+        <div class="card p-5 shadow-sm">
+          <div class="section-title">
+            <div class="w-6 h-6 rounded-full bg-sky-500 text-white flex items-center justify-center text-[10px] font-bold">4</div>
+            Approved Vendor List (AVL)
+          </div>
+          <div class="mb-3">
+            <div class="field-label">Link Approved Vendors</div>
+            <div class="flex gap-2">
+              <select class="field-select">
+                <option>— Search vendor —</option>
+                <option>Granules India Ltd. (VEN-0007)</option>
+                <option>Sigma Chemicals (VEN-0012)</option>
+                <option>Apex Excipients (VEN-0015)</option>
+              </select>
+              <button class="px-4 py-2 text-xs font-semibold bg-sky-100 text-sky-700 rounded-xl hover:bg-sky-200 whitespace-nowrap">+ Add</button>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <div class="vendor-chip">
+              <div class="w-4 h-4 rounded-full bg-orange-200 flex items-center justify-center text-[9px] font-bold text-orange-700">G</div>
+              Granules India Ltd.
+              <button class="text-orange-400 hover:text-red-600 font-bold text-sm leading-none">×</button>
+            </div>
+            <div class="vendor-chip">
+              <div class="w-4 h-4 rounded-full bg-orange-200 flex items-center justify-center text-[9px] font-bold text-orange-700">S</div>
+              Sigma Chemicals
+              <button class="text-orange-400 hover:text-red-600 font-bold text-sm leading-none">×</button>
+            </div>
+          </div>
+          <div class="hint mt-2">Only vendors with 'Approved' qualification status can be added.</div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Summary / Preview -->
+      <div class="space-y-4">
+        <!-- Auto-generated code preview -->
+        <div class="card p-4 shadow-sm bg-sky-50 border-sky-200">
+          <div class="text-xs font-semibold text-sky-800 mb-2">Auto-Generated Code</div>
+          <div class="font-mono text-xl font-bold text-sky-700 mb-1">RM-???-XXX</div>
+          <div class="text-[10px] text-sky-600">Will be assigned on first save based on category prefix + sequential number.</div>
+        </div>
+
+        <!-- Form completion -->
+        <div class="card p-4 shadow-sm">
+          <div class="text-xs font-semibold text-slate-700 mb-3">Completion Status</div>
+          <div class="space-y-2">
+            <div class="flex justify-between text-xs">
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-sky-500 inline-block"></span>Basic Info</span>
+              <span class="font-semibold text-sky-600">In progress</span>
+            </div>
+            <div class="flex justify-between text-xs">
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-slate-300 inline-block"></span>Storage</span>
+              <span class="text-slate-400">Not started</span>
+            </div>
+            <div class="flex justify-between text-xs">
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-slate-300 inline-block"></span>Specifications</span>
+              <span class="text-slate-400">Not started</span>
+            </div>
+            <div class="flex justify-between text-xs">
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-slate-300 inline-block"></span>Vendors</span>
+              <span class="text-slate-400">Not started</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Required fields reminder -->
+        <div class="card p-4 shadow-sm border-amber-200 bg-amber-50">
+          <div class="text-xs font-semibold text-amber-800 mb-2">Required Fields</div>
+          <ul class="space-y-1.5 text-[11px] text-amber-700">
+            <li class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>Material Name</li>
+            <li class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>Material Category</li>
+            <li class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>Material Type</li>
+            <li class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>Unit of Measure</li>
+            <li class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>Storage Condition</li>
+            <li class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block"></span>Shelf Life</li>
+          </ul>
+        </div>
+
+        <!-- Tips -->
+        <div class="card p-4 shadow-sm">
+          <div class="text-xs font-semibold text-slate-700 mb-2">Tips</div>
+          <ul class="space-y-2 text-[11px] text-slate-500">
+            <li>Material code is auto-assigned — do not enter manually.</li>
+            <li>Attaching a Specification activates test requests on GRN.</li>
+            <li>At least one approved vendor must be linked before the material can be ordered.</li>
+          </ul>
+        </div>
+
+        <!-- Action buttons sticky -->
+        <div class="card p-4 shadow-sm">
+          <div class="space-y-2">
+            <button class="w-full py-2.5 rounded-xl bg-sky-600 text-white text-xs font-semibold hover:bg-sky-700">Save &amp; Activate</button>
+            <button class="w-full py-2.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold hover:bg-slate-200">Save as Draft</button>
+            <a href="08-materials.html" class="block w-full py-2.5 rounded-xl border border-slate-200 text-slate-500 text-xs font-semibold hover:bg-slate-50 text-center">Cancel</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

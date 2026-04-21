@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BatchSphere – LIMS</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #faf5ff; color: #1e293b; }
+  .sidebar { background: #1e3a8a; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #bfdbfe; transition: all 0.15s; }
+  .nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .nav-item.active { background: rgba(255,255,255,0.15); color: #fff; font-weight: 600; }
+  .nav-section { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: #60a5fa; text-transform: uppercase; padding: 14px 14px 4px; }
+  .card { background: #fff; border: 1px solid #e9d5ff; border-radius: 14px; }
+  .status-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .test-row { border-bottom: 1px solid #faf5ff; padding: 10px 16px; cursor: pointer; transition: all 0.1s; }
+  .test-row:hover { background: #faf5ff; }
+  .test-row.selected { background: #f3e8ff; border-left: 3px solid #7c3aed; }
+  .tab { padding: 6px 14px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: 500; }
+  .tab.active { background: #7c3aed; color: white; }
+  .tab:not(.active) { color: #5b21b6; background: #f3e8ff; }
+  .tab:not(.active):hover { background: #e9d5ff; }
+  .param-row:hover { background: #faf5ff; }
+  .instrument-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 8px; font-size: 10px; font-weight: 600; }
+  .result-input { border: 1.5px solid #e9d5ff; border-radius: 8px; padding: 4px 8px; font-size: 12px; width: 90px; outline: none; }
+  .result-input:focus { border-color: #7c3aed; }
+  .result-input.fail { border-color: #ef4444; background: #fff1f2; }
+  .result-input.pass { border-color: #22c55e; background: #f0fdf4; }
+</style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+<!-- Sidebar -->
+<aside class="sidebar w-60 flex-shrink-0 flex flex-col overflow-y-auto">
+  <div class="p-4 border-b border-blue-700">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-white flex items-center justify-center font-bold text-blue-700 text-sm shadow">BS</div>
+      <div><div class="font-bold text-white text-sm">BatchSphere</div><div class="text-[10px] text-blue-300">Pharma ERP v2.1</div></div>
+    </div>
+  </div>
+  <nav class="flex-1 p-3 space-y-0.5">
+    <div class="nav-section">Laboratory</div>
+    <div class="nav-item active">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
+      Test Requests
+      <span class="ml-auto" style="background:#7c3aed;color:white;border-radius:999px;font-size:10px;font-weight:700;padding:1px 6px;">5</span>
+    </div>
+    <div class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
+      Instruments
+    </div>
+    <div class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      OOS / OOT
+      <span class="ml-auto" style="background:#dc2626;color:white;border-radius:999px;font-size:10px;font-weight:700;padding:1px 6px;">2</span>
+    </div>
+    <div class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+      COA Generation
+    </div>
+    <div class="nav-section">Navigate</div>
+    <a href="01-dashboard.html" class="nav-item">← Dashboard</a>
+    <a href="06-sampling.html" class="nav-item" style="color:#93c5fd">→ QC Sampling</a>
+    <a href="03-qms.html" class="nav-item" style="color:#93c5fd">→ QMS / CAPA</a>
+  </nav>
+  <div class="p-3 border-t border-blue-800 text-[10px] text-blue-400 text-center">BatchSphere © 2026</div>
+</aside>
+
+<!-- Main -->
+<main class="flex-1 flex flex-col overflow-hidden">
+  <header class="h-14 bg-white border-b border-purple-100 flex items-center px-6 gap-4 flex-shrink-0 shadow-sm">
+    <div class="text-xs text-slate-400">Laboratory / <span class="text-purple-700 font-medium">LIMS</span></div>
+    <div class="ml-auto flex items-center gap-3">
+      <div class="flex items-center gap-2 bg-purple-50 rounded-xl px-3 py-1.5 text-xs text-slate-400 border border-purple-100">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-width="2" d="m21 21-4.35-4.35"/></svg>
+        Search test, lot, analyst... ⌘K
+      </div>
+      <div class="text-xs text-slate-400 bg-purple-50 px-3 py-1.5 rounded-xl border border-purple-100">Fri, 18 Apr 2026</div>
+    </div>
+  </header>
+
+  <div class="flex-1 overflow-y-auto p-6">
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <h1 class="text-xl font-bold text-slate-800">Laboratory Information System</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Test requests · Result entry · Instrument scheduling · COA</p>
+      </div>
+      <div class="flex gap-2">
+        <button class="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-xl text-xs font-semibold hover:bg-purple-700">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          New Test Request
+        </button>
+        <button class="flex items-center gap-2 px-4 py-2 bg-white border border-purple-200 text-purple-700 rounded-xl text-xs font-semibold hover:bg-purple-50">Generate COA</button>
+      </div>
+    </div>
+
+    <!-- Alert -->
+    <div class="mb-5 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-3">
+      <svg class="w-4 h-4 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+      <span class="text-sm text-red-800"><strong>2 OOS results detected</strong> — TR-2026-0089 (Assay &lt;spec) and TR-2026-0091 (pH OOT). Immediate investigation required.</span>
+      <button class="ml-auto text-xs text-red-700 underline font-medium">Open OOS</button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid grid-cols-5 gap-4 mb-6">
+      <div class="bg-white border border-purple-200 rounded-xl p-4 border-l-4 border-l-purple-500">
+        <div class="text-xs text-slate-500 mb-1">Open Test Requests</div>
+        <div class="text-2xl font-bold text-purple-600">5</div>
+        <div class="text-xs text-slate-500 mt-1">In queue</div>
+      </div>
+      <div class="bg-white border border-purple-200 rounded-xl p-4 border-l-4 border-l-amber-400">
+        <div class="text-xs text-slate-500 mb-1">In Progress</div>
+        <div class="text-2xl font-bold text-amber-600">3</div>
+        <div class="text-xs text-slate-500 mt-1">Being analyzed</div>
+      </div>
+      <div class="bg-white border border-purple-200 rounded-xl p-4 border-l-4 border-l-red-400">
+        <div class="text-xs text-slate-500 mb-1">OOS / OOT</div>
+        <div class="text-2xl font-bold text-red-600">2</div>
+        <div class="text-xs text-red-500 mt-1 font-medium">Action required</div>
+      </div>
+      <div class="bg-white border border-purple-200 rounded-xl p-4 border-l-4 border-l-green-400">
+        <div class="text-xs text-slate-500 mb-1">Passed Today</div>
+        <div class="text-2xl font-bold text-green-600">7</div>
+        <div class="text-xs text-slate-500 mt-1">Results accepted</div>
+      </div>
+      <div class="bg-white border border-purple-200 rounded-xl p-4 border-l-4 border-l-blue-400">
+        <div class="text-xs text-slate-500 mb-1">Instruments</div>
+        <div class="text-2xl font-bold text-blue-600">12</div>
+        <div class="text-xs text-green-600 mt-1 font-medium">10 calibrated</div>
+      </div>
+    </div>
+
+    <div class="flex gap-5">
+      <!-- Test Request Queue -->
+      <div class="w-80 flex-shrink-0">
+        <div class="card overflow-hidden shadow-sm">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-purple-100 bg-gradient-to-r from-purple-50 to-white">
+            <span class="font-semibold text-sm text-slate-700">Test Queue</span>
+            <div class="flex gap-1">
+              <span class="tab active text-[11px] px-2 py-1">Open</span>
+              <span class="tab text-[11px] px-2 py-1">Completed</span>
+            </div>
+          </div>
+          <div class="divide-y divide-purple-50">
+            <div class="test-row selected">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-bold text-slate-800">TR-2026-0092</span>
+                <span class="status-pill bg-purple-100 text-purple-700 text-[10px]"><span class="dot bg-purple-500"></span>In Progress</span>
+              </div>
+              <div class="text-[11px] text-slate-500 mb-0.5">Paracetamol API · L-2026-0041</div>
+              <div class="text-[10px] text-slate-400">Analyst: Priya M. · Instrument: HPLC-01</div>
+            </div>
+            <div class="test-row">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-bold text-slate-800">TR-2026-0091</span>
+                <span class="status-pill bg-red-100 text-red-700 text-[10px]"><span class="dot bg-red-500"></span>OOT</span>
+              </div>
+              <div class="text-[11px] text-slate-500 mb-0.5">Purified Water · L-2026-0039</div>
+              <div class="text-[10px] text-slate-400">Analyst: Ravi K. · pH 6.8 (spec 5.0–7.0)</div>
+            </div>
+            <div class="test-row">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-bold text-slate-800">TR-2026-0090</span>
+                <span class="status-pill bg-amber-100 text-amber-700 text-[10px]"><span class="dot bg-amber-400"></span>Pending</span>
+              </div>
+              <div class="text-[11px] text-slate-500 mb-0.5">MCC PH102 · L-2026-0038</div>
+              <div class="text-[10px] text-slate-400">Unassigned · Due: 19 Apr</div>
+            </div>
+            <div class="test-row">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-bold text-slate-800">TR-2026-0089</span>
+                <span class="status-pill bg-red-100 text-red-700 text-[10px]"><span class="dot bg-red-500"></span>OOS</span>
+              </div>
+              <div class="text-[11px] text-slate-500 mb-0.5">Ibuprofen API · L-2026-0036</div>
+              <div class="text-[10px] text-slate-400">Analyst: Meena S. · Assay 96.2%</div>
+            </div>
+            <div class="test-row">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-bold text-slate-800">TR-2026-0088</span>
+                <span class="status-pill bg-amber-100 text-amber-700 text-[10px]"><span class="dot bg-amber-400"></span>Pending</span>
+              </div>
+              <div class="text-[11px] text-slate-500 mb-0.5">Talc · L-2026-0044</div>
+              <div class="text-[10px] text-slate-400">Unassigned · Due: 21 Apr</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Test Detail -->
+      <div class="flex-1 space-y-4">
+        <!-- Test Header -->
+        <div class="card p-5 shadow-sm">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <div class="flex items-center gap-3 mb-1">
+                <h2 class="text-lg font-bold text-slate-800">TR-2026-0092</h2>
+                <span class="status-pill bg-purple-100 text-purple-700"><span class="dot bg-purple-500"></span>In Progress</span>
+              </div>
+              <p class="text-sm text-slate-500">Paracetamol API · Lot L-2026-0041 · GRN-2026-0112</p>
+            </div>
+            <div class="flex gap-2">
+              <button class="px-3 py-1.5 text-xs font-semibold border border-purple-200 text-purple-700 rounded-xl hover:bg-purple-50">Save Results</button>
+              <button class="px-3 py-1.5 text-xs font-semibold bg-purple-600 text-white rounded-xl hover:bg-purple-700">Finalise & Submit</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-4 gap-3">
+            <div class="bg-purple-50 rounded-xl p-3">
+              <div class="text-[10px] text-slate-500 mb-0.5">Spec Reference</div>
+              <div class="text-xs font-bold text-slate-800">SP-2024-PARA</div>
+            </div>
+            <div class="bg-purple-50 rounded-xl p-3">
+              <div class="text-[10px] text-slate-500 mb-0.5">Analyst</div>
+              <div class="text-xs font-bold text-slate-800">Priya Meenakshi</div>
+            </div>
+            <div class="bg-purple-50 rounded-xl p-3">
+              <div class="text-[10px] text-slate-500 mb-0.5">Started</div>
+              <div class="text-xs font-bold text-slate-800">18 Apr 2026 · 08:30</div>
+            </div>
+            <div class="bg-purple-50 rounded-xl p-3">
+              <div class="text-[10px] text-slate-500 mb-0.5">TAT Due</div>
+              <div class="text-xs font-bold text-amber-700">18 Apr 2026 · 17:00</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Result Entry Table -->
+        <div class="card overflow-hidden shadow-sm">
+          <div class="flex items-center justify-between px-5 py-3 border-b border-purple-100 bg-gradient-to-r from-purple-50 to-white">
+            <span class="font-semibold text-sm text-slate-700">Test Result Entry</span>
+            <span class="text-xs text-slate-400">IP 2022 Pharmacopoeia</span>
+          </div>
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="border-b border-purple-50 bg-purple-50/50">
+                <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Parameter</th>
+                <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Method / Instrument</th>
+                <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Specification</th>
+                <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Observed Result</th>
+                <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Judgment</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="param-row border-b border-purple-50">
+                <td class="px-4 py-2.5 font-medium text-slate-800">Description</td>
+                <td class="px-4 py-2.5 text-slate-500">Visual · —</td>
+                <td class="px-4 py-2.5 text-slate-600">White crystalline powder</td>
+                <td class="px-4 py-2.5"><input class="result-input pass" type="text" value="White cryst. powder"></td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Pass</span></td>
+              </tr>
+              <tr class="param-row border-b border-purple-50">
+                <td class="px-4 py-2.5 font-medium text-slate-800">Identification (IR)</td>
+                <td class="px-4 py-2.5 text-slate-500">IP 2022 · FTIR-01</td>
+                <td class="px-4 py-2.5 text-slate-600">Conforms to RS</td>
+                <td class="px-4 py-2.5"><input class="result-input pass" type="text" value="Conforms"></td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Pass</span></td>
+              </tr>
+              <tr class="param-row border-b border-purple-50">
+                <td class="px-4 py-2.5 font-medium text-slate-800">Assay (% w/w)</td>
+                <td class="px-4 py-2.5 text-slate-500">HPLC · HPLC-01</td>
+                <td class="px-4 py-2.5 text-slate-600">98.0 – 101.0%</td>
+                <td class="px-4 py-2.5"><input class="result-input pass" type="text" value="99.4%"></td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Pass</span></td>
+              </tr>
+              <tr class="param-row border-b border-purple-50">
+                <td class="px-4 py-2.5 font-medium text-slate-800">Loss on Drying</td>
+                <td class="px-4 py-2.5 text-slate-500">Gravimetry · MOI-02</td>
+                <td class="px-4 py-2.5 text-slate-600">NMT 0.5%</td>
+                <td class="px-4 py-2.5"><input class="result-input pass" type="text" value="0.3%"></td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Pass</span></td>
+              </tr>
+              <tr class="param-row border-b border-purple-50">
+                <td class="px-4 py-2.5 font-medium text-slate-800">Residue on Ignition</td>
+                <td class="px-4 py-2.5 text-slate-500">Gravimetry · MUF-01</td>
+                <td class="px-4 py-2.5 text-slate-600">NMT 0.1%</td>
+                <td class="px-4 py-2.5"><input class="result-input pass" type="text" value="0.05%"></td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Pass</span></td>
+              </tr>
+              <tr class="param-row border-b border-purple-50">
+                <td class="px-4 py-2.5 font-medium text-slate-800">Heavy Metals</td>
+                <td class="px-4 py-2.5 text-slate-500">AAS · AAS-01</td>
+                <td class="px-4 py-2.5 text-slate-600">NMT 10 ppm</td>
+                <td class="px-4 py-2.5"><input class="result-input" type="text" placeholder="Enter result..."></td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-slate-100 text-slate-500">Pending</span></td>
+              </tr>
+              <tr class="param-row">
+                <td class="px-4 py-2.5 font-medium text-slate-800">Microbial Limit (TAMC)</td>
+                <td class="px-4 py-2.5 text-slate-500">Plate count · MICRO-01</td>
+                <td class="px-4 py-2.5 text-slate-600">≤ 10³ CFU/g</td>
+                <td class="px-4 py-2.5"><input class="result-input" type="text" placeholder="Enter result..."></td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-slate-100 text-slate-500">Pending</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Instruments Status -->
+        <div class="card overflow-hidden shadow-sm">
+          <div class="flex items-center justify-between px-5 py-3 border-b border-purple-100 bg-gradient-to-r from-purple-50 to-white">
+            <span class="font-semibold text-sm text-slate-700">Instrument Status</span>
+            <a href="#" class="text-xs text-purple-600 hover:underline">View All →</a>
+          </div>
+          <div class="grid grid-cols-4 gap-0 divide-x divide-purple-50">
+            <div class="p-4 text-center">
+              <div class="text-xs font-bold text-slate-800 mb-1">HPLC-01</div>
+              <div class="instrument-chip bg-green-100 text-green-700 justify-center mb-1"><span class="dot bg-green-500"></span>Available</div>
+              <div class="text-[10px] text-slate-400">Cal: 30 Apr 2026</div>
+            </div>
+            <div class="p-4 text-center">
+              <div class="text-xs font-bold text-slate-800 mb-1">FTIR-01</div>
+              <div class="instrument-chip bg-amber-100 text-amber-700 justify-center mb-1"><span class="dot bg-amber-400"></span>In Use</div>
+              <div class="text-[10px] text-slate-400">Cal: 15 Jun 2026</div>
+            </div>
+            <div class="p-4 text-center">
+              <div class="text-xs font-bold text-slate-800 mb-1">AAS-01</div>
+              <div class="instrument-chip bg-green-100 text-green-700 justify-center mb-1"><span class="dot bg-green-500"></span>Available</div>
+              <div class="text-[10px] text-slate-400">Cal: 20 May 2026</div>
+            </div>
+            <div class="p-4 text-center">
+              <div class="text-xs font-bold text-slate-800 mb-1">MOI-02</div>
+              <div class="instrument-chip bg-red-100 text-red-700 justify-center mb-1"><span class="dot bg-red-500"></span>Maintenance</div>
+              <div class="text-[10px] text-red-400 font-medium">Cal overdue!</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

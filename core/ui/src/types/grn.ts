@@ -134,6 +134,9 @@ export type MaterialLabel = {
   appliedAt: string | null;
 };
 
+export type GrnDocumentList = GrnDocument[];
+export type GrnLabelList = MaterialLabel[];
+
 export type GrnDocument = {
   id: string;
   grnItemId: string;
@@ -144,4 +147,39 @@ export type GrnDocument = {
   documentUrl: string | null;
   createdBy: string;
   createdAt: string;
+};
+
+export type GrnSummary = {
+  countsByStatus: Record<GrnStatus, number>;
+};
+
+export type GrnLabelPrintEntry = {
+  grnItemId: string;
+  lineNumber: number;
+  materialId: string;
+  materialName: string;
+  batchId: string | null;
+  batchNumber: string | null;
+  palletId: string;
+  palletCode: string;
+  containerId: string;
+  containerNumber: string;
+  internalLot: string;
+  quantity: number;
+  uom: string;
+  labelType: LabelType;
+  labelStatus: LabelStatus;
+  labelContent: string;
+  qrPayload: string | null;
+  qrCodeDataUrl: string | null;
+  generatedAt: string;
+};
+
+export type GrnLabelPrintData = {
+  grnId: string;
+  grnNumber: string;
+  receiptDate: string;
+  invoiceNumber: string | null;
+  status: GrnStatus;
+  entries: GrnLabelPrintEntry[];
 };

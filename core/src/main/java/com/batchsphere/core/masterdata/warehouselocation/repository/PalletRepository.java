@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface PalletRepository extends JpaRepository<Pallet, UUID> {
@@ -18,4 +19,8 @@ public interface PalletRepository extends JpaRepository<Pallet, UUID> {
     Page<Pallet> findByIsActiveTrue(Pageable pageable);
 
     Page<Pallet> findByShelfIdAndIsActiveTrue(UUID shelfId, Pageable pageable);
+
+    List<Pallet> findByShelfIdInAndIsActiveTrueOrderByPalletCodeAsc(List<UUID> shelfIds);
+
+    List<Pallet> findByIsActiveTrueOrderByPalletCodeAsc();
 }

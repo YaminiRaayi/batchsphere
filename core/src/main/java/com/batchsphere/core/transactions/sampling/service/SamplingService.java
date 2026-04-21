@@ -5,6 +5,7 @@ import com.batchsphere.core.transactions.sampling.dto.CreateSamplingPlanRequest;
 import com.batchsphere.core.transactions.sampling.dto.QcDecisionRequest;
 import com.batchsphere.core.transactions.sampling.dto.SamplingCompletionRequest;
 import com.batchsphere.core.transactions.sampling.dto.SamplingRequestResponse;
+import com.batchsphere.core.transactions.sampling.dto.SamplingSummaryResponse;
 import com.batchsphere.core.transactions.sampling.dto.UpdateSamplingPlanRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +18,8 @@ public interface SamplingService {
     void createSamplingRequestsForGrn(UUID grnId, List<GrnItem> items, String actor);
 
     Page<SamplingRequestResponse> getAllSamplingRequests(Pageable pageable);
+
+    SamplingSummaryResponse getSamplingSummary();
 
     SamplingRequestResponse getSamplingRequestById(UUID id);
 

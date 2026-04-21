@@ -36,3 +36,7 @@ export type InventoryTransaction = {
   createdBy: string;
   createdAt: string;
 };
+
+export type InventorySummary = {
+  countsByStatus: Record<InventoryStatus, number>;
+};

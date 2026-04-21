@@ -5,7 +5,9 @@ import com.batchsphere.core.transactions.grn.dto.ContainerSamplingLabelRequest;
 import com.batchsphere.core.transactions.grn.dto.GrnContainerResponse;
 import com.batchsphere.core.transactions.grn.dto.GrnDocumentResponse;
 import com.batchsphere.core.transactions.grn.dto.GrnDocumentUploadRequest;
+import com.batchsphere.core.transactions.grn.dto.GrnLabelPrintDataResponse;
 import com.batchsphere.core.transactions.grn.dto.GrnResponse;
+import com.batchsphere.core.transactions.grn.dto.GrnSummaryResponse;
 import com.batchsphere.core.transactions.grn.dto.GrnStatusUpdateRequest;
 import com.batchsphere.core.transactions.grn.dto.MaterialLabelResponse;
 import com.batchsphere.core.transactions.grn.dto.UpdateGrnRequest;
@@ -41,6 +43,11 @@ public class GrnController {
         return ResponseEntity.ok(grnService.createGrn(request));
     }
 
+    @GetMapping("/summary")
+    public ResponseEntity<GrnSummaryResponse> getGrnSummary() {
+        return ResponseEntity.ok(grnService.getGrnSummary());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<GrnResponse> getGrnById(@PathVariable UUID id) {
         return ResponseEntity.ok(grnService.getGrnById(id));
@@ -66,9 +73,24 @@ public class GrnController {
         return ResponseEntity.ok(grnService.getContainersByGrnItemId(grnItemId));
     }
 
+    @GetMapping("/{id}/documents")
+    public ResponseEntity<List<GrnDocumentResponse>> getDocumentsByGrnId(@PathVariable UUID id) {
+        return ResponseEntity.ok(grnService.getDocumentsByGrnId(id));
+    }
+
+    @GetMapping("/{id}/labels")
+    public ResponseEntity<List<MaterialLabelResponse>> getLabelsByGrnId(@PathVariable UUID id) {
+        return ResponseEntity.ok(grnService.getLabelsByGrnId(id));
+    }
+
     @GetMapping("/containers/{containerId}/labels")
     public ResponseEntity<List<MaterialLabelResponse>> getLabelsByContainerId(@PathVariable UUID containerId) {
         return ResponseEntity.ok(grnService.getLabelsByContainerId(containerId));
+    }
+
+    @GetMapping("/{id}/labels/print-data")
+    public ResponseEntity<GrnLabelPrintDataResponse> getLabelPrintData(@PathVariable UUID id) {
+        return ResponseEntity.ok(grnService.getLabelPrintData(id));
     }
 
     @PostMapping("/containers/{containerId}/sampling-label")
@@ -93,7 +115,7 @@ public class GrnController {
 
     @PostMapping("/{id}/cancel")
     public ResponseEntity<GrnResponse> cancelGrn(@PathVariable UUID id, @Valid @RequestBody GrnStatusUpdateRequest request) {
-        return ResponseEntity.ok(grnService.cancelGrn(id, request.getUpdatedBy()));
+        return ResponseEntity.ok(grnService.cancelGrn(id, request.getUpdatedBy(), request.getReason()));
     }
 
     @DeleteMapping("/{id}")

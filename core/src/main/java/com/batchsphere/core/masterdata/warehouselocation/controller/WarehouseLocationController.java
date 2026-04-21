@@ -5,16 +5,19 @@ import com.batchsphere.core.masterdata.warehouselocation.dto.CreateRackRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.CreateRoomRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.CreateShelfRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.CreateWarehouseRequest;
+import com.batchsphere.core.masterdata.warehouselocation.dto.AvailablePalletResponse;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdatePalletRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateRackRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateRoomRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateShelfRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateWarehouseRequest;
+import com.batchsphere.core.masterdata.warehouselocation.dto.WarehouseHierarchyResponse;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Pallet;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Rack;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Room;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Shelf;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Warehouse;
+import com.batchsphere.core.masterdata.material.entity.StorageCondition;
 import com.batchsphere.core.masterdata.warehouselocation.service.WarehouseLocationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +34,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -53,6 +57,11 @@ public class WarehouseLocationController {
     @GetMapping("/warehouses")
     public ResponseEntity<Page<Warehouse>> getAllWarehouses(Pageable pageable) {
         return ResponseEntity.ok(warehouseLocationService.getAllWarehouses(pageable));
+    }
+
+    @GetMapping("/warehouses/tree")
+    public ResponseEntity<List<WarehouseHierarchyResponse>> getWarehouseTree() {
+        return ResponseEntity.ok(warehouseLocationService.getWarehouseTree());
     }
 
     @PutMapping("/warehouses/{id}")
@@ -157,6 +166,11 @@ public class WarehouseLocationController {
     @GetMapping("/pallets")
     public ResponseEntity<Page<Pallet>> getAllPallets(@RequestParam(required = false) UUID shelfId, Pageable pageable) {
         return ResponseEntity.ok(warehouseLocationService.getAllPallets(shelfId, pageable));
+    }
+
+    @GetMapping("/pallets/available")
+    public ResponseEntity<List<AvailablePalletResponse>> getAvailablePallets(@RequestParam(required = false) StorageCondition storageCondition) {
+        return ResponseEntity.ok(warehouseLocationService.getAvailablePallets(storageCondition));
     }
 
     @PutMapping("/shelves/{shelfId}/pallets/{id}")

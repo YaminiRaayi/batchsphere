@@ -7,5 +7,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface MaterialLabelRepository extends JpaRepository<MaterialLabel, UUID> {
-    List<MaterialLabel> findByGrnContainerIdAndIsActiveTrue(UUID grnContainerId);
+    List<MaterialLabel> findByGrnContainerIdAndIsActiveTrueOrderByGeneratedAtAsc(UUID grnContainerId);
+
+    List<MaterialLabel> findByGrnContainerIdInAndIsActiveTrueOrderByGeneratedAtAsc(List<UUID> grnContainerIds);
 }

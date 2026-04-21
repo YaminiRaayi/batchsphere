@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BatchSphere – Document Management</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #f5f3ff; color: #1e293b; }
+  .sidebar { background: #1e3a8a; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #bfdbfe; }
+  .nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .nav-item.active { background: rgba(255,255,255,0.15); color: #fff; font-weight: 600; }
+  .nav-section { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: #60a5fa; text-transform: uppercase; padding: 14px 14px 4px; }
+  .card { background: #fff; border: 1px solid #ddd6fe; border-radius: 14px; }
+  .status-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .doc-row { border-bottom: 1px solid #f5f3ff; padding: 12px 16px; cursor: pointer; transition: all 0.1s; display: flex; align-items: center; gap: 12px; }
+  .doc-row:hover { background: #f5f3ff; }
+  .doc-row.selected { background: #ede9fe; border-left: 3px solid #7c3aed; }
+  .version-chip { background: #ede9fe; color: #6d28d9; border-radius: 6px; padding: 2px 7px; font-size: 10px; font-weight: 700; }
+  .version-chip.current { background: #6d28d9; color: white; }
+  .step-node { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+</style>
+</head>
+<body class="flex h-screen overflow-hidden">
+<aside class="sidebar w-60 flex-shrink-0 flex flex-col overflow-y-auto">
+  <div class="p-4 border-b border-blue-700">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-white flex items-center justify-center font-bold text-blue-700 text-sm">BS</div>
+      <div><div class="font-bold text-white text-sm">BatchSphere</div><div class="text-[10px] text-blue-300">Pharma ERP v2.1</div></div>
+    </div>
+  </div>
+  <nav class="flex-1 p-3 space-y-0.5">
+    <div class="nav-section">Documents</div>
+    <div class="nav-item active"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>All Documents</div>
+    <div class="nav-item"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Specifications</div>
+    <div class="nav-item"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477"/></svg>Methods of Analysis</div>
+    <div class="nav-item"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10"/></svg>SOPs</div>
+    <div class="nav-section">Navigate</div>
+    <a href="01-dashboard.html" class="nav-item">← Dashboard</a>
+    <a href="02-grn.html" class="nav-item" style="color:#93c5fd">→ GRN</a>
+    <a href="03-qms.html" class="nav-item" style="color:#fcd34d">→ QMS</a>
+    <a href="04-wms.html" class="nav-item" style="color:#a5b4fc">→ Warehouse</a>
+    <a href="06-hrms.html" class="nav-item" style="color:#fda4af">→ HRMS</a>
+    <a href="07-vms.html" class="nav-item" style="color:#fdba74">→ Vendors</a>
+    <a href="08-materials.html" class="nav-item" style="color:#5eead4">→ Materials</a>
+  </nav>
+</aside>
+
+<main class="flex-1 flex flex-col overflow-hidden">
+  <header class="h-14 bg-white border-b border-violet-100 flex items-center px-6 flex-shrink-0 shadow-sm">
+    <div class="text-xs text-slate-400">Documents / <span class="text-violet-700 font-semibold">Specifications</span></div>
+    <div class="ml-auto flex gap-2">
+      <button class="text-xs bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded-lg font-semibold">+ New Spec</button>
+    </div>
+  </header>
+
+  <div class="flex-1 flex overflow-hidden">
+
+    <!-- Document List -->
+    <div class="w-80 bg-white border-r border-violet-100 flex flex-col overflow-hidden">
+      <div class="p-3 border-b border-violet-100 flex gap-2">
+        <input class="flex-1 bg-violet-50 border border-violet-100 rounded-xl px-3 py-1.5 text-xs text-slate-600 placeholder-slate-400 focus:outline-none focus:border-violet-400" placeholder="Search documents…">
+        <select class="bg-violet-50 border border-violet-100 rounded-xl px-2 py-1.5 text-xs text-slate-600">
+          <option>All Types</option><option>Spec</option><option>MoA</option><option>SOP</option>
+        </select>
+      </div>
+      <div class="flex-1 overflow-y-auto">
+        <!-- Selected -->
+        <div class="doc-row selected">
+          <div class="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold text-violet-800 truncate">USP-Para-001</span>
+              <span class="version-chip current">v3.0</span>
+            </div>
+            <div class="text-[10px] text-slate-500 mt-0.5 truncate">Paracetamol BP — Specification</div>
+            <div class="text-[10px] text-violet-500 mt-0.5">Effective: 01 Mar 2026</div>
+          </div>
+        </div>
+        <div class="doc-row">
+          <div class="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2"><span class="text-xs font-bold text-slate-700">MoA-Para-HPLC-02</span><span class="version-chip">v2.1</span></div>
+            <div class="text-[10px] text-slate-500 mt-0.5">Paracetamol HPLC Method</div>
+            <div class="text-[10px] text-green-600 mt-0.5 font-semibold">Current · Active</div>
+          </div>
+        </div>
+        <div class="doc-row">
+          <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2"><span class="text-xs font-bold text-slate-700">SOP-QC-007</span><span class="version-chip">v4.0</span></div>
+            <div class="text-[10px] text-slate-500 mt-0.5">Sampling Procedure</div>
+            <div class="text-[10px] text-amber-600 mt-0.5 font-semibold">⚠ Review due May 2026</div>
+          </div>
+        </div>
+        <div class="doc-row">
+          <div class="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2"><span class="text-xs font-bold text-slate-700">USP-Lactose-002</span><span class="version-chip">v2.0</span></div>
+            <div class="text-[10px] text-slate-500 mt-0.5">Lactose Monohydrate — Spec</div>
+            <div class="text-[10px] text-green-600 mt-0.5 font-semibold">Current · Active</div>
+          </div>
+        </div>
+        <div class="doc-row">
+          <div class="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6"/></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2"><span class="text-xs font-bold text-slate-500">USP-MgSt-003</span><span class="version-chip">v1.5</span></div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Magnesium Stearate — Spec</div>
+            <div class="text-[10px] text-red-500 mt-0.5 font-semibold">⚠ Expires in 15 days</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Document Detail -->
+    <div class="flex-1 overflow-y-auto p-5">
+
+      <!-- Doc Header -->
+      <div class="flex items-start justify-between mb-5">
+        <div>
+          <div class="flex items-center gap-3 mb-1">
+            <h1 class="text-xl font-bold text-slate-800">USP-Para-001</h1>
+            <span class="version-chip current text-sm px-3 py-1">v3.0 CURRENT</span>
+            <span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Effective</span>
+          </div>
+          <div class="text-sm text-slate-500">Paracetamol BP — Specification · Effective from 01 Mar 2026</div>
+        </div>
+        <div class="flex gap-2">
+          <button class="text-xs border border-violet-200 text-violet-600 px-3 py-1.5 rounded-lg hover:bg-violet-50 font-medium">Download PDF</button>
+          <button class="text-xs bg-violet-600 hover:bg-violet-700 text-white px-3 py-1.5 rounded-lg font-semibold">Initiate Revision</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-5">
+        <div class="col-span-2 space-y-4">
+
+          <!-- Version History -->
+          <div class="card p-4 shadow-sm">
+            <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2"><div class="w-1 h-4 bg-violet-500 rounded"></div>Version History</div>
+            <div class="space-y-2">
+              <div class="flex items-center gap-3 p-2.5 rounded-xl bg-violet-50 border border-violet-200">
+                <span class="version-chip current">v3.0</span>
+                <div class="flex-1">
+                  <div class="text-xs font-semibold text-violet-800">Current Version</div>
+                  <div class="text-[10px] text-slate-500">Updated impurity limits per ICH Q3B · Approved by Yamini R.</div>
+                </div>
+                <div class="text-right"><div class="text-[10px] text-violet-700 font-semibold">01 Mar 2026</div><div class="text-[10px] text-slate-400">Effective</div></div>
+              </div>
+              <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 opacity-75">
+                <span class="version-chip">v2.1</span>
+                <div class="flex-1">
+                  <div class="text-xs font-semibold text-slate-600">Superseded</div>
+                  <div class="text-[10px] text-slate-400">Minor correction to dissolution test conditions</div>
+                </div>
+                <div class="text-right"><div class="text-[10px] text-slate-400 font-medium">10 Jan 2026</div><div class="text-[10px] text-slate-400">Superseded</div></div>
+              </div>
+              <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 opacity-60">
+                <span class="version-chip">v2.0</span>
+                <div class="flex-1"><div class="text-xs font-semibold text-slate-500">Superseded</div><div class="text-[10px] text-slate-400">Full revision — USP to BP grade alignment</div></div>
+                <div class="text-right"><div class="text-[10px] text-slate-400">Apr 2025</div></div>
+              </div>
+              <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 opacity-40">
+                <span class="version-chip">v1.0</span>
+                <div class="flex-1"><div class="text-xs font-semibold text-slate-400">Obsolete</div><div class="text-[10px] text-slate-400">Initial spec document</div></div>
+                <div class="text-right"><div class="text-[10px] text-slate-400">Jan 2024</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Review Workflow -->
+          <div class="card p-4 shadow-sm">
+            <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2"><div class="w-1 h-4 bg-violet-500 rounded"></div>Approval Workflow (v3.0)</div>
+            <div class="flex items-start gap-0">
+              <div class="flex flex-col items-center">
+                <div class="step-node bg-green-500 text-white">✓</div>
+                <div class="w-0.5 h-8 bg-green-300"></div>
+              </div>
+              <div class="ml-3 mb-4 pb-4">
+                <div class="text-xs font-semibold text-green-700">Draft Created</div>
+                <div class="text-[10px] text-slate-500">Priya S. · 10 Feb 2026</div>
+              </div>
+            </div>
+            <div class="flex items-start gap-0">
+              <div class="flex flex-col items-center">
+                <div class="step-node bg-green-500 text-white">✓</div>
+                <div class="w-0.5 h-8 bg-green-300"></div>
+              </div>
+              <div class="ml-3 mb-4 pb-4">
+                <div class="text-xs font-semibold text-green-700">Technical Review</div>
+                <div class="text-[10px] text-slate-500">Rajan K. approved · 20 Feb 2026 · <span class="italic">No comments</span></div>
+              </div>
+            </div>
+            <div class="flex items-start gap-0">
+              <div class="flex flex-col items-center">
+                <div class="step-node bg-green-500 text-white">✓</div>
+                <div class="w-0.5 h-8 bg-green-300"></div>
+              </div>
+              <div class="ml-3 mb-4 pb-4">
+                <div class="text-xs font-semibold text-green-700">QA Review & Approval</div>
+                <div class="text-[10px] text-slate-500">Yamini R. approved · 28 Feb 2026</div>
+              </div>
+            </div>
+            <div class="flex items-start gap-0">
+              <div class="flex flex-col items-center">
+                <div class="step-node bg-green-500 text-white">✓</div>
+              </div>
+              <div class="ml-3">
+                <div class="text-xs font-semibold text-green-700">Effective</div>
+                <div class="text-[10px] text-slate-500">Auto-activated · 01 Mar 2026</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metadata -->
+        <div class="space-y-4">
+          <div class="card p-4 shadow-sm">
+            <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Document Info</div>
+            <div class="space-y-2.5">
+              <div><div class="text-[10px] font-semibold text-slate-400 uppercase">Doc ID</div><div class="text-xs font-mono text-violet-700 font-bold mt-0.5">USP-Para-001</div></div>
+              <div><div class="text-[10px] font-semibold text-slate-400 uppercase">Type</div><div class="text-xs font-semibold text-slate-700 mt-0.5">Specification</div></div>
+              <div><div class="text-[10px] font-semibold text-slate-400 uppercase">Category</div><div class="text-xs text-slate-700 mt-0.5">Raw Material — API</div></div>
+              <div><div class="text-[10px] font-semibold text-slate-400 uppercase">Pharmacopoeia</div><div class="text-xs text-slate-700 mt-0.5">BP 2026</div></div>
+              <div><div class="text-[10px] font-semibold text-slate-400 uppercase">Review Cycle</div><div class="text-xs text-slate-700 mt-0.5">Every 2 years</div></div>
+              <div><div class="text-[10px] font-semibold text-slate-400 uppercase">Next Review</div><div class="text-xs font-semibold text-amber-600 mt-0.5">01 Mar 2028</div></div>
+            </div>
+          </div>
+
+          <div class="card p-4 shadow-sm">
+            <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Linked Materials</div>
+            <div class="space-y-2">
+              <div class="flex items-center gap-2 p-2 rounded-lg bg-violet-50 border border-violet-100">
+                <div class="w-5 h-5 rounded bg-violet-200 flex items-center justify-center text-[9px] font-bold text-violet-700">M</div>
+                <div>
+                  <div class="text-[10px] font-semibold text-slate-700">Paracetamol BP</div>
+                  <div class="text-[9px] font-mono text-violet-600">MAT-0091</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card p-4 shadow-sm">
+            <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Linked MoA</div>
+            <div class="p-2 rounded-lg bg-orange-50 border border-orange-100 flex items-center gap-2">
+              <div class="w-5 h-5 rounded bg-orange-200 flex items-center justify-center text-[9px] font-bold text-orange-700">A</div>
+              <div>
+                <div class="text-[10px] font-semibold text-slate-700">MoA-Para-HPLC-02</div>
+                <div class="text-[9px] text-orange-600">HPLC Method v2.1</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

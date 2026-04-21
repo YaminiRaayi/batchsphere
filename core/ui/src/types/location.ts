@@ -66,6 +66,57 @@ export type Pallet = {
   updatedAt: string | null;
 };
 
+export type WarehouseTreePallet = {
+  id: string;
+  palletCode: string;
+  palletName: string;
+  storageCondition: StorageCondition;
+};
+
+export type WarehouseTreeShelf = {
+  id: string;
+  shelfCode: string;
+  shelfName: string;
+  pallets: WarehouseTreePallet[];
+};
+
+export type WarehouseTreeRack = {
+  id: string;
+  rackCode: string;
+  rackName: string;
+  shelves: WarehouseTreeShelf[];
+};
+
+export type WarehouseTreeRoom = {
+  id: string;
+  roomCode: string;
+  roomName: string;
+  storageCondition: StorageCondition;
+  racks: WarehouseTreeRack[];
+};
+
+export type WarehouseTreeNode = {
+  id: string;
+  warehouseCode: string;
+  warehouseName: string;
+  rooms: WarehouseTreeRoom[];
+};
+
+export type AvailablePallet = {
+  palletId: string;
+  palletCode: string;
+  palletName: string;
+  shelfId: string;
+  shelfCode: string;
+  rackId: string;
+  rackCode: string;
+  roomId: string;
+  roomCode: string;
+  warehouseId: string;
+  warehouseCode: string;
+  storageCondition: StorageCondition;
+};
+
 export type CreateWarehouseRequest = {
   warehouseCode: string;
   warehouseName: string;

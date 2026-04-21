@@ -37,6 +37,7 @@ import {
   fetchSuppliers,
   fetchVendorBusinessUnits,
   fetchVendors,
+  fetchWarehouseTree,
   fetchWarehouses,
   updateMaterial,
   updateMoa,
@@ -61,7 +62,8 @@ import type {
   Rack,
   Room,
   Shelf,
-  Warehouse
+  Warehouse,
+  WarehouseTreeNode
 } from "../../types/location";
 import type { CreateMaterialRequest, Material, StorageCondition } from "../../types/material";
 import type { CreateMoaRequest, Moa } from "../../types/moa";
@@ -288,6 +290,28 @@ function yesNoClass(flag: boolean) {
   return flag ? "bg-moss/15 text-moss" : "bg-ink/5 text-slate";
 }
 
+function countWarehouseNodes(tree: WarehouseTreeNode[]) {
+  let rooms = 0;
+  let racks = 0;
+  let shelves = 0;
+  let pallets = 0;
+
+  for (const warehouse of tree) {
+    rooms += warehouse.rooms.length;
+    for (const room of warehouse.rooms) {
+      racks += room.racks.length;
+      for (const rack of room.racks) {
+        shelves += rack.shelves.length;
+        for (const shelf of rack.shelves) {
+          pallets += shelf.pallets.length;
+        }
+      }
+    }
+  }
+
+  return { rooms, racks, shelves, pallets };
+}
+
 type MasterDataPageProps = {
   section?: MasterDataSection;
   showHeader?: boolean;
@@ -303,6 +327,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
   const [vendorBusinessUnits, setVendorBusinessUnits] = useState<VendorBusinessUnit[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [warehouseTree, setWarehouseTree] = useState<WarehouseTreeNode[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [racks, setRacks] = useState<Rack[]>([]);
   const [shelves, setShelves] = useState<Shelf[]>([]);
@@ -406,6 +431,20 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
     () => pallets.filter((pallet) => !selectedShelfId || pallet.shelfId === selectedShelfId),
     [pallets, selectedShelfId]
   );
+  const warehouseTreeStats = useMemo(() => countWarehouseNodes(warehouseTree), [warehouseTree]);
+  const warehouseById = useMemo(
+    () => new Map(warehouses.map((warehouse) => [warehouse.id, warehouse])),
+    [warehouses]
+  );
+  const roomById = useMemo(() => new Map(rooms.map((room) => [room.id, room])), [rooms]);
+  const rackById = useMemo(() => new Map(racks.map((rack) => [rack.id, rack])), [racks]);
+  const shelfById = useMemo(() => new Map(shelves.map((shelf) => [shelf.id, shelf])), [shelves]);
+  const palletById = useMemo(() => new Map(pallets.map((pallet) => [pallet.id, pallet])), [pallets]);
+
+  async function refreshWarehouseTree() {
+    const tree = await fetchWarehouseTree();
+    setWarehouseTree(tree);
+  }
 
   useEffect(() => {
     if (section) {
@@ -605,9 +644,10 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       setWarehouseError(null);
 
       try {
-        const result = await fetchWarehouses();
+        const [result, tree] = await Promise.all([fetchWarehouses(), fetchWarehouseTree()]);
         if (!cancelled) {
           setWarehouses(result.content);
+          setWarehouseTree(tree);
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -995,6 +1035,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       const savedWarehouse = editingWarehouseId
         ? await updateWarehouse(editingWarehouseId, payload)
         : await createWarehouse(payload);
+      await refreshWarehouseTree();
       setWarehouses((current) =>
         editingWarehouseId ? replaceById(current, savedWarehouse) : [savedWarehouse, ...current]
       );
@@ -1037,6 +1078,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       const savedRoom = editingRoomId
         ? await updateRoom(selectedWarehouseId, editingRoomId, payload)
         : await createRoom(selectedWarehouseId, payload);
+      await refreshWarehouseTree();
       setRooms((current) => (editingRoomId ? replaceById(current, savedRoom) : [savedRoom, ...current]));
       setSelectedRoomId(savedRoom.id);
       resetRoomForm();
@@ -1076,6 +1118,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       const savedRack = editingRackId
         ? await updateRack(selectedRoomId, editingRackId, payload)
         : await createRack(selectedRoomId, payload);
+      await refreshWarehouseTree();
       setRacks((current) => (editingRackId ? replaceById(current, savedRack) : [savedRack, ...current]));
       setSelectedRackId(savedRack.id);
       resetRackForm();
@@ -1115,6 +1158,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       const savedShelf = editingShelfId
         ? await updateShelf(selectedRackId, editingShelfId, payload)
         : await createShelf(selectedRackId, payload);
+      await refreshWarehouseTree();
       setShelves((current) =>
         editingShelfId ? replaceById(current, savedShelf) : [savedShelf, ...current]
       );
@@ -1156,6 +1200,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       const savedPallet = editingPalletId
         ? await updatePallet(selectedShelfId, editingPalletId, payload)
         : await createPallet(selectedShelfId, payload);
+      await refreshWarehouseTree();
       setPallets((current) =>
         editingPalletId ? replaceById(current, savedPallet) : [savedPallet, ...current]
       );
@@ -1421,6 +1466,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
     }
     try {
       await deleteWarehouse(warehouse.id);
+      await refreshWarehouseTree();
       setWarehouses((current) => current.filter((entry) => entry.id !== warehouse.id));
       if (editingWarehouseId === warehouse.id) {
         resetWarehouseForm();
@@ -1453,6 +1499,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
     }
     try {
       await deleteRoom(room.id);
+      await refreshWarehouseTree();
       setRooms((current) => current.filter((entry) => entry.id !== room.id));
       if (editingRoomId === room.id) {
         resetRoomForm();
@@ -1484,6 +1531,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
     }
     try {
       await deleteRack(rack.id);
+      await refreshWarehouseTree();
       setRacks((current) => current.filter((entry) => entry.id !== rack.id));
       if (editingRackId === rack.id) {
         resetRackForm();
@@ -1515,6 +1563,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
     }
     try {
       await deleteShelf(shelf.id);
+      await refreshWarehouseTree();
       setShelves((current) => current.filter((entry) => entry.id !== shelf.id));
       if (editingShelfId === shelf.id) {
         resetShelfForm();
@@ -1546,6 +1595,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
     }
     try {
       await deletePallet(pallet.id);
+      await refreshWarehouseTree();
       setPallets((current) => current.filter((entry) => entry.id !== pallet.id));
       if (editingPalletId === pallet.id) {
         resetPalletForm();
@@ -2349,6 +2399,174 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
           </div>
 
           <div className="grid gap-6">
+          <div className="rounded-3xl border border-ink/10 bg-white/70 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate">Live Hierarchy</p>
+                <h5 className="mt-2 text-lg font-semibold text-ink">Warehouse tree view</h5>
+                <p className="mt-2 max-w-2xl text-sm text-slate">
+                  This structure is loaded from the warehouse tree API, so it reflects the actual linked warehouse layout rather than a flat reconstruction.
+                </p>
+              </div>
+              <div className="grid min-w-[280px] gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="rounded-2xl bg-mist/80 px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.16em] text-slate">Warehouses</p>
+                  <p className="mt-2 text-2xl font-semibold text-ink">{warehouseTree.length}</p>
+                </div>
+                <div className="rounded-2xl bg-mist/80 px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.16em] text-slate">Rooms</p>
+                  <p className="mt-2 text-2xl font-semibold text-ink">{warehouseTreeStats.rooms}</p>
+                </div>
+                <div className="rounded-2xl bg-mist/80 px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.16em] text-slate">Racks / Shelves</p>
+                  <p className="mt-2 text-2xl font-semibold text-ink">
+                    {warehouseTreeStats.racks} / {warehouseTreeStats.shelves}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-mist/80 px-4 py-3 sm:col-span-2 xl:col-span-3">
+                  <p className="text-xs uppercase tracking-[0.16em] text-slate">Pallets</p>
+                  <p className="mt-2 text-2xl font-semibold text-ink">{warehouseTreeStats.pallets}</p>
+                </div>
+              </div>
+            </div>
+            {isWarehouseLoading ? (
+              <p className="mt-4 text-sm text-slate">Loading warehouse tree...</p>
+            ) : warehouseTree.length === 0 ? (
+              <p className="mt-4 rounded-2xl border border-dashed border-ink/15 px-4 py-4 text-sm text-slate">
+                No warehouse structure exists yet.
+              </p>
+            ) : (
+              <div className="mt-5 space-y-4">
+                {warehouseTree.map((warehouseNode) => {
+                  const warehouse = warehouseById.get(warehouseNode.id);
+                  return (
+                    <article key={warehouseNode.id} className="rounded-3xl border border-ink/10 bg-white px-4 py-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-ink">
+                            {warehouseNode.warehouseCode} - {warehouseNode.warehouseName}
+                          </p>
+                          <p className="mt-1 text-sm text-slate">
+                            {warehouseNode.rooms.length} rooms in this warehouse
+                          </p>
+                        </div>
+                        {warehouse ? (
+                          <div className="flex gap-2">
+                            <button type="button" onClick={() => startEditingWarehouse(warehouse)} className="rounded-full border border-ink/10 px-3 py-1 text-xs font-medium text-ink">Edit</button>
+                            <button type="button" onClick={() => void handleDeleteWarehouse(warehouse)} className="rounded-full border border-redoxide/20 px-3 py-1 text-xs font-medium text-redoxide">Delete</button>
+                          </div>
+                        ) : null}
+                      </div>
+                      {warehouseNode.rooms.length === 0 ? (
+                        <p className="mt-3 text-sm text-slate">No rooms linked yet.</p>
+                      ) : (
+                        <div className="mt-4 space-y-3">
+                          {warehouseNode.rooms.map((roomNode) => {
+                            const room = roomById.get(roomNode.id);
+                            return (
+                              <div key={roomNode.id} className="rounded-2xl bg-mist/70 px-4 py-4">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div>
+                                    <p className="text-sm font-medium text-ink">
+                                      {roomNode.roomCode} - {roomNode.roomName}
+                                    </p>
+                                    <p className="mt-1 text-sm text-slate">{roomNode.storageCondition}</p>
+                                  </div>
+                                  {room ? (
+                                    <div className="flex gap-2">
+                                      <button type="button" onClick={() => startEditingRoom(room)} className="rounded-full border border-ink/10 px-3 py-1 text-xs font-medium text-ink">Edit</button>
+                                      <button type="button" onClick={() => void handleDeleteRoom(room)} className="rounded-full border border-redoxide/20 px-3 py-1 text-xs font-medium text-redoxide">Delete</button>
+                                    </div>
+                                  ) : null}
+                                </div>
+                                {roomNode.racks.length === 0 ? (
+                                  <p className="mt-3 text-sm text-slate">No racks linked yet.</p>
+                                ) : (
+                                  <div className="mt-3 space-y-2">
+                                    {roomNode.racks.map((rackNode) => {
+                                      const rack = rackById.get(rackNode.id);
+                                      return (
+                                        <div key={rackNode.id} className="rounded-2xl bg-white px-4 py-3 text-sm text-ink">
+                                          <div className="flex flex-wrap items-center justify-between gap-2">
+                                            <p className="font-medium">
+                                              {rackNode.rackCode} - {rackNode.rackName}
+                                            </p>
+                                            {rack ? (
+                                              <div className="flex gap-2">
+                                                <button type="button" onClick={() => startEditingRack(rack)} className="rounded-full border border-ink/10 px-3 py-1 text-xs font-medium text-ink">Edit</button>
+                                                <button type="button" onClick={() => void handleDeleteRack(rack)} className="rounded-full border border-redoxide/20 px-3 py-1 text-xs font-medium text-redoxide">Delete</button>
+                                              </div>
+                                            ) : null}
+                                          </div>
+                                          {rackNode.shelves.length === 0 ? (
+                                            <p className="mt-2 text-sm text-slate">No shelves linked yet.</p>
+                                          ) : (
+                                            <div className="mt-3 space-y-2">
+                                              {rackNode.shelves.map((shelfNode) => {
+                                                const shelf = shelfById.get(shelfNode.id);
+                                                return (
+                                                  <div key={shelfNode.id} className="rounded-2xl border border-ink/10 px-4 py-3">
+                                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                                      <p className="font-medium">
+                                                        {shelfNode.shelfCode} - {shelfNode.shelfName}
+                                                      </p>
+                                                      {shelf ? (
+                                                        <div className="flex gap-2">
+                                                          <button type="button" onClick={() => startEditingShelf(shelf)} className="rounded-full border border-ink/10 px-3 py-1 text-xs font-medium text-ink">Edit</button>
+                                                          <button type="button" onClick={() => void handleDeleteShelf(shelf)} className="rounded-full border border-redoxide/20 px-3 py-1 text-xs font-medium text-redoxide">Delete</button>
+                                                        </div>
+                                                      ) : null}
+                                                    </div>
+                                                    {shelfNode.pallets.length === 0 ? (
+                                                      <p className="mt-2 text-sm text-slate">No pallets linked yet.</p>
+                                                    ) : (
+                                                      <div className="mt-3 grid gap-2 md:grid-cols-2">
+                                                        {shelfNode.pallets.map((palletNode) => {
+                                                          const pallet = palletById.get(palletNode.id);
+                                                          return (
+                                                            <div key={palletNode.id} className="rounded-2xl bg-mist/60 px-3 py-3">
+                                                              <div className="flex flex-wrap items-start justify-between gap-2">
+                                                                <div>
+                                                                  <p className="font-medium text-ink">
+                                                                    {palletNode.palletCode} - {palletNode.palletName}
+                                                                  </p>
+                                                                  <p className="mt-1 text-xs uppercase tracking-[0.14em] text-slate">
+                                                                    {palletNode.storageCondition}
+                                                                  </p>
+                                                                </div>
+                                                                {pallet ? (
+                                                                  <div className="flex gap-2">
+                                                                    <button type="button" onClick={() => startEditingPallet(pallet)} className="rounded-full border border-ink/10 px-3 py-1 text-xs font-medium text-ink">Edit</button>
+                                                                    <button type="button" onClick={() => void handleDeletePallet(pallet)} className="rounded-full border border-redoxide/20 px-3 py-1 text-xs font-medium text-redoxide">Delete</button>
+                                                                  </div>
+                                                                ) : null}
+                                                              </div>
+                                                            </div>
+                                                          );
+                                                        })}
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </div>
           {selectedWarehouseFolder === "warehouse" ? (
           <form className="space-y-4 rounded-3xl border border-ink/10 bg-white/60 p-5" onSubmit={handleWarehouseSubmit}>
             <h5 className="text-lg font-semibold text-ink">{editingWarehouseId ? "Edit warehouse" : "Warehouse"}</h5>
@@ -2716,74 +2934,87 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
 
               {selectedSection === "warehouse" ? (
                 <div className="space-y-4">
-                  {warehouses.map((warehouse) => {
-                    const warehouseRooms = rooms.filter((room) => room.warehouseId === warehouse.id);
+                  {warehouseTree.map((warehouseNode) => {
+                    const warehouse = warehouseById.get(warehouseNode.id);
                     return (
-                      <article key={warehouse.id} className="rounded-2xl border border-ink/10 px-4 py-4">
+                      <article key={warehouseNode.id} className="rounded-2xl border border-ink/10 px-4 py-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <p className="font-semibold text-ink">
-                            {warehouse.warehouseCode} - {warehouse.warehouseName}
+                            {warehouseNode.warehouseCode} - {warehouseNode.warehouseName}
                           </p>
-                          <div className="flex gap-2">
-                            <button type="button" onClick={() => startEditingWarehouse(warehouse)} className="rounded-full border border-ink/10 px-3 py-1 text-xs font-medium text-ink">Edit</button>
-                            <button type="button" onClick={() => void handleDeleteWarehouse(warehouse)} className="rounded-full border border-redoxide/20 px-3 py-1 text-xs font-medium text-redoxide">Delete</button>
-                          </div>
+                          {warehouse ? (
+                            <div className="flex gap-2">
+                              <button type="button" onClick={() => startEditingWarehouse(warehouse)} className="rounded-full border border-ink/10 px-3 py-1 text-xs font-medium text-ink">Edit</button>
+                              <button type="button" onClick={() => void handleDeleteWarehouse(warehouse)} className="rounded-full border border-redoxide/20 px-3 py-1 text-xs font-medium text-redoxide">Delete</button>
+                            </div>
+                          ) : null}
                         </div>
-                        {warehouseRooms.length === 0 ? (
+                        {warehouseNode.rooms.length === 0 ? (
                           <p className="mt-2 text-sm text-slate">No rooms linked yet.</p>
                         ) : (
                           <div className="mt-3 space-y-3">
-                            {warehouseRooms.map((room) => {
-                              const roomRacks = racks.filter((rack) => rack.roomId === room.id);
+                            {warehouseNode.rooms.map((roomNode) => {
+                              const room = roomById.get(roomNode.id);
                               return (
-                                <div key={room.id} className="rounded-2xl bg-mist/70 px-4 py-4">
+                                <div key={roomNode.id} className="rounded-2xl bg-mist/70 px-4 py-4">
                                   <div className="flex flex-wrap items-start justify-between gap-3">
                                     <p className="text-sm font-medium text-ink">
-                                      {warehouse.warehouseCode} {"->"} {room.roomCode}
+                                      {warehouseNode.warehouseCode} {"->"} {roomNode.roomCode}
                                     </p>
-                                    <div className="flex gap-2">
-                                      <button type="button" onClick={() => startEditingRoom(room)} className="rounded-full border border-ink/10 px-3 py-1 text-xs font-medium text-ink">Edit</button>
-                                      <button type="button" onClick={() => void handleDeleteRoom(room)} className="rounded-full border border-redoxide/20 px-3 py-1 text-xs font-medium text-redoxide">Delete</button>
-                                    </div>
+                                    {room ? (
+                                      <div className="flex gap-2">
+                                        <button type="button" onClick={() => startEditingRoom(room)} className="rounded-full border border-ink/10 px-3 py-1 text-xs font-medium text-ink">Edit</button>
+                                        <button type="button" onClick={() => void handleDeleteRoom(room)} className="rounded-full border border-redoxide/20 px-3 py-1 text-xs font-medium text-redoxide">Delete</button>
+                                      </div>
+                                    ) : null}
                                   </div>
                                   <p className="mt-1 text-sm text-slate">
-                                    {room.roomName} ({room.storageCondition})
+                                    {roomNode.roomName} ({roomNode.storageCondition})
                                   </p>
-                                  {roomRacks.length === 0 ? (
+                                  {roomNode.racks.length === 0 ? (
                                     <p className="mt-2 text-sm text-slate">No racks linked yet.</p>
                                   ) : (
                                     <div className="mt-3 space-y-2">
-                                      {roomRacks.map((rack) => {
-                                        const rackShelves = shelves.filter((shelf) => shelf.rackId === rack.id);
+                                      {roomNode.racks.map((rackNode) => {
+                                        const rack = rackById.get(rackNode.id);
                                         return (
-                                          <div key={rack.id} className="text-sm text-ink">
+                                          <div key={rackNode.id} className="text-sm text-ink">
                                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                              <p>{room.roomCode} {"->"} {rack.rackCode}</p>
-                                              <div className="flex gap-2">
-                                                <button type="button" onClick={() => startEditingRack(rack)} className="rounded-full border border-ink/10 px-3 py-1 text-xs font-medium text-ink">Edit</button>
-                                                <button type="button" onClick={() => void handleDeleteRack(rack)} className="rounded-full border border-redoxide/20 px-3 py-1 text-xs font-medium text-redoxide">Delete</button>
-                                              </div>
+                                              <p>{roomNode.roomCode} {"->"} {rackNode.rackCode}</p>
+                                              {rack ? (
+                                                <div className="flex gap-2">
+                                                  <button type="button" onClick={() => startEditingRack(rack)} className="rounded-full border border-ink/10 px-3 py-1 text-xs font-medium text-ink">Edit</button>
+                                                  <button type="button" onClick={() => void handleDeleteRack(rack)} className="rounded-full border border-redoxide/20 px-3 py-1 text-xs font-medium text-redoxide">Delete</button>
+                                                </div>
+                                              ) : null}
                                             </div>
-                                            {rackShelves.map((shelf) => {
-                                              const shelfPallets = pallets.filter((pallet) => pallet.shelfId === shelf.id);
+                                            {rackNode.shelves.map((shelfNode) => {
+                                              const shelf = shelfById.get(shelfNode.id);
                                               return (
-                                                <div key={shelf.id} className="mt-1 pl-4 text-slate">
+                                                <div key={shelfNode.id} className="mt-1 pl-4 text-slate">
                                                   <div className="flex flex-wrap items-center justify-between gap-2">
-                                                    <p>{rack.rackCode} {"->"} {shelf.shelfCode}</p>
-                                                    <div className="flex gap-2">
-                                                      <button type="button" onClick={() => startEditingShelf(shelf)} className="rounded-full border border-ink/10 px-3 py-1 text-xs font-medium text-ink">Edit</button>
-                                                      <button type="button" onClick={() => void handleDeleteShelf(shelf)} className="rounded-full border border-redoxide/20 px-3 py-1 text-xs font-medium text-redoxide">Delete</button>
-                                                    </div>
-                                                  </div>
-                                                  {shelfPallets.map((pallet) => (
-                                                    <div key={pallet.id} className="flex flex-wrap items-center justify-between gap-2 pl-4">
-                                                      <p>{shelf.shelfCode} {"->"} {pallet.palletCode}</p>
+                                                    <p>{rackNode.rackCode} {"->"} {shelfNode.shelfCode}</p>
+                                                    {shelf ? (
                                                       <div className="flex gap-2">
-                                                        <button type="button" onClick={() => startEditingPallet(pallet)} className="rounded-full border border-ink/10 px-3 py-1 text-xs font-medium text-ink">Edit</button>
-                                                        <button type="button" onClick={() => void handleDeletePallet(pallet)} className="rounded-full border border-redoxide/20 px-3 py-1 text-xs font-medium text-redoxide">Delete</button>
+                                                        <button type="button" onClick={() => startEditingShelf(shelf)} className="rounded-full border border-ink/10 px-3 py-1 text-xs font-medium text-ink">Edit</button>
+                                                        <button type="button" onClick={() => void handleDeleteShelf(shelf)} className="rounded-full border border-redoxide/20 px-3 py-1 text-xs font-medium text-redoxide">Delete</button>
                                                       </div>
-                                                    </div>
-                                                  ))}
+                                                    ) : null}
+                                                  </div>
+                                                  {shelfNode.pallets.map((palletNode) => {
+                                                    const pallet = palletById.get(palletNode.id);
+                                                    return (
+                                                      <div key={palletNode.id} className="flex flex-wrap items-center justify-between gap-2 pl-4">
+                                                        <p>{shelfNode.shelfCode} {"->"} {palletNode.palletCode}</p>
+                                                        {pallet ? (
+                                                          <div className="flex gap-2">
+                                                            <button type="button" onClick={() => startEditingPallet(pallet)} className="rounded-full border border-ink/10 px-3 py-1 text-xs font-medium text-ink">Edit</button>
+                                                            <button type="button" onClick={() => void handleDeletePallet(pallet)} className="rounded-full border border-redoxide/20 px-3 py-1 text-xs font-medium text-redoxide">Delete</button>
+                                                          </div>
+                                                        ) : null}
+                                                      </div>
+                                                    );
+                                                  })}
                                                 </div>
                                               );
                                             })}

@@ -86,6 +86,10 @@ class InventoryControllerIntegrationTest {
                 .apply(springSecurity())
                 .build();
 
+        setFixtureAuthentication();
+    }
+
+    private void setFixtureAuthentication() {
         AuthenticatedUser fixtureUser = new AuthenticatedUser(User.builder()
                 .id(UUID.randomUUID())
                 .username("inventory-fixture")
@@ -159,6 +163,103 @@ class InventoryControllerIntegrationTest {
                 .filter(transaction -> transaction.getInventoryId().equals(inventory.getId()))
                 .count();
         assertEquals(0, transactionCount);
+    }
+
+    @Test
+    void adjustmentUpdatesQuantityAndWritesAdjustmentTransaction() throws Exception {
+        Inventory inventory = inventoryRepository.save(buildInventory(InventoryStatus.QUARANTINE));
+        SecurityContextHolder.clearContext();
+        String token = loginAsAdmin();
+
+        MvcResult result = mockMvc.perform(post("/api/inventory/{id}/adjust", inventory.getId())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "quantityDelta": 5.000,
+                                  "reason": "Cycle count correction",
+                                  "increase": true
+                                }
+                                """))
+                .andReturn();
+
+        assertEquals(200, result.getResponse().getStatus(), result.getResponse().getContentAsString());
+        JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertEquals(new BigDecimal("30.0"), root.get("quantityOnHand").decimalValue());
+
+        Inventory savedInventory = inventoryRepository.findById(inventory.getId()).orElseThrow();
+        assertEquals(new BigDecimal("30.000"), savedInventory.getQuantityOnHand());
+        assertTrue(inventoryTransactionRepository.findAll().stream()
+                .anyMatch(transaction -> transaction.getInventoryId().equals(inventory.getId())
+                        && transaction.getTransactionType() == InventoryTransactionType.ADJUSTMENT));
+    }
+
+    @Test
+    void transferMovesQuantityToDestinationPalletAndWritesTransferTransactions() throws Exception {
+        Inventory inventory = inventoryRepository.save(buildInventory(InventoryStatus.QUARANTINE));
+        Pallet destinationPallet = createPalletHierarchy();
+        SecurityContextHolder.clearContext();
+        String token = loginAsAdmin();
+
+        MvcResult result = mockMvc.perform(post("/api/inventory/{id}/transfer", inventory.getId())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "destinationPalletId": "%s",
+                                  "quantity": 10.000,
+                                  "remarks": "Move to overflow pallet"
+                                }
+                                """.formatted(destinationPallet.getId())))
+                .andReturn();
+
+        assertEquals(200, result.getResponse().getStatus(), result.getResponse().getContentAsString());
+        JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertEquals(destinationPallet.getId().toString(), root.get("palletId").asText());
+        assertEquals(new BigDecimal("10.0"), root.get("quantityOnHand").decimalValue());
+
+        Inventory sourceInventory = inventoryRepository.findById(inventory.getId()).orElseThrow();
+        assertEquals(new BigDecimal("15.000"), sourceInventory.getQuantityOnHand());
+
+        Inventory destinationInventory = inventoryRepository
+                .findByMaterialIdAndBatchIdAndPalletIdAndIsActiveTrue(
+                        inventory.getMaterialId(),
+                        inventory.getBatchId(),
+                        destinationPallet.getId()
+                )
+                .orElseThrow();
+        assertEquals(new BigDecimal("10.000"), destinationInventory.getQuantityOnHand());
+
+        long transferTransactions = inventoryTransactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getTransactionType() == InventoryTransactionType.TRANSFER)
+                .count();
+        assertEquals(2, transferTransactions);
+    }
+
+    @Test
+    void summaryReturnsCountsGroupedByStatus() throws Exception {
+        SecurityContextHolder.clearContext();
+        String token = loginAsAdmin();
+        MvcResult baselineResult = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/inventory/summary")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn();
+        JsonNode baselineRoot = objectMapper.readTree(baselineResult.getResponse().getContentAsString());
+        int baselineQuarantine = baselineRoot.get("countsByStatus").get("QUARANTINE").asInt();
+        int baselineUnderTest = baselineRoot.get("countsByStatus").get("UNDER_TEST").asInt();
+
+        setFixtureAuthentication();
+        inventoryRepository.save(buildInventory(InventoryStatus.QUARANTINE));
+        inventoryRepository.save(buildInventory(InventoryStatus.UNDER_TEST));
+        SecurityContextHolder.clearContext();
+
+        MvcResult result = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/inventory/summary")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn();
+
+        assertEquals(200, result.getResponse().getStatus(), result.getResponse().getContentAsString());
+        JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertEquals(baselineQuarantine + 1, root.get("countsByStatus").get("QUARANTINE").asInt());
+        assertEquals(baselineUnderTest + 1, root.get("countsByStatus").get("UNDER_TEST").asInt());
     }
 
     private String loginAsAdmin() throws Exception {

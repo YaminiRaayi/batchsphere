@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BatchSphere – Command Center</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #0f1117; color: #e2e8f0; }
+  .module-card:hover { transform: translateY(-2px); transition: all 0.2s; }
+  .status-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .kpi-card { background: #1a1d27; border: 1px solid #2a2d3d; border-radius: 12px; padding: 20px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #94a3b8; transition: all 0.15s; }
+  .nav-item:hover { background: #1e2130; color: #e2e8f0; }
+  .nav-item.active { background: #1e3a5f; color: #60a5fa; border-left: 3px solid #3b82f6; }
+  .nav-section { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: #475569; text-transform: uppercase; padding: 16px 12px 6px; }
+  .badge { background: #ef4444; color: white; border-radius: 999px; font-size: 10px; font-weight: 700; padding: 1px 6px; min-width: 18px; text-align: center; }
+  .badge-amber { background: #d97706; }
+  .activity-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+  .progress-bar { height: 6px; border-radius: 3px; background: #1e2130; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; }
+  .table-row:hover { background: #1a1d27; }
+</style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+<!-- Sidebar -->
+<aside class="w-60 flex-shrink-0 bg-[#0d1018] border-r border-[#1e2130] flex flex-col overflow-y-auto">
+  <div class="p-4 border-b border-[#1e2130]">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white text-sm">BS</div>
+      <div>
+        <div class="font-semibold text-white text-sm">BatchSphere</div>
+        <div class="text-[10px] text-slate-500">Pharma ERP v2.1</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- User -->
+  <div class="p-3 border-b border-[#1e2130]">
+    <div class="flex items-center gap-2 p-2 rounded-lg bg-[#1a1d27]">
+      <div class="w-7 h-7 rounded-full bg-rose-500 flex items-center justify-center text-white text-xs font-bold">YR</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-xs font-medium text-white truncate">Yamini R.</div>
+        <div class="text-[10px] text-slate-500">QC Manager</div>
+      </div>
+      <div class="w-2 h-2 rounded-full bg-green-400"></div>
+    </div>
+  </div>
+
+  <nav class="flex-1 p-2">
+    <div class="nav-section">Main</div>
+    <div class="nav-item active">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Command Center
+    </div>
+
+    <div class="nav-section">Operations</div>
+    <div class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      GRN / Inbound
+      <span class="ml-auto badge badge-amber">5</span>
+    </div>
+    <div class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+      Inventory
+    </div>
+    <div class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+      QC Sampling
+      <span class="ml-auto badge">3</span>
+    </div>
+
+    <div class="nav-section">Modules</div>
+    <div class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/></svg>
+      Warehouse (WMS)
+    </div>
+    <div class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      QMS
+      <span class="ml-auto badge badge-amber">7</span>
+    </div>
+    <div class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
+      HRMS
+    </div>
+    <div class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+      Vendors (VMS)
+    </div>
+    <div class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+      Documents
+    </div>
+
+    <div class="nav-section">Master Data</div>
+    <div class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" stroke-width="2" d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
+      Materials
+    </div>
+    <div class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      Specs & MoA
+    </div>
+  </nav>
+
+  <div class="p-3 border-t border-[#1e2130]">
+    <div class="text-[10px] text-slate-600 text-center">BatchSphere © 2026</div>
+  </div>
+</aside>
+
+<!-- Main Content -->
+<main class="flex-1 flex flex-col overflow-hidden">
+
+  <!-- Top Bar -->
+  <header class="h-14 bg-[#0d1018] border-b border-[#1e2130] flex items-center px-6 gap-4 flex-shrink-0">
+    <div class="text-xs text-slate-500">Home / <span class="text-slate-300">Command Center</span></div>
+    <div class="ml-auto flex items-center gap-3">
+      <div class="flex items-center gap-2 bg-[#1a1d27] rounded-lg px-3 py-1.5 text-xs text-slate-400 border border-[#2a2d3d]">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-width="2" d="m21 21-4.35-4.35"/></svg>
+        Search anything... ⌘K
+      </div>
+      <button class="relative p-2 rounded-lg hover:bg-[#1a1d27]">
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+      </button>
+      <div class="text-xs text-slate-500">Thu, 17 Apr 2026</div>
+    </div>
+  </header>
+
+  <!-- Page Content -->
+  <div class="flex-1 overflow-y-auto p-6">
+
+    <!-- Page Header -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-xl font-semibold text-white">Command Center</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Good morning, Yamini. Here's your operational overview.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-slate-500">Shift:</span>
+        <span class="status-pill bg-green-900/40 text-green-400"><span class="dot bg-green-400"></span> Day Shift Active</span>
+      </div>
+    </div>
+
+    <!-- Alert Banner -->
+    <div class="mb-5 bg-amber-900/20 border border-amber-700/40 rounded-xl px-4 py-3 flex items-center gap-3">
+      <svg class="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+      <span class="text-sm text-amber-300"><strong>3 Sampling Decisions Pending</strong> — QC results awaited for Lot #L-2026-0041, L-2026-0038, L-2026-0035</span>
+      <button class="ml-auto text-xs text-amber-400 underline">Review Now</button>
+    </div>
+
+    <!-- KPI Row -->
+    <div class="grid grid-cols-5 gap-4 mb-6">
+      <div class="kpi-card">
+        <div class="text-xs text-slate-500 mb-1">GRNs Today</div>
+        <div class="text-2xl font-bold text-white">12</div>
+        <div class="text-xs text-green-400 mt-1">↑ 3 vs yesterday</div>
+      </div>
+      <div class="kpi-card">
+        <div class="text-xs text-slate-500 mb-1">Pending QC</div>
+        <div class="text-2xl font-bold text-amber-400">3</div>
+        <div class="text-xs text-slate-500 mt-1">Awaiting decision</div>
+      </div>
+      <div class="kpi-card">
+        <div class="text-xs text-slate-500 mb-1">Open CAPAs</div>
+        <div class="text-2xl font-bold text-red-400">7</div>
+        <div class="text-xs text-red-400 mt-1">2 overdue</div>
+      </div>
+      <div class="kpi-card">
+        <div class="text-xs text-slate-500 mb-1">Inventory Lots</div>
+        <div class="text-2xl font-bold text-white">284</div>
+        <div class="text-xs text-slate-500 mt-1">Active</div>
+      </div>
+      <div class="kpi-card">
+        <div class="text-xs text-slate-500 mb-1">Docs Expiring</div>
+        <div class="text-2xl font-bold text-orange-400">5</div>
+        <div class="text-xs text-orange-400 mt-1">Next 30 days</div>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-3 gap-5">
+
+      <!-- Operations Lane -->
+      <div class="col-span-2 space-y-5">
+
+        <!-- GRN Table -->
+        <div class="bg-[#1a1d27] border border-[#2a2d3d] rounded-xl overflow-hidden">
+          <div class="flex items-center justify-between px-5 py-3.5 border-b border-[#2a2d3d]">
+            <div class="flex items-center gap-2">
+              <div class="w-2 h-2 rounded-full bg-blue-400"></div>
+              <span class="font-semibold text-sm text-white">Recent GRNs</span>
+            </div>
+            <button class="text-xs text-blue-400 hover:underline">View All →</button>
+          </div>
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="border-b border-[#2a2d3d]">
+                <th class="text-left px-5 py-2.5 text-slate-500 font-medium">GRN No.</th>
+                <th class="text-left px-3 py-2.5 text-slate-500 font-medium">Supplier</th>
+                <th class="text-left px-3 py-2.5 text-slate-500 font-medium">Material</th>
+                <th class="text-left px-3 py-2.5 text-slate-500 font-medium">Date</th>
+                <th class="text-left px-3 py-2.5 text-slate-500 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="table-row border-b border-[#1e2130]">
+                <td class="px-5 py-3 font-mono text-blue-400">GRN-2026-0047</td>
+                <td class="px-3 py-3 text-slate-300">Sigma-Aldrich</td>
+                <td class="px-3 py-3 text-slate-300">Paracetamol BP</td>
+                <td class="px-3 py-3 text-slate-500">17 Apr 2026</td>
+                <td class="px-3 py-3"><span class="status-pill bg-amber-900/40 text-amber-400"><span class="dot bg-amber-400"></span>QC Pending</span></td>
+              </tr>
+              <tr class="table-row border-b border-[#1e2130]">
+                <td class="px-5 py-3 font-mono text-blue-400">GRN-2026-0046</td>
+                <td class="px-3 py-3 text-slate-300">Merck KGaA</td>
+                <td class="px-3 py-3 text-slate-300">Lactose Monohydrate</td>
+                <td class="px-3 py-3 text-slate-500">17 Apr 2026</td>
+                <td class="px-3 py-3"><span class="status-pill bg-green-900/40 text-green-400"><span class="dot bg-green-400"></span>Released</span></td>
+              </tr>
+              <tr class="table-row border-b border-[#1e2130]">
+                <td class="px-5 py-3 font-mono text-blue-400">GRN-2026-0045</td>
+                <td class="px-3 py-3 text-slate-300">Lanxess India</td>
+                <td class="px-3 py-3 text-slate-300">Magnesium Stearate</td>
+                <td class="px-3 py-3 text-slate-500">16 Apr 2026</td>
+                <td class="px-3 py-3"><span class="status-pill bg-red-900/40 text-red-400"><span class="dot bg-red-400"></span>Rejected</span></td>
+              </tr>
+              <tr class="table-row">
+                <td class="px-5 py-3 font-mono text-blue-400">GRN-2026-0044</td>
+                <td class="px-3 py-3 text-slate-300">SRL Pharma</td>
+                <td class="px-3 py-3 text-slate-300">Microcrystalline Cellulose</td>
+                <td class="px-3 py-3 text-slate-500">16 Apr 2026</td>
+                <td class="px-3 py-3"><span class="status-pill bg-green-900/40 text-green-400"><span class="dot bg-green-400"></span>Released</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Module Cards Row -->
+        <div class="grid grid-cols-3 gap-4">
+          <a href="03-qms.html" class="module-card bg-[#1a1d27] border border-[#2a2d3d] rounded-xl p-4 block cursor-pointer hover:border-amber-600/50">
+            <div class="flex items-center justify-between mb-3">
+              <div class="w-8 h-8 rounded-lg bg-amber-600/20 flex items-center justify-center">
+                <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              </div>
+              <span class="badge badge-amber">7</span>
+            </div>
+            <div class="text-sm font-semibold text-white">QMS</div>
+            <div class="text-xs text-slate-500 mt-0.5">7 open CAPAs</div>
+            <div class="mt-3">
+              <div class="flex justify-between text-[10px] text-slate-500 mb-1"><span>CAPA Closure</span><span>68%</span></div>
+              <div class="progress-bar"><div class="progress-fill bg-amber-500" style="width:68%"></div></div>
+            </div>
+          </a>
+
+          <a href="04-wms.html" class="module-card bg-[#1a1d27] border border-[#2a2d3d] rounded-xl p-4 block cursor-pointer hover:border-indigo-600/50">
+            <div class="flex items-center justify-between mb-3">
+              <div class="w-8 h-8 rounded-lg bg-indigo-600/20 flex items-center justify-center">
+                <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/></svg>
+              </div>
+            </div>
+            <div class="text-sm font-semibold text-white">Warehouse</div>
+            <div class="text-xs text-slate-500 mt-0.5">3 locations active</div>
+            <div class="mt-3">
+              <div class="flex justify-between text-[10px] text-slate-500 mb-1"><span>Occupancy</span><span>74%</span></div>
+              <div class="progress-bar"><div class="progress-fill bg-indigo-500" style="width:74%"></div></div>
+            </div>
+          </a>
+
+          <a href="05-documents.html" class="module-card bg-[#1a1d27] border border-[#2a2d3d] rounded-xl p-4 block cursor-pointer hover:border-violet-600/50">
+            <div class="flex items-center justify-between mb-3">
+              <div class="w-8 h-8 rounded-lg bg-violet-600/20 flex items-center justify-center">
+                <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+              </div>
+              <span class="badge" style="background:#7c3aed">5</span>
+            </div>
+            <div class="text-sm font-semibold text-white">Documents</div>
+            <div class="text-xs text-slate-500 mt-0.5">5 expiring soon</div>
+            <div class="mt-3">
+              <div class="flex justify-between text-[10px] text-slate-500 mb-1"><span>SOP Compliance</span><span>91%</span></div>
+              <div class="progress-bar"><div class="progress-fill bg-violet-500" style="width:91%"></div></div>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <!-- Right Panel -->
+      <div class="space-y-5">
+
+        <!-- Activity Feed -->
+        <div class="bg-[#1a1d27] border border-[#2a2d3d] rounded-xl overflow-hidden">
+          <div class="px-4 py-3.5 border-b border-[#2a2d3d]">
+            <span class="font-semibold text-sm text-white">Activity Feed</span>
+          </div>
+          <div class="p-4 space-y-3 max-h-64 overflow-y-auto">
+            <div class="flex gap-3">
+              <div class="activity-dot bg-green-400"></div>
+              <div>
+                <div class="text-xs text-slate-300">GRN-2026-0046 <span class="text-green-400">Released</span></div>
+                <div class="text-[10px] text-slate-500">Yamini R. · 10 min ago</div>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="activity-dot bg-red-400"></div>
+              <div>
+                <div class="text-xs text-slate-300">CAPA-026 <span class="text-red-400">Overdue</span></div>
+                <div class="text-[10px] text-slate-500">System · 1 hr ago</div>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="activity-dot bg-blue-400"></div>
+              <div>
+                <div class="text-xs text-slate-300">Sampling Plan for L-2026-0041 <span class="text-blue-400">Created</span></div>
+                <div class="text-[10px] text-slate-500">Rajan K. · 2 hrs ago</div>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="activity-dot bg-amber-400"></div>
+              <div>
+                <div class="text-xs text-slate-300">Spec USP-Para-001 v3.0 <span class="text-amber-400">Pending Review</span></div>
+                <div class="text-[10px] text-slate-500">Priya S. · 3 hrs ago</div>
+              </div>
+            </div>
+            <div class="flex gap-3">
+              <div class="activity-dot bg-slate-500"></div>
+              <div>
+                <div class="text-xs text-slate-300">Vendor Sigma-Aldrich <span class="text-slate-400">Re-qualified</span></div>
+                <div class="text-[10px] text-slate-500">Admin · Yesterday</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expiry Alerts -->
+        <div class="bg-[#1a1d27] border border-[#2a2d3d] rounded-xl overflow-hidden">
+          <div class="px-4 py-3.5 border-b border-[#2a2d3d]">
+            <span class="font-semibold text-sm text-white">Expiry Alerts</span>
+          </div>
+          <div class="p-3 space-y-2">
+            <div class="flex items-center gap-3 p-2 rounded-lg bg-red-900/10 border border-red-800/20">
+              <div class="w-1.5 h-8 rounded-full bg-red-500 flex-shrink-0"></div>
+              <div class="flex-1 min-w-0">
+                <div class="text-xs text-white truncate">Paracetamol BP – Lot L-041</div>
+                <div class="text-[10px] text-red-400">Expires in 8 days</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 p-2 rounded-lg bg-amber-900/10 border border-amber-800/20">
+              <div class="w-1.5 h-8 rounded-full bg-amber-500 flex-shrink-0"></div>
+              <div class="flex-1 min-w-0">
+                <div class="text-xs text-white truncate">Citric Acid – Lot L-038</div>
+                <div class="text-[10px] text-amber-400">Expires in 21 days</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 p-2 rounded-lg bg-amber-900/10 border border-amber-800/20">
+              <div class="w-1.5 h-8 rounded-full bg-amber-500 flex-shrink-0"></div>
+              <div class="flex-1 min-w-0">
+                <div class="text-xs text-white truncate">MCC Lot L-035</div>
+                <div class="text-[10px] text-amber-400">Expires in 27 days</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Navigate to other mockups -->
+        <div class="bg-[#1a1d27] border border-[#2a2d3d] rounded-xl p-4">
+          <div class="text-xs font-semibold text-slate-400 mb-3">📂 Other Mockup Screens</div>
+          <div class="space-y-1">
+            <a href="02-grn.html" class="block text-xs text-blue-400 hover:underline py-1">→ GRN / Inbound Screen</a>
+            <a href="03-qms.html" class="block text-xs text-amber-400 hover:underline py-1">→ QMS – CAPA Tracker</a>
+            <a href="04-wms.html" class="block text-xs text-indigo-400 hover:underline py-1">→ Warehouse Map</a>
+            <a href="05-documents.html" class="block text-xs text-violet-400 hover:underline py-1">→ Document Management</a>
+            <a href="06-hrms.html" class="block text-xs text-rose-400 hover:underline py-1">→ HRMS Training Matrix</a>
+            <a href="07-vms.html" class="block text-xs text-orange-400 hover:underline py-1">→ Vendor Scorecard</a>
+            <a href="08-materials.html" class="block text-xs text-teal-400 hover:underline py-1">→ Material Detail</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

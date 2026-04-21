@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BatchSphere – Materials Master</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #f0f9ff; color: #1e293b; }
+  .sidebar { background: #1e3a8a; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #bfdbfe; transition: all 0.15s; }
+  .nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .nav-item.active { background: rgba(255,255,255,0.15); color: #fff; font-weight: 600; }
+  .nav-section { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: #60a5fa; text-transform: uppercase; padding: 14px 14px 4px; }
+  .card { background: #fff; border: 1px solid #bae6fd; border-radius: 14px; }
+  .status-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .mat-row { border-bottom: 1px solid #f0f9ff; cursor: pointer; transition: all 0.1s; }
+  .mat-row:hover { background: #f0f9ff; }
+  .mat-row.selected { background: #e0f2fe; }
+  .tab { padding: 6px 16px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: 500; }
+  .tab.active { background: #0284c7; color: white; }
+  .tab:not(.active) { color: #075985; background: #e0f2fe; }
+  .tab:not(.active):hover { background: #bae6fd; }
+  .cat-badge { display: inline-flex; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; }
+  .filter-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 500; border: 1.5px solid; cursor: pointer; }
+</style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+<aside class="sidebar w-60 flex-shrink-0 flex flex-col overflow-y-auto">
+  <div class="p-4 border-b border-blue-700">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-white flex items-center justify-center font-bold text-blue-700 text-sm shadow">BS</div>
+      <div><div class="font-bold text-white text-sm">BatchSphere</div><div class="text-[10px] text-blue-300">Pharma ERP v2.1</div></div>
+    </div>
+  </div>
+  <nav class="flex-1 p-3 space-y-0.5">
+    <div class="nav-section">Master Data</div>
+    <a href="10-masterdata.html" class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7C5 4 4 5 4 7z"/></svg>
+      Master Data Hub
+    </a>
+    <div class="nav-item active">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
+      Materials
+    </div>
+    <a href="07-vms.html" class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16"/></svg>
+      Vendors
+    </a>
+    <a href="04b-wms-setup.html" class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4"/></svg>
+      Locations
+    </a>
+    <div class="nav-section">Navigate</div>
+    <a href="01-dashboard.html" class="nav-item">← Dashboard</a>
+    <a href="06-sampling.html" class="nav-item" style="color:#93c5fd">→ Sampling</a>
+    <a href="09-inventory.html" class="nav-item" style="color:#93c5fd">→ Inventory</a>
+  </nav>
+  <div class="p-3 border-t border-blue-800 text-[10px] text-blue-400 text-center">BatchSphere © 2026</div>
+</aside>
+
+<main class="flex-1 flex flex-col overflow-hidden">
+  <header class="h-14 bg-white border-b border-sky-100 flex items-center px-6 gap-4 flex-shrink-0 shadow-sm">
+    <div class="text-xs text-slate-400">Master Data / <span class="text-sky-700 font-medium">Materials</span></div>
+    <div class="ml-auto flex items-center gap-3">
+      <div class="flex items-center gap-2 bg-sky-50 rounded-xl px-3 py-1.5 text-xs text-slate-400 border border-sky-100">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-width="2" d="m21 21-4.35-4.35"/></svg>
+        Search material code, name... ⌘K
+      </div>
+      <div class="text-xs text-slate-400 bg-sky-50 px-3 py-1.5 rounded-xl border border-sky-100">Fri, 18 Apr 2026</div>
+    </div>
+  </header>
+
+  <div class="flex-1 overflow-y-auto p-6">
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <h1 class="text-xl font-bold text-slate-800">Materials Master</h1>
+        <p class="text-sm text-slate-500 mt-0.5">142 materials · API, Excipients, Packaging, Finished Goods</p>
+      </div>
+      <div class="flex gap-2">
+        <a href="08b-material-create.html" class="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-xl text-xs font-semibold hover:bg-sky-700">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          New Material
+        </a>
+        <button class="flex items-center gap-2 px-4 py-2 bg-white border border-sky-200 text-sky-700 rounded-xl text-xs font-semibold hover:bg-sky-50">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          Import CSV
+        </button>
+        <button class="flex items-center gap-2 px-4 py-2 bg-white border border-sky-200 text-sky-700 rounded-xl text-xs font-semibold hover:bg-sky-50">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Export
+        </button>
+      </div>
+    </div>
+
+    <!-- Filters Row -->
+    <div class="flex items-center gap-2 mb-5 flex-wrap">
+      <span class="filter-chip bg-sky-600 text-white border-sky-600">All (142)</span>
+      <span class="filter-chip text-sky-700 border-sky-200 bg-white hover:bg-sky-50">API (48)</span>
+      <span class="filter-chip text-sky-700 border-sky-200 bg-white hover:bg-sky-50">Excipients (61)</span>
+      <span class="filter-chip text-sky-700 border-sky-200 bg-white hover:bg-sky-50">Packaging (28)</span>
+      <span class="filter-chip text-sky-700 border-sky-200 bg-white hover:bg-sky-50">Finished Goods (5)</span>
+      <div class="ml-auto flex items-center gap-2">
+        <span class="filter-chip text-slate-600 border-slate-200 bg-white hover:bg-slate-50">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+          Filters
+        </span>
+        <span class="filter-chip text-slate-600 border-slate-200 bg-white hover:bg-slate-50">
+          Status: Active ✕
+        </span>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card overflow-hidden shadow-sm">
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="border-b border-sky-100 bg-sky-50/60">
+            <th class="w-8 px-4 py-3"><input type="checkbox" class="rounded border-sky-200"></th>
+            <th class="text-left px-4 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Material Code</th>
+            <th class="text-left px-4 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Material Name</th>
+            <th class="text-left px-4 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Category</th>
+            <th class="text-left px-4 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">UOM</th>
+            <th class="text-left px-4 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Storage</th>
+            <th class="text-left px-4 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Spec</th>
+            <th class="text-left px-4 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Vendors</th>
+            <th class="text-left px-4 py-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+            <th class="px-4 py-3"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="mat-row border-b border-sky-50">
+            <td class="px-4 py-3"><input type="checkbox" class="rounded border-sky-200"></td>
+            <td class="px-4 py-3 font-mono font-bold text-sky-700">RM-PARA-001</td>
+            <td class="px-4 py-3">
+              <div class="font-semibold text-slate-800">Paracetamol</div>
+              <div class="text-[10px] text-slate-400">4-Acetamidophenol · IP 2022</div>
+            </td>
+            <td class="px-4 py-3"><span class="cat-badge bg-sky-100 text-sky-700">API</span></td>
+            <td class="px-4 py-3 text-slate-600">kg</td>
+            <td class="px-4 py-3 text-slate-600">Ambient, 15–30°C</td>
+            <td class="px-4 py-3"><span class="text-violet-600 font-medium hover:underline cursor-pointer">SP-2024-PARA</span></td>
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-1">
+                <div class="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center text-[9px] font-bold text-orange-700">G</div>
+                <div class="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-[9px] font-bold text-blue-700">+2</div>
+              </div>
+            </td>
+            <td class="px-4 py-3"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Active</span></td>
+            <td class="px-4 py-3">
+              <div class="flex gap-1">
+                <a href="08b-material-create.html" class="px-2 py-1 text-[10px] text-sky-600 border border-sky-200 rounded-md hover:bg-sky-50 font-medium">Edit</a>
+                <button class="px-2 py-1 text-[10px] text-slate-500 border border-slate-200 rounded-md hover:bg-slate-50">View</button>
+              </div>
+            </td>
+          </tr>
+          <tr class="mat-row border-b border-sky-50">
+            <td class="px-4 py-3"><input type="checkbox" class="rounded border-sky-200"></td>
+            <td class="px-4 py-3 font-mono font-bold text-sky-700">RM-IBU-002</td>
+            <td class="px-4 py-3">
+              <div class="font-semibold text-slate-800">Ibuprofen</div>
+              <div class="text-[10px] text-slate-400">α-methyl-4-(2-methylpropyl)benzeneacetic acid · IP</div>
+            </td>
+            <td class="px-4 py-3"><span class="cat-badge bg-sky-100 text-sky-700">API</span></td>
+            <td class="px-4 py-3 text-slate-600">kg</td>
+            <td class="px-4 py-3 text-slate-600">Ambient, 15–30°C</td>
+            <td class="px-4 py-3"><span class="text-violet-600 font-medium hover:underline cursor-pointer">SP-2024-IBU</span></td>
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-1">
+                <div class="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center text-[9px] font-bold text-orange-700">G</div>
+              </div>
+            </td>
+            <td class="px-4 py-3"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Active</span></td>
+            <td class="px-4 py-3">
+              <div class="flex gap-1">
+                <a href="08b-material-create.html" class="px-2 py-1 text-[10px] text-sky-600 border border-sky-200 rounded-md hover:bg-sky-50 font-medium">Edit</a>
+                <button class="px-2 py-1 text-[10px] text-slate-500 border border-slate-200 rounded-md hover:bg-slate-50">View</button>
+              </div>
+            </td>
+          </tr>
+          <tr class="mat-row border-b border-sky-50">
+            <td class="px-4 py-3"><input type="checkbox" class="rounded border-sky-200"></td>
+            <td class="px-4 py-3 font-mono font-bold text-sky-700">RM-MCC-003</td>
+            <td class="px-4 py-3">
+              <div class="font-semibold text-slate-800">Microcrystalline Cellulose PH102</div>
+              <div class="text-[10px] text-slate-400">Cellulose, microcrystalline · IP 2022</div>
+            </td>
+            <td class="px-4 py-3"><span class="cat-badge bg-emerald-100 text-emerald-700">Excipient</span></td>
+            <td class="px-4 py-3 text-slate-600">kg</td>
+            <td class="px-4 py-3 text-slate-600">Ambient, dry</td>
+            <td class="px-4 py-3"><span class="text-violet-600 font-medium hover:underline cursor-pointer">SP-2023-MCC</span></td>
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-1">
+                <div class="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-[9px] font-bold text-blue-700">S</div>
+                <div class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center text-[9px] font-bold text-green-700">A</div>
+              </div>
+            </td>
+            <td class="px-4 py-3"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Active</span></td>
+            <td class="px-4 py-3">
+              <div class="flex gap-1">
+                <a href="08b-material-create.html" class="px-2 py-1 text-[10px] text-sky-600 border border-sky-200 rounded-md hover:bg-sky-50 font-medium">Edit</a>
+                <button class="px-2 py-1 text-[10px] text-slate-500 border border-slate-200 rounded-md hover:bg-slate-50">View</button>
+              </div>
+            </td>
+          </tr>
+          <tr class="mat-row border-b border-sky-50">
+            <td class="px-4 py-3"><input type="checkbox" class="rounded border-sky-200"></td>
+            <td class="px-4 py-3 font-mono font-bold text-sky-700">RM-LAC-004</td>
+            <td class="px-4 py-3">
+              <div class="font-semibold text-slate-800">Lactose Monohydrate</div>
+              <div class="text-[10px] text-slate-400">α-D-Lactose monohydrate · IP 2022</div>
+            </td>
+            <td class="px-4 py-3"><span class="cat-badge bg-emerald-100 text-emerald-700">Excipient</span></td>
+            <td class="px-4 py-3 text-slate-600">kg</td>
+            <td class="px-4 py-3 text-slate-600">Ambient, &lt;65% RH</td>
+            <td class="px-4 py-3"><span class="text-violet-600 font-medium hover:underline cursor-pointer">SP-2023-LAC</span></td>
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-1">
+                <div class="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-[9px] font-bold text-blue-700">S</div>
+              </div>
+            </td>
+            <td class="px-4 py-3"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Active</span></td>
+            <td class="px-4 py-3">
+              <div class="flex gap-1">
+                <a href="08b-material-create.html" class="px-2 py-1 text-[10px] text-sky-600 border border-sky-200 rounded-md hover:bg-sky-50 font-medium">Edit</a>
+                <button class="px-2 py-1 text-[10px] text-slate-500 border border-slate-200 rounded-md hover:bg-slate-50">View</button>
+              </div>
+            </td>
+          </tr>
+          <tr class="mat-row border-b border-sky-50">
+            <td class="px-4 py-3"><input type="checkbox" class="rounded border-sky-200"></td>
+            <td class="px-4 py-3 font-mono font-bold text-sky-700">RM-MGS-005</td>
+            <td class="px-4 py-3">
+              <div class="font-semibold text-slate-800">Magnesium Stearate</div>
+              <div class="text-[10px] text-slate-400">Magnesium octadecanoate · IP 2022</div>
+            </td>
+            <td class="px-4 py-3"><span class="cat-badge bg-emerald-100 text-emerald-700">Excipient</span></td>
+            <td class="px-4 py-3 text-slate-600">kg</td>
+            <td class="px-4 py-3 text-slate-600">Ambient, cool dry</td>
+            <td class="px-4 py-3"><span class="text-violet-600 font-medium hover:underline cursor-pointer">SP-2023-MGS</span></td>
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-1">
+                <div class="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center text-[9px] font-bold text-green-700">A</div>
+                <div class="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-[9px] font-bold text-blue-700">+1</div>
+              </div>
+            </td>
+            <td class="px-4 py-3"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Active</span></td>
+            <td class="px-4 py-3">
+              <div class="flex gap-1">
+                <a href="08b-material-create.html" class="px-2 py-1 text-[10px] text-sky-600 border border-sky-200 rounded-md hover:bg-sky-50 font-medium">Edit</a>
+                <button class="px-2 py-1 text-[10px] text-slate-500 border border-slate-200 rounded-md hover:bg-slate-50">View</button>
+              </div>
+            </td>
+          </tr>
+          <tr class="mat-row border-b border-sky-50">
+            <td class="px-4 py-3"><input type="checkbox" class="rounded border-sky-200"></td>
+            <td class="px-4 py-3 font-mono font-bold text-sky-700">PM-HDPE-001</td>
+            <td class="px-4 py-3">
+              <div class="font-semibold text-slate-800">HDPE Container 250g</div>
+              <div class="text-[10px] text-slate-400">High-density polyethylene jar · white, 250g cap.</div>
+            </td>
+            <td class="px-4 py-3"><span class="cat-badge bg-violet-100 text-violet-700">Packaging</span></td>
+            <td class="px-4 py-3 text-slate-600">pcs</td>
+            <td class="px-4 py-3 text-slate-600">Ambient</td>
+            <td class="px-4 py-3"><span class="text-violet-600 font-medium hover:underline cursor-pointer">SP-PM-HDPE01</span></td>
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-1">
+                <div class="w-5 h-5 rounded-full bg-amber-100 flex items-center justify-center text-[9px] font-bold text-amber-700">B</div>
+              </div>
+            </td>
+            <td class="px-4 py-3"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Active</span></td>
+            <td class="px-4 py-3">
+              <div class="flex gap-1">
+                <a href="08b-material-create.html" class="px-2 py-1 text-[10px] text-sky-600 border border-sky-200 rounded-md hover:bg-sky-50 font-medium">Edit</a>
+                <button class="px-2 py-1 text-[10px] text-slate-500 border border-slate-200 rounded-md hover:bg-slate-50">View</button>
+              </div>
+            </td>
+          </tr>
+          <tr class="mat-row border-b border-sky-50">
+            <td class="px-4 py-3"><input type="checkbox" class="rounded border-sky-200"></td>
+            <td class="px-4 py-3 font-mono font-bold text-sky-700">RM-POV-006</td>
+            <td class="px-4 py-3">
+              <div class="font-semibold text-slate-800">Povidone K30</div>
+              <div class="text-[10px] text-slate-400">Polyvinylpyrrolidone K30 · IP 2022</div>
+            </td>
+            <td class="px-4 py-3"><span class="cat-badge bg-emerald-100 text-emerald-700">Excipient</span></td>
+            <td class="px-4 py-3 text-slate-600">kg</td>
+            <td class="px-4 py-3 text-slate-600">Ambient, &lt;60% RH</td>
+            <td class="px-4 py-3"><span class="text-violet-600 font-medium hover:underline cursor-pointer">SP-2023-POV</span></td>
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-1">
+                <div class="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[9px] font-bold text-slate-500">—</div>
+              </div>
+            </td>
+            <td class="px-4 py-3"><span class="status-pill bg-amber-100 text-amber-700"><span class="dot bg-amber-400"></span>Review</span></td>
+            <td class="px-4 py-3">
+              <div class="flex gap-1">
+                <a href="08b-material-create.html" class="px-2 py-1 text-[10px] text-sky-600 border border-sky-200 rounded-md hover:bg-sky-50 font-medium">Edit</a>
+                <button class="px-2 py-1 text-[10px] text-slate-500 border border-slate-200 rounded-md hover:bg-slate-50">View</button>
+              </div>
+            </td>
+          </tr>
+          <tr class="mat-row">
+            <td class="px-4 py-3"><input type="checkbox" class="rounded border-sky-200"></td>
+            <td class="px-4 py-3 font-mono font-bold text-sky-700">FG-PARA-500</td>
+            <td class="px-4 py-3">
+              <div class="font-semibold text-slate-800">Paracetamol Tab 500mg (Finished)</div>
+              <div class="text-[10px] text-slate-400">FG · Blister strip · Schedule H</div>
+            </td>
+            <td class="px-4 py-3"><span class="cat-badge bg-rose-100 text-rose-700">Finished Goods</span></td>
+            <td class="px-4 py-3 text-slate-600">strips</td>
+            <td class="px-4 py-3 text-slate-600">Ambient, 15–30°C</td>
+            <td class="px-4 py-3"><span class="text-violet-600 font-medium hover:underline cursor-pointer">SP-FG-PAR500</span></td>
+            <td class="px-4 py-3 text-slate-400 text-[10px]">N/A</td>
+            <td class="px-4 py-3"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Active</span></td>
+            <td class="px-4 py-3">
+              <div class="flex gap-1">
+                <a href="08b-material-create.html" class="px-2 py-1 text-[10px] text-sky-600 border border-sky-200 rounded-md hover:bg-sky-50 font-medium">Edit</a>
+                <button class="px-2 py-1 text-[10px] text-slate-500 border border-slate-200 rounded-md hover:bg-slate-50">View</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="px-5 py-3 border-t border-sky-50 flex items-center justify-between bg-sky-50/30">
+        <span class="text-xs text-slate-400">Showing 8 of 142 materials</span>
+        <div class="flex gap-1">
+          <button class="px-3 py-1 text-xs rounded-lg border border-sky-100 text-slate-500 hover:bg-sky-50">← Prev</button>
+          <button class="px-2.5 py-1 text-xs rounded-lg bg-sky-600 text-white font-medium">1</button>
+          <button class="px-2.5 py-1 text-xs rounded-lg border border-sky-100 text-slate-500 hover:bg-sky-50">2</button>
+          <button class="px-2.5 py-1 text-xs rounded-lg border border-sky-100 text-slate-500 hover:bg-sky-50">3</button>
+          <button class="px-3 py-1 text-xs rounded-lg border border-sky-100 text-slate-500 hover:bg-sky-50">Next →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

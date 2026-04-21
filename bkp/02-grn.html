@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BatchSphere – GRN Inbound</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #0f1117; color: #e2e8f0; }
+  .status-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #94a3b8; }
+  .nav-item:hover { background: #1e2130; color: #e2e8f0; }
+  .nav-item.active { background: #1e3a5f; color: #60a5fa; border-left: 3px solid #3b82f6; }
+  .nav-section { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: #475569; text-transform: uppercase; padding: 16px 12px 6px; }
+  .field-group { margin-bottom: 16px; }
+  .field-label { font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .field-input { background: #0d1018; border: 1px solid #2a2d3d; border-radius: 8px; padding: 9px 12px; font-size: 13px; color: #e2e8f0; width: 100%; }
+  .field-input:focus { outline: none; border-color: #3b82f6; }
+  .step-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .step-line { width: 40px; height: 2px; }
+  .container-card { background: #1a1d27; border: 1px solid #2a2d3d; border-radius: 10px; padding: 14px; }
+  .container-card:hover { border-color: #3b82f6; }
+  .table-row:hover { background: #1a1d27; }
+  .badge { background: #ef4444; color: white; border-radius: 999px; font-size: 10px; font-weight: 700; padding: 1px 6px; }
+</style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+<!-- Sidebar (compact) -->
+<aside class="w-60 flex-shrink-0 bg-[#0d1018] border-r border-[#1e2130] flex flex-col overflow-y-auto">
+  <div class="p-4 border-b border-[#1e2130]">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white text-sm">BS</div>
+      <div>
+        <div class="font-semibold text-white text-sm">BatchSphere</div>
+        <div class="text-[10px] text-slate-500">Pharma ERP v2.1</div>
+      </div>
+    </div>
+  </div>
+  <nav class="flex-1 p-2">
+    <div class="nav-section">Operations</div>
+    <div class="nav-item active">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      GRN / Inbound
+    </div>
+    <div class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+      Inventory
+    </div>
+    <div class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547"/></svg>
+      QC Sampling
+      <span class="ml-auto badge">3</span>
+    </div>
+    <div class="nav-section">Navigate</div>
+    <a href="01-dashboard.html" class="nav-item">← Dashboard</a>
+    <a href="03-qms.html" class="nav-item text-amber-400">→ QMS</a>
+    <a href="04-wms.html" class="nav-item text-indigo-400">→ Warehouse</a>
+    <a href="05-documents.html" class="nav-item text-violet-400">→ Documents</a>
+    <a href="06-hrms.html" class="nav-item text-rose-400">→ HRMS</a>
+    <a href="07-vms.html" class="nav-item text-orange-400">→ Vendors</a>
+    <a href="08-materials.html" class="nav-item text-teal-400">→ Materials</a>
+  </nav>
+</aside>
+
+<!-- Main -->
+<main class="flex-1 flex flex-col overflow-hidden">
+  <header class="h-14 bg-[#0d1018] border-b border-[#1e2130] flex items-center px-6 gap-2 flex-shrink-0">
+    <div class="text-xs text-slate-500">Operations / <span class="text-slate-300">GRN / Inbound</span></div>
+    <div class="ml-auto flex items-center gap-2">
+      <button class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg font-medium">+ New GRN</button>
+    </div>
+  </header>
+
+  <div class="flex-1 flex overflow-hidden">
+
+    <!-- GRN List Panel -->
+    <div class="w-80 flex-shrink-0 border-r border-[#1e2130] flex flex-col overflow-hidden">
+      <div class="p-3 border-b border-[#1e2130]">
+        <input class="field-input text-xs" style="width:100%" placeholder="Search GRN, material, supplier…">
+      </div>
+      <div class="p-2 border-b border-[#1e2130] flex gap-2">
+        <button class="text-[10px] px-2.5 py-1 rounded-full bg-blue-600/20 text-blue-400 font-semibold border border-blue-600/40">All</button>
+        <button class="text-[10px] px-2.5 py-1 rounded-full text-slate-500 hover:bg-[#1a1d27]">Pending QC</button>
+        <button class="text-[10px] px-2.5 py-1 rounded-full text-slate-500 hover:bg-[#1a1d27]">Released</button>
+        <button class="text-[10px] px-2.5 py-1 rounded-full text-slate-500 hover:bg-[#1a1d27]">Rejected</button>
+      </div>
+      <div class="flex-1 overflow-y-auto">
+        <!-- Selected GRN -->
+        <div class="p-3 bg-[#1e3a5f] border-l-2 border-blue-500 cursor-pointer">
+          <div class="flex items-start justify-between">
+            <span class="font-mono text-xs text-blue-300 font-semibold">GRN-2026-0047</span>
+            <span class="status-pill bg-amber-900/40 text-amber-400"><span class="dot bg-amber-400"></span>QC Pending</span>
+          </div>
+          <div class="text-xs text-white mt-1.5 font-medium">Paracetamol BP</div>
+          <div class="text-[10px] text-slate-400 mt-0.5">Sigma-Aldrich · 17 Apr 2026</div>
+          <div class="flex gap-3 mt-2">
+            <span class="text-[10px] text-slate-500">500 kg · 5 containers</span>
+          </div>
+        </div>
+        <div class="p-3 border-b border-[#1e2130] cursor-pointer hover:bg-[#1a1d27]">
+          <div class="flex items-start justify-between">
+            <span class="font-mono text-xs text-blue-400">GRN-2026-0046</span>
+            <span class="status-pill bg-green-900/40 text-green-400"><span class="dot bg-green-400"></span>Released</span>
+          </div>
+          <div class="text-xs text-slate-200 mt-1.5">Lactose Monohydrate</div>
+          <div class="text-[10px] text-slate-500 mt-0.5">Merck KGaA · 17 Apr 2026</div>
+        </div>
+        <div class="p-3 border-b border-[#1e2130] cursor-pointer hover:bg-[#1a1d27]">
+          <div class="flex items-start justify-between">
+            <span class="font-mono text-xs text-blue-400">GRN-2026-0045</span>
+            <span class="status-pill bg-red-900/40 text-red-400"><span class="dot bg-red-400"></span>Rejected</span>
+          </div>
+          <div class="text-xs text-slate-200 mt-1.5">Magnesium Stearate</div>
+          <div class="text-[10px] text-slate-500 mt-0.5">Lanxess India · 16 Apr 2026</div>
+        </div>
+        <div class="p-3 border-b border-[#1e2130] cursor-pointer hover:bg-[#1a1d27]">
+          <div class="flex items-start justify-between">
+            <span class="font-mono text-xs text-blue-400">GRN-2026-0044</span>
+            <span class="status-pill bg-green-900/40 text-green-400"><span class="dot bg-green-400"></span>Released</span>
+          </div>
+          <div class="text-xs text-slate-200 mt-1.5">Microcrystalline Cellulose</div>
+          <div class="text-[10px] text-slate-500 mt-0.5">SRL Pharma · 16 Apr 2026</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GRN Detail Panel -->
+    <div class="flex-1 overflow-y-auto p-5">
+
+      <!-- GRN Header -->
+      <div class="flex items-start justify-between mb-5">
+        <div>
+          <div class="flex items-center gap-3">
+            <h1 class="text-lg font-bold text-white font-mono">GRN-2026-0047</h1>
+            <span class="status-pill bg-amber-900/40 text-amber-400 text-xs"><span class="dot bg-amber-400"></span>QC Pending</span>
+          </div>
+          <div class="text-sm text-slate-400 mt-1">Received 17 Apr 2026, 09:15 AM · Created by Rajan K.</div>
+        </div>
+        <div class="flex gap-2">
+          <button class="flex items-center gap-1.5 text-xs border border-[#2a2d3d] px-3 py-1.5 rounded-lg text-slate-400 hover:bg-[#1a1d27]">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            Print Labels
+          </button>
+          <button class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg">Send to QC →</button>
+        </div>
+      </div>
+
+      <!-- Workflow Steps -->
+      <div class="bg-[#1a1d27] border border-[#2a2d3d] rounded-xl p-4 mb-5">
+        <div class="flex items-center gap-0">
+          <div class="flex items-center gap-2">
+            <div class="step-dot bg-green-500 text-white flex items-center justify-center w-7 h-7 rounded-full text-xs">✓</div>
+            <span class="text-xs text-green-400 font-medium">GRN Created</span>
+          </div>
+          <div class="step-line bg-green-500 mx-3"></div>
+          <div class="flex items-center gap-2">
+            <div class="step-dot bg-green-500 text-white flex items-center justify-center w-7 h-7 rounded-full text-xs">✓</div>
+            <span class="text-xs text-green-400 font-medium">Items Received</span>
+          </div>
+          <div class="step-line bg-amber-500 mx-3"></div>
+          <div class="flex items-center gap-2">
+            <div class="step-dot bg-amber-500 text-white flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold">3</div>
+            <span class="text-xs text-amber-400 font-medium">QC Sampling</span>
+          </div>
+          <div class="step-line bg-[#2a2d3d] mx-3"></div>
+          <div class="flex items-center gap-2">
+            <div class="step-dot bg-[#2a2d3d] text-slate-500 flex items-center justify-center w-7 h-7 rounded-full text-xs">4</div>
+            <span class="text-xs text-slate-500">QC Decision</span>
+          </div>
+          <div class="step-line bg-[#2a2d3d] mx-3"></div>
+          <div class="flex items-center gap-2">
+            <div class="step-dot bg-[#2a2d3d] text-slate-500 flex items-center justify-center w-7 h-7 rounded-full text-xs">5</div>
+            <span class="text-xs text-slate-500">Released</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-5">
+
+        <!-- Left: GRN Info -->
+        <div class="space-y-4">
+          <div class="bg-[#1a1d27] border border-[#2a2d3d] rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Supplier & Material</div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="text-[10px] text-slate-500 mb-0.5">Supplier</div>
+                <div class="text-sm text-white font-medium">Sigma-Aldrich</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-slate-500 mb-0.5">Invoice No.</div>
+                <div class="text-sm font-mono text-white">INV-SA-20260417</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-slate-500 mb-0.5">Material</div>
+                <div class="text-sm text-white font-medium">Paracetamol BP</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-slate-500 mb-0.5">Material Code</div>
+                <div class="text-sm font-mono text-white">MAT-0091</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-slate-500 mb-0.5">Batch No.</div>
+                <div class="text-sm font-mono text-white">SA-2026-PCM-004</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-slate-500 mb-0.5">MFG Date</div>
+                <div class="text-sm text-white">Jan 2026</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-slate-500 mb-0.5">Expiry Date</div>
+                <div class="text-sm text-red-400 font-medium">Dec 2027</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-slate-500 mb-0.5">Total Qty Received</div>
+                <div class="text-sm text-white font-semibold">500.00 kg</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Documents -->
+          <div class="bg-[#1a1d27] border border-[#2a2d3d] rounded-xl p-4">
+            <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Attached Documents</div>
+            <div class="space-y-2">
+              <div class="flex items-center gap-2 p-2 rounded-lg bg-[#0d1018] border border-[#2a2d3d]">
+                <svg class="w-4 h-4 text-red-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm0 0v6h6M10 11H8v2h2v-2zm4 0h-2v2h2v-2zm-4 4H8v2h2v-2zm4 0h-2v2h2v-2z"/></svg>
+                <span class="text-xs text-slate-300 flex-1">CoA_SA_PCM_2026.pdf</span>
+                <span class="text-[10px] text-slate-500">2.1 MB</span>
+                <button class="text-[10px] text-blue-400 hover:underline">View</button>
+              </div>
+              <div class="flex items-center gap-2 p-2 rounded-lg bg-[#0d1018] border border-[#2a2d3d]">
+                <svg class="w-4 h-4 text-red-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm0 0v6h6"/></svg>
+                <span class="text-xs text-slate-300 flex-1">MSDS_Paracetamol.pdf</span>
+                <span class="text-[10px] text-slate-500">890 KB</span>
+                <button class="text-[10px] text-blue-400 hover:underline">View</button>
+              </div>
+              <button class="w-full text-xs border-2 border-dashed border-[#2a2d3d] rounded-lg py-2 text-slate-500 hover:border-blue-500 hover:text-blue-400">+ Attach Document</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Containers -->
+        <div>
+          <div class="bg-[#1a1d27] border border-[#2a2d3d] rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Containers (5)</div>
+              <button class="text-xs text-blue-400 hover:underline">+ Add</button>
+            </div>
+            <div class="space-y-2">
+              <div class="container-card">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="text-[10px] bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded font-mono">DRUM</span>
+                    <span class="text-xs text-white font-medium">C-001</span>
+                  </div>
+                  <span class="status-pill bg-amber-900/40 text-amber-400 text-[10px]"><span class="dot bg-amber-400"></span>Under Sampling</span>
+                </div>
+                <div class="flex gap-4 mt-2">
+                  <div><span class="text-[10px] text-slate-500">Qty: </span><span class="text-xs text-white">100 kg</span></div>
+                  <div><span class="text-[10px] text-slate-500">Label: </span><span class="text-xs font-mono text-blue-300">L-2026-0410</span></div>
+                </div>
+              </div>
+              <div class="container-card">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="text-[10px] bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded font-mono">DRUM</span>
+                    <span class="text-xs text-white font-medium">C-002</span>
+                  </div>
+                  <span class="status-pill bg-amber-900/40 text-amber-400 text-[10px]"><span class="dot bg-amber-400"></span>Under Sampling</span>
+                </div>
+                <div class="flex gap-4 mt-2">
+                  <div><span class="text-[10px] text-slate-500">Qty: </span><span class="text-xs text-white">100 kg</span></div>
+                  <div><span class="text-[10px] text-slate-500">Label: </span><span class="text-xs font-mono text-blue-300">L-2026-0411</span></div>
+                </div>
+              </div>
+              <div class="container-card">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="text-[10px] bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded font-mono">DRUM</span>
+                    <span class="text-xs text-white font-medium">C-003</span>
+                  </div>
+                  <span class="status-pill bg-slate-700 text-slate-400 text-[10px]">Pending</span>
+                </div>
+                <div class="flex gap-4 mt-2">
+                  <div><span class="text-[10px] text-slate-500">Qty: </span><span class="text-xs text-white">100 kg</span></div>
+                  <div><span class="text-[10px] text-slate-500">Label: </span><span class="text-xs font-mono text-blue-300">L-2026-0412</span></div>
+                </div>
+              </div>
+              <div class="container-card">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="text-[10px] bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded font-mono">DRUM</span>
+                    <span class="text-xs text-white font-medium">C-004</span>
+                  </div>
+                  <span class="status-pill bg-slate-700 text-slate-400 text-[10px]">Pending</span>
+                </div>
+                <div class="flex gap-4 mt-2">
+                  <div><span class="text-[10px] text-slate-500">Qty: </span><span class="text-xs text-white">100 kg</span></div>
+                  <div><span class="text-[10px] text-slate-500">Label: </span><span class="text-xs font-mono text-blue-300">L-2026-0413</span></div>
+                </div>
+              </div>
+              <div class="container-card">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="text-[10px] bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded font-mono">DRUM</span>
+                    <span class="text-xs text-white font-medium">C-005</span>
+                  </div>
+                  <span class="status-pill bg-slate-700 text-slate-400 text-[10px]">Pending</span>
+                </div>
+                <div class="flex gap-4 mt-2">
+                  <div><span class="text-[10px] text-slate-500">Qty: </span><span class="text-xs text-white">100 kg</span></div>
+                  <div><span class="text-[10px] text-slate-500">Label: </span><span class="text-xs font-mono text-blue-300">L-2026-0414</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Audit Trail -->
+      <div class="mt-5 bg-[#1a1d27] border border-[#2a2d3d] rounded-xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-[#2a2d3d] flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Audit Trail</span>
+          <button class="text-[10px] text-slate-500 hover:text-slate-300">▾ Show all</button>
+        </div>
+        <div class="p-4 space-y-2.5">
+          <div class="flex items-start gap-3 text-xs">
+            <div class="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 flex-shrink-0"></div>
+            <div class="flex-1"><span class="text-white">Sampling plan created</span> — <span class="text-slate-500">C-001 and C-002 selected for QC sampling</span></div>
+            <div class="text-[10px] text-slate-600 flex-shrink-0">17 Apr 2026 · 09:45 · Rajan K.</div>
+          </div>
+          <div class="flex items-start gap-3 text-xs">
+            <div class="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 flex-shrink-0"></div>
+            <div class="flex-1"><span class="text-white">GRN submitted</span> — <span class="text-slate-500">5 containers received, 500 kg Paracetamol BP</span></div>
+            <div class="text-[10px] text-slate-600 flex-shrink-0">17 Apr 2026 · 09:20 · Rajan K.</div>
+          </div>
+          <div class="flex items-start gap-3 text-xs">
+            <div class="w-1.5 h-1.5 rounded-full bg-green-400 mt-1.5 flex-shrink-0"></div>
+            <div class="flex-1"><span class="text-white">GRN created</span> — <span class="text-slate-500">Invoice INV-SA-20260417 linked</span></div>
+            <div class="text-[10px] text-slate-600 flex-shrink-0">17 Apr 2026 · 09:15 · Rajan K.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

@@ -8,4 +8,6 @@ public class GrnStatusUpdateRequest {
 
     @NotBlank(message = "Updated by is required")
     private String updatedBy;
+
+    private String reason;
 }

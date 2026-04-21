@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BatchSphere – QC Sampling</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #f0fdf4; color: #1e293b; }
+  .sidebar { background: #1e3a8a; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #bfdbfe; transition: all 0.15s; }
+  .nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .nav-item.active { background: rgba(255,255,255,0.15); color: #fff; font-weight: 600; }
+  .nav-section { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: #60a5fa; text-transform: uppercase; padding: 14px 14px 4px; }
+  .card { background: #fff; border: 1px solid #bbf7d0; border-radius: 14px; }
+  .status-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .sample-row { border-bottom: 1px solid #f0fdf4; padding: 10px 16px; cursor: pointer; transition: all 0.1s; display: flex; align-items: center; gap: 12px; }
+  .sample-row:hover { background: #f0fdf4; }
+  .sample-row.selected { background: #dcfce7; border-left: 3px solid #16a34a; }
+  .timeline-step { display: flex; align-items: flex-start; gap: 10px; }
+  .timeline-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .timeline-line { width: 2px; height: 28px; background: #bbf7d0; margin-left: 13px; }
+  .tab { padding: 6px 14px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: 500; }
+  .tab.active { background: #16a34a; color: white; }
+  .tab:not(.active) { color: #166534; background: #dcfce7; }
+  .tab:not(.active):hover { background: #bbf7d0; }
+  .checklist-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; }
+  .checklist-item.done { border-color: #bbf7d0; background: #f0fdf4; }
+  .param-row:hover { background: #f0fdf4; }
+</style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+<!-- Sidebar -->
+<aside class="sidebar w-60 flex-shrink-0 flex flex-col overflow-y-auto">
+  <div class="p-4 border-b border-blue-700">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-white flex items-center justify-center font-bold text-blue-700 text-sm shadow">BS</div>
+      <div><div class="font-bold text-white text-sm">BatchSphere</div><div class="text-[10px] text-blue-300">Pharma ERP v2.1</div></div>
+    </div>
+  </div>
+  <nav class="flex-1 p-3 space-y-0.5">
+    <div class="nav-section">Operations</div>
+    <a href="02-grn.html" class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/></svg>
+      GRN / Inbound
+    </a>
+    <div class="nav-item active">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.78 0-2.674-2.155-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+      QC Sampling
+      <span class="ml-auto" style="background:#dc2626;color:white;border-radius:999px;font-size:10px;font-weight:700;padding:1px 6px;">3</span>
+    </div>
+    <a href="09-inventory.html" class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+      Inventory
+    </a>
+    <div class="nav-section">Quality</div>
+    <a href="08-lims.html" class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
+      LIMS
+    </a>
+    <a href="03-qms.html" class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      QMS / CAPA
+    </a>
+    <div class="nav-section">Navigate</div>
+    <a href="01-dashboard.html" class="nav-item">← Dashboard</a>
+    <a href="04-wms.html" class="nav-item" style="color:#93c5fd">→ Warehouse</a>
+    <a href="07-vms.html" class="nav-item" style="color:#93c5fd">→ Vendors</a>
+  </nav>
+  <div class="p-3 border-t border-blue-800 text-[10px] text-blue-400 text-center">BatchSphere © 2026</div>
+</aside>
+
+<!-- Main -->
+<main class="flex-1 flex flex-col overflow-hidden">
+  <!-- Topbar -->
+  <header class="h-14 bg-white border-b border-green-100 flex items-center px-6 gap-4 flex-shrink-0 shadow-sm">
+    <div class="text-xs text-slate-400">Operations / <span class="text-green-700 font-medium">QC Sampling</span></div>
+    <div class="ml-auto flex items-center gap-3">
+      <div class="flex items-center gap-2 bg-green-50 rounded-xl px-3 py-1.5 text-xs text-slate-400 border border-green-100">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-width="2" d="m21 21-4.35-4.35"/></svg>
+        Search samples... ⌘K
+      </div>
+      <button class="relative p-2 rounded-xl hover:bg-green-50">
+        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+      </button>
+      <div class="text-xs text-slate-400 bg-green-50 px-3 py-1.5 rounded-xl border border-green-100">Fri, 18 Apr 2026</div>
+    </div>
+  </header>
+
+  <div class="flex-1 overflow-y-auto p-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <h1 class="text-xl font-bold text-slate-800">QC Sampling</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Sampling queue · Inbound material inspection decisions</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl text-xs font-semibold hover:bg-green-700">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          New Sample Request
+        </button>
+        <button class="flex items-center gap-2 px-4 py-2 bg-white border border-green-200 text-green-700 rounded-xl text-xs font-semibold hover:bg-green-50">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Export
+        </button>
+      </div>
+    </div>
+
+    <!-- Alert -->
+    <div class="mb-5 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-3">
+      <svg class="w-4 h-4 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+      <span class="text-sm text-red-800"><strong>3 sampling decisions overdue</strong> — Lots L-2026-0041, L-2026-0038, L-2026-0035 are pending QC disposition beyond 48 hrs.</span>
+      <button class="ml-auto text-xs text-red-700 underline font-medium">Review Now</button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid grid-cols-5 gap-4 mb-6">
+      <div class="bg-white border border-green-200 rounded-xl p-4 border-l-4 border-l-green-500">
+        <div class="text-xs text-slate-500 mb-1">Pending Sampling</div>
+        <div class="text-2xl font-bold text-green-600">8</div>
+        <div class="text-xs text-slate-500 mt-1">Awaiting collection</div>
+      </div>
+      <div class="bg-white border border-green-200 rounded-xl p-4 border-l-4 border-l-amber-400">
+        <div class="text-xs text-slate-500 mb-1">Under Testing</div>
+        <div class="text-2xl font-bold text-amber-600">5</div>
+        <div class="text-xs text-slate-500 mt-1">In LIMS queue</div>
+      </div>
+      <div class="bg-white border border-green-200 rounded-xl p-4 border-l-4 border-l-red-400">
+        <div class="text-xs text-slate-500 mb-1">Overdue Decision</div>
+        <div class="text-2xl font-bold text-red-600">3</div>
+        <div class="text-xs text-red-500 mt-1 font-medium">&gt;48 hrs pending</div>
+      </div>
+      <div class="bg-white border border-green-200 rounded-xl p-4 border-l-4 border-l-emerald-400">
+        <div class="text-xs text-slate-500 mb-1">Approved Today</div>
+        <div class="text-2xl font-bold text-emerald-600">6</div>
+        <div class="text-xs text-slate-500 mt-1">Released to WMS</div>
+      </div>
+      <div class="bg-white border border-green-200 rounded-xl p-4 border-l-4 border-l-rose-400">
+        <div class="text-xs text-slate-500 mb-1">Rejected MTD</div>
+        <div class="text-2xl font-bold text-rose-600">2</div>
+        <div class="text-xs text-slate-500 mt-1">Apr 2026</div>
+      </div>
+    </div>
+
+    <!-- Tabs + List + Detail -->
+    <div class="flex gap-5">
+      <!-- Left: Sampling Queue -->
+      <div class="w-96 flex-shrink-0">
+        <div class="card overflow-hidden shadow-sm mb-4">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-green-100 bg-gradient-to-r from-green-50 to-white">
+            <span class="font-semibold text-sm text-slate-700">Sampling Queue</span>
+            <div class="flex gap-1">
+              <span class="tab active text-[11px] px-2 py-1">All (16)</span>
+              <span class="tab text-[11px] px-2 py-1">Pending (8)</span>
+              <span class="tab text-[11px] px-2 py-1">Testing (5)</span>
+            </div>
+          </div>
+          <!-- Search -->
+          <div class="px-3 py-2 border-b border-green-50">
+            <div class="flex items-center gap-2 bg-green-50 rounded-lg px-3 py-1.5 text-xs text-slate-400 border border-green-100">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-width="2" d="m21 21-4.35-4.35"/></svg>
+              Filter by lot, material, analyst...
+            </div>
+          </div>
+          <!-- List -->
+          <div class="divide-y divide-green-50">
+            <!-- Row 1 - selected -->
+            <div class="sample-row selected">
+              <div class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-slate-800">L-2026-0041</span>
+                  <span class="status-pill bg-red-100 text-red-700"><span class="dot bg-red-500"></span>Overdue</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-0.5 truncate">Paracetamol API · 250 kg · GRN-2026-0112</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Analyst: Priya M. · Due: 16 Apr</div>
+              </div>
+            </div>
+            <!-- Row 2 -->
+            <div class="sample-row">
+              <div class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-slate-800">L-2026-0038</span>
+                  <span class="status-pill bg-red-100 text-red-700"><span class="dot bg-red-500"></span>Overdue</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-0.5 truncate">Microcrystalline Cellulose · 500 kg</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Analyst: Ravi K. · Due: 15 Apr</div>
+              </div>
+            </div>
+            <!-- Row 3 -->
+            <div class="sample-row">
+              <div class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-slate-800">L-2026-0035</span>
+                  <span class="status-pill bg-red-100 text-red-700"><span class="dot bg-red-500"></span>Overdue</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-0.5 truncate">Stearic Acid · 100 kg</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Analyst: Meena S. · Due: 15 Apr</div>
+              </div>
+            </div>
+            <!-- Row 4 -->
+            <div class="sample-row">
+              <div class="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-slate-800">L-2026-0044</span>
+                  <span class="status-pill bg-amber-100 text-amber-700"><span class="dot bg-amber-400"></span>Testing</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-0.5 truncate">Talc · 200 kg · GRN-2026-0115</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Analyst: Priya M. · Due: 19 Apr</div>
+              </div>
+            </div>
+            <!-- Row 5 -->
+            <div class="sample-row">
+              <div class="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-slate-800">L-2026-0046</span>
+                  <span class="status-pill bg-amber-100 text-amber-700"><span class="dot bg-amber-400"></span>Testing</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-0.5 truncate">Magnesium Stearate · 50 kg</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Analyst: Ravi K. · Due: 19 Apr</div>
+              </div>
+            </div>
+            <!-- Row 6 -->
+            <div class="sample-row">
+              <div class="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-slate-800">L-2026-0048</span>
+                  <span class="status-pill bg-blue-100 text-blue-700"><span class="dot bg-blue-400"></span>Pending</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-0.5 truncate">Croscarmellose Sodium · 150 kg</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Unassigned · Due: 21 Apr</div>
+              </div>
+            </div>
+            <!-- Row 7 -->
+            <div class="sample-row">
+              <div class="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-slate-800">L-2026-0032</span>
+                  <span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Approved</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-0.5 truncate">Lactose Monohydrate · 400 kg</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Analyst: Priya M. · 17 Apr</div>
+              </div>
+            </div>
+            <!-- Row 8 -->
+            <div class="sample-row">
+              <div class="w-2 h-2 rounded-full bg-rose-500 flex-shrink-0"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-slate-800">L-2026-0029</span>
+                  <span class="status-pill bg-rose-100 text-rose-700"><span class="dot bg-rose-500"></span>Rejected</span>
+                </div>
+                <div class="text-[11px] text-slate-500 mt-0.5 truncate">Povidone K30 · 80 kg</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Analyst: Meena S. · 14 Apr</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Detail Panel -->
+      <div class="flex-1 space-y-4">
+        <!-- Detail header -->
+        <div class="card p-5 shadow-sm">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <div class="flex items-center gap-3 mb-1">
+                <h2 class="text-lg font-bold text-slate-800">L-2026-0041</h2>
+                <span class="status-pill bg-red-100 text-red-700"><span class="dot bg-red-500"></span>Overdue · 52 hrs</span>
+              </div>
+              <p class="text-sm text-slate-500">Paracetamol API · GRN-2026-0112 · Vendor: Granules India Ltd.</p>
+            </div>
+            <div class="flex gap-2">
+              <button class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-green-200 text-green-700 hover:bg-green-50 flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                Print Label
+              </button>
+              <button class="px-3 py-1.5 rounded-lg text-xs font-semibold border border-blue-200 text-blue-700 hover:bg-blue-50">View COA</button>
+            </div>
+          </div>
+          <!-- Info grid -->
+          <div class="grid grid-cols-4 gap-3 mb-4">
+            <div class="bg-green-50 rounded-xl p-3">
+              <div class="text-[10px] text-slate-500 mb-0.5">Material Code</div>
+              <div class="text-xs font-bold text-slate-800">RM-PARA-001</div>
+            </div>
+            <div class="bg-green-50 rounded-xl p-3">
+              <div class="text-[10px] text-slate-500 mb-0.5">Received Qty</div>
+              <div class="text-xs font-bold text-slate-800">250 kg</div>
+            </div>
+            <div class="bg-green-50 rounded-xl p-3">
+              <div class="text-[10px] text-slate-500 mb-0.5">Sample Qty</div>
+              <div class="text-xs font-bold text-slate-800">500 g (0.2%)</div>
+            </div>
+            <div class="bg-green-50 rounded-xl p-3">
+              <div class="text-[10px] text-slate-500 mb-0.5">Sampling Plan</div>
+              <div class="text-xs font-bold text-slate-800">SP-2024-PARA</div>
+            </div>
+            <div class="bg-green-50 rounded-xl p-3">
+              <div class="text-[10px] text-slate-500 mb-0.5">No. of Containers</div>
+              <div class="text-xs font-bold text-slate-800">10 HDPE Drums</div>
+            </div>
+            <div class="bg-green-50 rounded-xl p-3">
+              <div class="text-[10px] text-slate-500 mb-0.5">Containers Sampled</div>
+              <div class="text-xs font-bold text-slate-800">10 / 10</div>
+            </div>
+            <div class="bg-green-50 rounded-xl p-3">
+              <div class="text-[10px] text-slate-500 mb-0.5">Assigned Analyst</div>
+              <div class="text-xs font-bold text-slate-800">Priya M.</div>
+            </div>
+            <div class="bg-green-50 rounded-xl p-3">
+              <div class="text-[10px] text-slate-500 mb-0.5">Sampling Date</div>
+              <div class="text-xs font-bold text-slate-800">14 Apr 2026</div>
+            </div>
+          </div>
+
+          <!-- Sampling Checklist -->
+          <div class="mb-4">
+            <div class="text-xs font-semibold text-slate-700 mb-2">Sampling Checklist</div>
+            <div class="space-y-1.5">
+              <div class="checklist-item done">
+                <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                <span class="text-xs text-slate-700">Label verified against GRN</span>
+                <span class="ml-auto text-[10px] text-slate-400">Priya M. · 14 Apr 09:12</span>
+              </div>
+              <div class="checklist-item done">
+                <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                <span class="text-xs text-slate-700">Container integrity checked (no damage / leaks)</span>
+                <span class="ml-auto text-[10px] text-slate-400">Priya M. · 14 Apr 09:18</span>
+              </div>
+              <div class="checklist-item done">
+                <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                <span class="text-xs text-slate-700">COA received and verified</span>
+                <span class="ml-auto text-[10px] text-slate-400">Priya M. · 14 Apr 09:25</span>
+              </div>
+              <div class="checklist-item done">
+                <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                <span class="text-xs text-slate-700">Sample collected in clean amber bottle</span>
+                <span class="ml-auto text-[10px] text-slate-400">Priya M. · 14 Apr 10:05</span>
+              </div>
+              <div class="checklist-item done">
+                <svg class="w-4 h-4 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                <span class="text-xs text-slate-700">Quarantine label applied to all containers</span>
+                <span class="ml-auto text-[10px] text-slate-400">Priya M. · 14 Apr 10:15</span>
+              </div>
+              <div class="checklist-item">
+                <div class="w-4 h-4 border-2 border-slate-300 rounded-full flex-shrink-0"></div>
+                <span class="text-xs text-slate-500">LIMS test request submitted</span>
+                <span class="ml-auto text-[10px] text-red-400 font-medium">Pending</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Test Parameters Table -->
+        <div class="card overflow-hidden shadow-sm">
+          <div class="flex items-center justify-between px-5 py-3 border-b border-green-100 bg-gradient-to-r from-green-50 to-white">
+            <span class="font-semibold text-sm text-slate-700">Test Parameters (as per Spec SP-2024-PARA)</span>
+            <a href="08-lims.html" class="text-xs text-green-600 hover:underline font-medium">Open in LIMS →</a>
+          </div>
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="border-b border-green-50 bg-green-50/50">
+                <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Parameter</th>
+                <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Method</th>
+                <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Specification</th>
+                <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Result</th>
+                <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="param-row border-b border-green-50">
+                <td class="px-4 py-2.5 font-medium text-slate-800">Description</td>
+                <td class="px-4 py-2.5 text-slate-500">Visual</td>
+                <td class="px-4 py-2.5 text-slate-600">White crystalline powder</td>
+                <td class="px-4 py-2.5 text-slate-600">White crystalline powder</td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Pass</span></td>
+              </tr>
+              <tr class="param-row border-b border-green-50">
+                <td class="px-4 py-2.5 font-medium text-slate-800">Identification (IR)</td>
+                <td class="px-4 py-2.5 text-slate-500">IP 2022</td>
+                <td class="px-4 py-2.5 text-slate-600">Conforms to reference</td>
+                <td class="px-4 py-2.5 text-slate-600">Conforms</td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Pass</span></td>
+              </tr>
+              <tr class="param-row border-b border-green-50">
+                <td class="px-4 py-2.5 font-medium text-slate-800">Assay (HPLC)</td>
+                <td class="px-4 py-2.5 text-slate-500">IP 2022</td>
+                <td class="px-4 py-2.5 text-slate-600">98.0 – 101.0%</td>
+                <td class="px-4 py-2.5 font-semibold text-slate-800">99.4%</td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Pass</span></td>
+              </tr>
+              <tr class="param-row border-b border-green-50">
+                <td class="px-4 py-2.5 font-medium text-slate-800">Loss on Drying</td>
+                <td class="px-4 py-2.5 text-slate-500">IP 2022</td>
+                <td class="px-4 py-2.5 text-slate-600">NMT 0.5%</td>
+                <td class="px-4 py-2.5 font-semibold text-slate-800">0.3%</td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Pass</span></td>
+              </tr>
+              <tr class="param-row border-b border-green-50">
+                <td class="px-4 py-2.5 font-medium text-slate-800">Residue on Ignition</td>
+                <td class="px-4 py-2.5 text-slate-500">IP 2022</td>
+                <td class="px-4 py-2.5 text-slate-600">NMT 0.1%</td>
+                <td class="px-4 py-2.5 font-semibold text-slate-800">0.05%</td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Pass</span></td>
+              </tr>
+              <tr class="param-row border-b border-green-50">
+                <td class="px-4 py-2.5 font-medium text-slate-800">Heavy Metals</td>
+                <td class="px-4 py-2.5 text-slate-500">IP 2022</td>
+                <td class="px-4 py-2.5 text-slate-600">NMT 10 ppm</td>
+                <td class="px-4 py-2.5 text-slate-500">—</td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-slate-100 text-slate-500">Pending</span></td>
+              </tr>
+              <tr class="param-row">
+                <td class="px-4 py-2.5 font-medium text-slate-800">Microbial Limit</td>
+                <td class="px-4 py-2.5 text-slate-500">IP 2022</td>
+                <td class="px-4 py-2.5 text-slate-600">TAMC ≤ 10³ CFU/g</td>
+                <td class="px-4 py-2.5 text-slate-500">—</td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-slate-100 text-slate-500">Pending</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Decision Panel -->
+        <div class="card p-5 shadow-sm">
+          <div class="text-sm font-semibold text-slate-700 mb-4">QC Disposition Decision</div>
+          <div class="flex items-center gap-3 mb-4">
+            <div class="flex-1 bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+              <strong>Partial results available.</strong> Heavy Metals and Microbial Limit tests still pending. You may hold disposition or approve provisionally.
+            </div>
+          </div>
+          <div class="flex gap-3">
+            <button class="flex-1 py-3 rounded-xl font-semibold text-sm bg-green-600 text-white hover:bg-green-700 flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              Approve & Release
+            </button>
+            <button class="flex-1 py-3 rounded-xl font-semibold text-sm bg-amber-500 text-white hover:bg-amber-600 flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+              Hold / Quarantine
+            </button>
+            <button class="flex-1 py-3 rounded-xl font-semibold text-sm bg-red-500 text-white hover:bg-red-600 flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              Reject & Return
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

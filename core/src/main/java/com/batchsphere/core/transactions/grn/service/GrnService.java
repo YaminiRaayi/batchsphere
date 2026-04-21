@@ -5,7 +5,9 @@ import com.batchsphere.core.transactions.grn.dto.ContainerSamplingLabelRequest;
 import com.batchsphere.core.transactions.grn.dto.GrnContainerResponse;
 import com.batchsphere.core.transactions.grn.dto.GrnDocumentResponse;
 import com.batchsphere.core.transactions.grn.dto.GrnDocumentUploadRequest;
+import com.batchsphere.core.transactions.grn.dto.GrnLabelPrintDataResponse;
 import com.batchsphere.core.transactions.grn.dto.GrnResponse;
+import com.batchsphere.core.transactions.grn.dto.GrnSummaryResponse;
 import com.batchsphere.core.transactions.grn.dto.MaterialLabelResponse;
 import com.batchsphere.core.transactions.grn.dto.UpdateGrnRequest;
 import org.springframework.data.domain.Page;
@@ -19,6 +21,8 @@ public interface GrnService {
 
     GrnResponse createGrn(CreateGrnRequest request);
 
+    GrnSummaryResponse getGrnSummary();
+
     GrnResponse getGrnById(UUID id);
 
     Page<GrnResponse> getAllGrns(Pageable pageable);
@@ -27,11 +31,14 @@ public interface GrnService {
 
     GrnResponse receiveGrn(UUID id, String updatedBy);
     List<GrnContainerResponse> getContainersByGrnItemId(UUID grnItemId);
+    List<GrnDocumentResponse> getDocumentsByGrnId(UUID grnId);
+    List<MaterialLabelResponse> getLabelsByGrnId(UUID grnId);
     List<MaterialLabelResponse> getLabelsByContainerId(UUID containerId);
+    GrnLabelPrintDataResponse getLabelPrintData(UUID id);
     GrnContainerResponse applySamplingLabel(UUID containerId, ContainerSamplingLabelRequest request);
     GrnDocumentResponse uploadDocument(UUID grnItemId, GrnDocumentUploadRequest request, MultipartFile file);
 
-    GrnResponse cancelGrn(UUID id, String updatedBy);
+    GrnResponse cancelGrn(UUID id, String updatedBy, String reason);
 
     void deactivateGrn(UUID id, String updatedBy);
 }

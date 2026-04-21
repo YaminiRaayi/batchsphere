@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BatchSphere – Inventory</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #f0f9ff; color: #1e293b; }
+  .sidebar { background: #1e3a8a; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #bfdbfe; transition: all 0.15s; }
+  .nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .nav-item.active { background: rgba(255,255,255,0.15); color: #fff; font-weight: 600; }
+  .nav-section { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: #60a5fa; text-transform: uppercase; padding: 14px 14px 4px; }
+  .card { background: #fff; border: 1px solid #bae6fd; border-radius: 14px; }
+  .status-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .lot-row { border-bottom: 1px solid #f0f9ff; padding: 10px 16px; cursor: pointer; transition: all 0.1s; }
+  .lot-row:hover { background: #f0f9ff; }
+  .lot-row.selected { background: #e0f2fe; border-left: 3px solid #0284c7; }
+  .tab { padding: 6px 14px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: 500; }
+  .tab.active { background: #0284c7; color: white; }
+  .tab:not(.active) { color: #075985; background: #e0f2fe; }
+  .tab:not(.active):hover { background: #bae6fd; }
+  .progress-bar { height: 6px; border-radius: 3px; background: #e0f2fe; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; }
+  .stock-meter { height: 10px; border-radius: 5px; overflow: hidden; background: #e0f2fe; }
+  .expiry-chip { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 5px; font-size: 10px; font-weight: 700; }
+  .movement-row { border-bottom: 1px solid #f0f9ff; padding: 8px 14px; display: flex; align-items: center; gap: 10px; font-size: 11px; }
+  .movement-row:hover { background: #f0f9ff; }
+</style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+<!-- Sidebar -->
+<aside class="sidebar w-60 flex-shrink-0 flex flex-col overflow-y-auto">
+  <div class="p-4 border-b border-blue-700">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-white flex items-center justify-center font-bold text-blue-700 text-sm shadow">BS</div>
+      <div><div class="font-bold text-white text-sm">BatchSphere</div><div class="text-[10px] text-blue-300">Pharma ERP v2.1</div></div>
+    </div>
+  </div>
+  <nav class="flex-1 p-3 space-y-0.5">
+    <div class="nav-section">Inventory</div>
+    <div class="nav-item active">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+      Stock Overview
+    </div>
+    <div class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/></svg>
+      Lot Tracking
+    </div>
+    <div class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+      Stock Movements
+    </div>
+    <div class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+      Expiry Alerts
+      <span class="ml-auto" style="background:#dc2626;color:white;border-radius:999px;font-size:10px;font-weight:700;padding:1px 6px;">6</span>
+    </div>
+    <div class="nav-section">Navigate</div>
+    <a href="01-dashboard.html" class="nav-item">← Dashboard</a>
+    <a href="02-grn.html" class="nav-item" style="color:#93c5fd">→ GRN</a>
+    <a href="04-wms.html" class="nav-item" style="color:#93c5fd">→ Warehouse</a>
+    <a href="06-sampling.html" class="nav-item" style="color:#93c5fd">→ QC Sampling</a>
+  </nav>
+  <div class="p-3 border-t border-blue-800 text-[10px] text-blue-400 text-center">BatchSphere © 2026</div>
+</aside>
+
+<!-- Main -->
+<main class="flex-1 flex flex-col overflow-hidden">
+  <header class="h-14 bg-white border-b border-sky-100 flex items-center px-6 gap-4 flex-shrink-0 shadow-sm">
+    <div class="text-xs text-slate-400">Operations / <span class="text-sky-700 font-medium">Inventory</span></div>
+    <div class="ml-auto flex items-center gap-3">
+      <div class="flex items-center gap-2 bg-sky-50 rounded-xl px-3 py-1.5 text-xs text-slate-400 border border-sky-100">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-width="2" d="m21 21-4.35-4.35"/></svg>
+        Search lot, material, location... ⌘K
+      </div>
+      <button class="relative p-2 rounded-xl hover:bg-sky-50">
+        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+      </button>
+      <div class="text-xs text-slate-400 bg-sky-50 px-3 py-1.5 rounded-xl border border-sky-100">Fri, 18 Apr 2026</div>
+    </div>
+  </header>
+
+  <div class="flex-1 overflow-y-auto p-6">
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <h1 class="text-xl font-bold text-slate-800">Inventory Management</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Lot-level tracking · stock positions · expiry management</p>
+      </div>
+      <div class="flex gap-2">
+        <button class="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white rounded-xl text-xs font-semibold hover:bg-sky-700">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+          Stock Transfer
+        </button>
+        <button class="flex items-center gap-2 px-4 py-2 bg-white border border-sky-200 text-sky-700 rounded-xl text-xs font-semibold hover:bg-sky-50">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Adjust Stock
+        </button>
+        <button class="flex items-center gap-2 px-4 py-2 bg-white border border-sky-200 text-sky-700 rounded-xl text-xs font-semibold hover:bg-sky-50">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Export
+        </button>
+      </div>
+    </div>
+
+    <!-- Expiry Alert -->
+    <div class="mb-5 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-3">
+      <svg class="w-4 h-4 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+      <span class="text-sm text-red-800"><strong>6 lots expiring within 60 days</strong> — Paracetamol API (2), MCC (1), Lactose (2), Stearic Acid (1). Review immediately.</span>
+      <button class="ml-auto text-xs text-red-700 underline font-medium">View Expiry List</button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid grid-cols-5 gap-4 mb-6">
+      <div class="bg-white border border-sky-200 rounded-xl p-4 border-l-4 border-l-sky-500">
+        <div class="text-xs text-slate-500 mb-1">Total Active Lots</div>
+        <div class="text-2xl font-bold text-slate-800">284</div>
+        <div class="text-xs text-slate-500 mt-1">All materials</div>
+      </div>
+      <div class="bg-white border border-sky-200 rounded-xl p-4 border-l-4 border-l-green-400">
+        <div class="text-xs text-slate-500 mb-1">In Quarantine</div>
+        <div class="text-2xl font-bold text-amber-600">12</div>
+        <div class="text-xs text-amber-500 mt-1 font-medium">Pending QC</div>
+      </div>
+      <div class="bg-white border border-sky-200 rounded-xl p-4 border-l-4 border-l-emerald-400">
+        <div class="text-xs text-slate-500 mb-1">Released</div>
+        <div class="text-2xl font-bold text-emerald-600">261</div>
+        <div class="text-xs text-slate-500 mt-1">Available for use</div>
+      </div>
+      <div class="bg-white border border-sky-200 rounded-xl p-4 border-l-4 border-l-red-400">
+        <div class="text-xs text-slate-500 mb-1">Expiring ≤60 days</div>
+        <div class="text-2xl font-bold text-red-600">6</div>
+        <div class="text-xs text-red-500 mt-1 font-medium">Urgent review</div>
+      </div>
+      <div class="bg-white border border-sky-200 rounded-xl p-4 border-l-4 border-l-rose-400">
+        <div class="text-xs text-slate-500 mb-1">Rejected Lots</div>
+        <div class="text-2xl font-bold text-rose-600">11</div>
+        <div class="text-xs text-slate-500 mt-1">Quarantined/disposed</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-5">
+      <!-- Left: Lot List -->
+      <div class="col-span-2 space-y-4">
+        <div class="card overflow-hidden shadow-sm">
+          <div class="flex items-center justify-between px-5 py-3 border-b border-sky-100 bg-gradient-to-r from-sky-50 to-white">
+            <span class="font-semibold text-sm text-slate-700">Inventory Lots</span>
+            <div class="flex gap-1">
+              <span class="tab active text-[11px] px-2 py-1">All (284)</span>
+              <span class="tab text-[11px] px-2 py-1">API</span>
+              <span class="tab text-[11px] px-2 py-1">Excipients</span>
+              <span class="tab text-[11px] px-2 py-1">Packaging</span>
+            </div>
+          </div>
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="border-b border-sky-50 bg-sky-50/50">
+                <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Lot No.</th>
+                <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Material</th>
+                <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Location</th>
+                <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Qty Available</th>
+                <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Expiry</th>
+                <th class="text-left px-4 py-2.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="lot-row border-b border-sky-50 hover:bg-sky-50 cursor-pointer">
+                <td class="px-4 py-2.5 font-medium text-sky-700">L-2026-0041</td>
+                <td class="px-4 py-2.5 text-slate-700">Paracetamol API</td>
+                <td class="px-4 py-2.5 text-slate-500">WH-A / R3-S2-P4</td>
+                <td class="px-4 py-2.5">
+                  <div class="flex items-center gap-2">
+                    <div class="progress-bar w-14"><div class="progress-fill bg-sky-500" style="width:100%"></div></div>
+                    <span class="font-semibold">250 kg</span>
+                  </div>
+                </td>
+                <td class="px-4 py-2.5"><span class="expiry-chip bg-amber-100 text-amber-700">Jun 2026</span></td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-amber-100 text-amber-700"><span class="dot bg-amber-400"></span>Quarantine</span></td>
+              </tr>
+              <tr class="lot-row border-b border-sky-50 hover:bg-sky-50 cursor-pointer">
+                <td class="px-4 py-2.5 font-medium text-sky-700">L-2026-0032</td>
+                <td class="px-4 py-2.5 text-slate-700">Lactose Monohydrate</td>
+                <td class="px-4 py-2.5 text-slate-500">WH-B / R1-S1-P2</td>
+                <td class="px-4 py-2.5">
+                  <div class="flex items-center gap-2">
+                    <div class="progress-bar w-14"><div class="progress-fill bg-green-500" style="width:65%"></div></div>
+                    <span class="font-semibold">260 kg</span>
+                  </div>
+                </td>
+                <td class="px-4 py-2.5"><span class="expiry-chip bg-green-100 text-green-700">Mar 2027</span></td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Released</span></td>
+              </tr>
+              <tr class="lot-row border-b border-sky-50 hover:bg-sky-50 cursor-pointer">
+                <td class="px-4 py-2.5 font-medium text-sky-700">L-2026-0028</td>
+                <td class="px-4 py-2.5 text-slate-700">Microcrystalline Cellulose</td>
+                <td class="px-4 py-2.5 text-slate-500">WH-A / R2-S3-P1</td>
+                <td class="px-4 py-2.5">
+                  <div class="flex items-center gap-2">
+                    <div class="progress-bar w-14"><div class="progress-fill bg-green-500" style="width:80%"></div></div>
+                    <span class="font-semibold">400 kg</span>
+                  </div>
+                </td>
+                <td class="px-4 py-2.5"><span class="expiry-chip bg-green-100 text-green-700">Dec 2027</span></td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Released</span></td>
+              </tr>
+              <tr class="lot-row border-b border-sky-50 hover:bg-sky-50 cursor-pointer">
+                <td class="px-4 py-2.5 font-medium text-sky-700">L-2026-0021</td>
+                <td class="px-4 py-2.5 text-slate-700">Paracetamol API</td>
+                <td class="px-4 py-2.5 text-slate-500">WH-A / R3-S1-P1</td>
+                <td class="px-4 py-2.5">
+                  <div class="flex items-center gap-2">
+                    <div class="progress-bar w-14"><div class="progress-fill bg-red-400" style="width:15%"></div></div>
+                    <span class="font-semibold text-red-600">38 kg</span>
+                  </div>
+                </td>
+                <td class="px-4 py-2.5"><span class="expiry-chip bg-red-100 text-red-700">May 2026</span></td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Released</span></td>
+              </tr>
+              <tr class="lot-row border-b border-sky-50 hover:bg-sky-50 cursor-pointer">
+                <td class="px-4 py-2.5 font-medium text-sky-700">L-2026-0018</td>
+                <td class="px-4 py-2.5 text-slate-700">Magnesium Stearate</td>
+                <td class="px-4 py-2.5 text-slate-500">WH-B / R4-S2-P3</td>
+                <td class="px-4 py-2.5">
+                  <div class="flex items-center gap-2">
+                    <div class="progress-bar w-14"><div class="progress-fill bg-green-500" style="width:90%"></div></div>
+                    <span class="font-semibold">45 kg</span>
+                  </div>
+                </td>
+                <td class="px-4 py-2.5"><span class="expiry-chip bg-green-100 text-green-700">Sep 2027</span></td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Released</span></td>
+              </tr>
+              <tr class="lot-row border-b border-sky-50 hover:bg-sky-50 cursor-pointer">
+                <td class="px-4 py-2.5 font-medium text-sky-700">L-2025-0198</td>
+                <td class="px-4 py-2.5 text-slate-700">Stearic Acid</td>
+                <td class="px-4 py-2.5 text-slate-500">WH-C / R1-S4-P2</td>
+                <td class="px-4 py-2.5">
+                  <div class="flex items-center gap-2">
+                    <div class="progress-bar w-14"><div class="progress-fill bg-amber-400" style="width:30%"></div></div>
+                    <span class="font-semibold">60 kg</span>
+                  </div>
+                </td>
+                <td class="px-4 py-2.5"><span class="expiry-chip bg-red-100 text-red-700">Jun 2026</span></td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Released</span></td>
+              </tr>
+              <tr class="lot-row border-b border-sky-50 hover:bg-sky-50 cursor-pointer">
+                <td class="px-4 py-2.5 font-medium text-sky-700">L-2025-0175</td>
+                <td class="px-4 py-2.5 text-slate-700">Povidone K30</td>
+                <td class="px-4 py-2.5 text-slate-500">Rejected Store</td>
+                <td class="px-4 py-2.5">
+                  <div class="flex items-center gap-2">
+                    <div class="progress-bar w-14"><div class="progress-fill bg-slate-300" style="width:100%"></div></div>
+                    <span class="font-semibold text-slate-400">80 kg</span>
+                  </div>
+                </td>
+                <td class="px-4 py-2.5"><span class="expiry-chip bg-slate-100 text-slate-500">Nov 2026</span></td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-rose-100 text-rose-700"><span class="dot bg-rose-500"></span>Rejected</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="px-4 py-3 border-t border-sky-50 flex items-center justify-between">
+            <span class="text-xs text-slate-400">Showing 7 of 284 lots</span>
+            <div class="flex gap-1">
+              <button class="px-3 py-1 text-xs rounded-lg border border-sky-100 text-slate-500 hover:bg-sky-50">← Prev</button>
+              <button class="px-3 py-1 text-xs rounded-lg border border-sky-100 text-slate-500 hover:bg-sky-50">Next →</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stock Movement Log -->
+        <div class="card overflow-hidden shadow-sm">
+          <div class="flex items-center justify-between px-5 py-3 border-b border-sky-100 bg-gradient-to-r from-sky-50 to-white">
+            <span class="font-semibold text-sm text-slate-700">Recent Stock Movements</span>
+            <span class="text-xs text-slate-400">Today · 18 Apr 2026</span>
+          </div>
+          <div class="divide-y divide-sky-50">
+            <div class="movement-row">
+              <div class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <span class="font-semibold text-slate-800">GRN Receipt</span>
+                <span class="text-slate-500"> · Lactose Monohydrate (L-2026-0032) · +400 kg</span>
+              </div>
+              <span class="text-[10px] text-slate-400 flex-shrink-0">08:12</span>
+            </div>
+            <div class="movement-row">
+              <div class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7h12m0 0l-4-4m4 4l-4 4"/></svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <span class="font-semibold text-slate-800">Transfer</span>
+                <span class="text-slate-500"> · Paracetamol API (L-2026-0021) · WH-A R3-S1 → Production Staging · 50 kg</span>
+              </div>
+              <span class="text-[10px] text-slate-400 flex-shrink-0">09:30</span>
+            </div>
+            <div class="movement-row">
+              <div class="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-3 h-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"/></svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <span class="font-semibold text-slate-800">Issue to Production</span>
+                <span class="text-slate-500"> · MCC PH102 (L-2026-0028) · Batch BP-2026-041 · 40 kg</span>
+              </div>
+              <span class="text-[10px] text-slate-400 flex-shrink-0">10:15</span>
+            </div>
+            <div class="movement-row">
+              <div class="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-3 h-3 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <span class="font-semibold text-slate-800">Quarantine Hold</span>
+                <span class="text-slate-500"> · Paracetamol API (L-2026-0041) · QC pending · 250 kg</span>
+              </div>
+              <span class="text-[10px] text-slate-400 flex-shrink-0">11:00</span>
+            </div>
+            <div class="movement-row">
+              <div class="w-6 h-6 rounded-full bg-rose-100 flex items-center justify-center flex-shrink-0">
+                <svg class="w-3 h-3 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <span class="font-semibold text-slate-800">Rejection Move</span>
+                <span class="text-slate-500"> · Povidone K30 (L-2025-0175) → Rejected Store · 80 kg</span>
+              </div>
+              <span class="text-[10px] text-slate-400 flex-shrink-0">14 Apr</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel -->
+      <div class="space-y-4">
+        <!-- Stock by Category -->
+        <div class="card p-4 shadow-sm">
+          <div class="font-semibold text-sm text-slate-700 mb-3">Stock by Category</div>
+          <div class="space-y-3">
+            <div>
+              <div class="flex justify-between text-xs mb-1.5">
+                <span class="text-slate-600 font-medium">API Materials</span>
+                <span class="font-bold text-slate-800">1,240 kg · 48 lots</span>
+              </div>
+              <div class="stock-meter"><div class="h-full rounded-full bg-sky-500" style="width:62%"></div></div>
+              <div class="text-[10px] text-slate-400 mt-0.5">62% of storage capacity</div>
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1.5">
+                <span class="text-slate-600 font-medium">Excipients</span>
+                <span class="font-bold text-slate-800">4,850 kg · 118 lots</span>
+              </div>
+              <div class="stock-meter"><div class="h-full rounded-full bg-emerald-500" style="width:78%"></div></div>
+              <div class="text-[10px] text-slate-400 mt-0.5">78% of storage capacity</div>
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1.5">
+                <span class="text-slate-600 font-medium">Packaging Materials</span>
+                <span class="font-bold text-slate-800">82,000 units · 96 lots</span>
+              </div>
+              <div class="stock-meter"><div class="h-full rounded-full bg-violet-500" style="width:45%"></div></div>
+              <div class="text-[10px] text-slate-400 mt-0.5">45% of storage capacity</div>
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1.5">
+                <span class="text-slate-600 font-medium">Solvents</span>
+                <span class="font-bold text-slate-800">320 L · 22 lots</span>
+              </div>
+              <div class="stock-meter"><div class="h-full rounded-full bg-amber-400" style="width:30%"></div></div>
+              <div class="text-[10px] text-slate-400 mt-0.5">30% of storage capacity</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expiry Heat Map -->
+        <div class="card p-4 shadow-sm">
+          <div class="font-semibold text-sm text-slate-700 mb-3">Expiry Calendar</div>
+          <div class="space-y-2">
+            <div class="flex items-center gap-2 p-2 rounded-xl bg-red-50 border border-red-100">
+              <div class="w-8 text-center">
+                <div class="text-[9px] text-red-500 font-bold uppercase">May</div>
+                <div class="text-xs font-bold text-red-700">2026</div>
+              </div>
+              <div class="flex-1 text-[11px] text-red-800 font-medium">Paracetamol API · L-2026-0021 · 38 kg</div>
+              <span class="text-[10px] text-red-600 font-bold">13 days</span>
+            </div>
+            <div class="flex items-center gap-2 p-2 rounded-xl bg-red-50 border border-red-100">
+              <div class="w-8 text-center">
+                <div class="text-[9px] text-red-500 font-bold uppercase">Jun</div>
+                <div class="text-xs font-bold text-red-700">2026</div>
+              </div>
+              <div class="flex-1 text-[11px] text-red-800 font-medium">Paracetamol API · L-2026-0041 · 250 kg</div>
+              <span class="text-[10px] text-red-600 font-bold">43 days</span>
+            </div>
+            <div class="flex items-center gap-2 p-2 rounded-xl bg-red-50 border border-red-100">
+              <div class="w-8 text-center">
+                <div class="text-[9px] text-red-500 font-bold uppercase">Jun</div>
+                <div class="text-xs font-bold text-red-700">2026</div>
+              </div>
+              <div class="flex-1 text-[11px] text-red-800 font-medium">Stearic Acid · L-2025-0198 · 60 kg</div>
+              <span class="text-[10px] text-red-600 font-bold">51 days</span>
+            </div>
+            <div class="flex items-center gap-2 p-2 rounded-xl bg-amber-50 border border-amber-100">
+              <div class="w-8 text-center">
+                <div class="text-[9px] text-amber-600 font-bold uppercase">Aug</div>
+                <div class="text-xs font-bold text-amber-700">2026</div>
+              </div>
+              <div class="flex-1 text-[11px] text-amber-800 font-medium">Lactose M. · L-2025-0142 · 120 kg</div>
+              <span class="text-[10px] text-amber-600 font-bold">112 days</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card p-4 shadow-sm">
+          <div class="font-semibold text-sm text-slate-700 mb-3">Quick Actions</div>
+          <div class="space-y-2">
+            <button class="w-full text-left text-xs px-3 py-2.5 rounded-xl bg-sky-50 border border-sky-100 text-sky-700 font-medium hover:bg-sky-100 flex items-center gap-2">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              Generate Stock Report
+            </button>
+            <button class="w-full text-left text-xs px-3 py-2.5 rounded-xl bg-sky-50 border border-sky-100 text-sky-700 font-medium hover:bg-sky-100 flex items-center gap-2">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+              Print Lot Labels
+            </button>
+            <button class="w-full text-left text-xs px-3 py-2.5 rounded-xl bg-sky-50 border border-sky-100 text-sky-700 font-medium hover:bg-sky-100 flex items-center gap-2">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              Recount Adjustment
+            </button>
+            <button class="w-full text-left text-xs px-3 py-2.5 rounded-xl bg-red-50 border border-red-100 text-red-700 font-medium hover:bg-red-100 flex items-center gap-2">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              Write-Off / Disposal
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

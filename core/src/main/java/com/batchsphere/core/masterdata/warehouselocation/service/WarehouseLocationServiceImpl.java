@@ -9,11 +9,13 @@ import com.batchsphere.core.masterdata.warehouselocation.dto.CreateRackRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.CreateRoomRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.CreateShelfRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.CreateWarehouseRequest;
+import com.batchsphere.core.masterdata.warehouselocation.dto.AvailablePalletResponse;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdatePalletRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateRackRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateRoomRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateShelfRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateWarehouseRequest;
+import com.batchsphere.core.masterdata.warehouselocation.dto.WarehouseHierarchyResponse;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Pallet;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Rack;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Room;
@@ -24,12 +26,18 @@ import com.batchsphere.core.masterdata.warehouselocation.repository.RackReposito
 import com.batchsphere.core.masterdata.warehouselocation.repository.RoomRepository;
 import com.batchsphere.core.masterdata.warehouselocation.repository.ShelfRepository;
 import com.batchsphere.core.masterdata.warehouselocation.repository.WarehouseRepository;
+import com.batchsphere.core.transactions.grn.repository.GrnItemRepository;
+import com.batchsphere.core.transactions.inventory.repository.InventoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -42,6 +50,8 @@ public class WarehouseLocationServiceImpl implements WarehouseLocationService {
     private final ShelfRepository shelfRepository;
     private final PalletRepository palletRepository;
     private final AuthenticatedActorService authenticatedActorService;
+    private final InventoryRepository inventoryRepository;
+    private final GrnItemRepository grnItemRepository;
 
     @Override
     public Warehouse createWarehouse(CreateWarehouseRequest request) {
@@ -73,6 +83,81 @@ public class WarehouseLocationServiceImpl implements WarehouseLocationService {
     @Override
     public Page<Warehouse> getAllWarehouses(Pageable pageable) {
         return warehouseRepository.findByIsActiveTrue(pageable);
+    }
+
+    @Override
+    public List<WarehouseHierarchyResponse> getWarehouseTree() {
+        List<Warehouse> warehouses = warehouseRepository.findByIsActiveTrueOrderByWarehouseCodeAsc();
+        List<UUID> warehouseIds = warehouses.stream().map(Warehouse::getId).toList();
+        if (warehouseIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<Room> rooms = roomRepository.findByWarehouseIdInAndIsActiveTrueOrderByRoomCodeAsc(warehouseIds);
+        List<UUID> roomIds = rooms.stream().map(Room::getId).toList();
+        List<Rack> racks = roomIds.isEmpty() ? List.of() : rackRepository.findByRoomIdInAndIsActiveTrueOrderByRackCodeAsc(roomIds);
+        List<UUID> rackIds = racks.stream().map(Rack::getId).toList();
+        List<Shelf> shelves = rackIds.isEmpty() ? List.of() : shelfRepository.findByRackIdInAndIsActiveTrueOrderByShelfCodeAsc(rackIds);
+        List<UUID> shelfIds = shelves.stream().map(Shelf::getId).toList();
+        List<Pallet> pallets = shelfIds.isEmpty() ? List.of() : palletRepository.findByShelfIdInAndIsActiveTrueOrderByPalletCodeAsc(shelfIds);
+
+        Map<UUID, List<Pallet>> palletsByShelfId = new HashMap<>();
+        for (Pallet pallet : pallets) {
+            palletsByShelfId.computeIfAbsent(pallet.getShelfId(), key -> new ArrayList<>()).add(pallet);
+        }
+
+        Map<UUID, List<Shelf>> shelvesByRackId = new HashMap<>();
+        for (Shelf shelf : shelves) {
+            shelvesByRackId.computeIfAbsent(shelf.getRackId(), key -> new ArrayList<>()).add(shelf);
+        }
+
+        Map<UUID, List<Rack>> racksByRoomId = new HashMap<>();
+        for (Rack rack : racks) {
+            racksByRoomId.computeIfAbsent(rack.getRoomId(), key -> new ArrayList<>()).add(rack);
+        }
+
+        Map<UUID, List<Room>> roomsByWarehouseId = new HashMap<>();
+        for (Room room : rooms) {
+            roomsByWarehouseId.computeIfAbsent(room.getWarehouseId(), key -> new ArrayList<>()).add(room);
+        }
+
+        return warehouses.stream()
+                .map(warehouse -> WarehouseHierarchyResponse.builder()
+                        .id(warehouse.getId())
+                        .warehouseCode(warehouse.getWarehouseCode())
+                        .warehouseName(warehouse.getWarehouseName())
+                        .rooms(roomsByWarehouseId.getOrDefault(warehouse.getId(), List.of()).stream()
+                                .map(room -> WarehouseHierarchyResponse.RoomNode.builder()
+                                        .id(room.getId())
+                                        .roomCode(room.getRoomCode())
+                                        .roomName(room.getRoomName())
+                                        .storageCondition(room.getStorageCondition())
+                                        .racks(racksByRoomId.getOrDefault(room.getId(), List.of()).stream()
+                                                .map(rack -> WarehouseHierarchyResponse.RackNode.builder()
+                                                        .id(rack.getId())
+                                                        .rackCode(rack.getRackCode())
+                                                        .rackName(rack.getRackName())
+                                                        .shelves(shelvesByRackId.getOrDefault(rack.getId(), List.of()).stream()
+                                                                .map(shelf -> WarehouseHierarchyResponse.ShelfNode.builder()
+                                                                        .id(shelf.getId())
+                                                                        .shelfCode(shelf.getShelfCode())
+                                                                        .shelfName(shelf.getShelfName())
+                                                                        .pallets(palletsByShelfId.getOrDefault(shelf.getId(), List.of()).stream()
+                                                                                .map(pallet -> WarehouseHierarchyResponse.PalletNode.builder()
+                                                                                        .id(pallet.getId())
+                                                                                        .palletCode(pallet.getPalletCode())
+                                                                                        .palletName(pallet.getPalletName())
+                                                                                        .storageCondition(pallet.getStorageCondition())
+                                                                                        .build())
+                                                                                .toList())
+                                                                        .build())
+                                                                .toList())
+                                                        .build())
+                                                .toList())
+                                        .build())
+                                .toList())
+                        .build())
+                .toList();
     }
 
     @Override
@@ -375,6 +460,59 @@ public class WarehouseLocationServiceImpl implements WarehouseLocationService {
     }
 
     @Override
+    public List<AvailablePalletResponse> getAvailablePallets(com.batchsphere.core.masterdata.material.entity.StorageCondition storageCondition) {
+        List<Pallet> pallets = palletRepository.findByIsActiveTrueOrderByPalletCodeAsc();
+        if (storageCondition != null) {
+            pallets = pallets.stream()
+                    .filter(pallet -> pallet.getStorageCondition() == storageCondition)
+                    .toList();
+        }
+
+        List<UUID> occupiedPalletIds = getOccupiedPalletIds(pallets.stream().map(Pallet::getId).toList());
+        if (!occupiedPalletIds.isEmpty()) {
+            pallets = pallets.stream()
+                    .filter(pallet -> !occupiedPalletIds.contains(pallet.getId()))
+                    .toList();
+        }
+
+        if (pallets.isEmpty()) {
+            return List.of();
+        }
+
+        Map<UUID, Shelf> shelfById = shelfRepository.findAllById(pallets.stream().map(Pallet::getShelfId).toList()).stream()
+                .collect(java.util.stream.Collectors.toMap(Shelf::getId, shelf -> shelf));
+        Map<UUID, Rack> rackById = rackRepository.findAllById(shelfById.values().stream().map(Shelf::getRackId).toList()).stream()
+                .collect(java.util.stream.Collectors.toMap(Rack::getId, rack -> rack));
+        Map<UUID, Room> roomById = roomRepository.findAllById(rackById.values().stream().map(Rack::getRoomId).toList()).stream()
+                .collect(java.util.stream.Collectors.toMap(Room::getId, room -> room));
+        Map<UUID, Warehouse> warehouseById = warehouseRepository.findAllById(roomById.values().stream().map(Room::getWarehouseId).toList()).stream()
+                .collect(java.util.stream.Collectors.toMap(Warehouse::getId, warehouse -> warehouse));
+
+        return pallets.stream()
+                .map(pallet -> {
+                    Shelf shelf = shelfById.get(pallet.getShelfId());
+                    Rack rack = rackById.get(shelf.getRackId());
+                    Room room = roomById.get(rack.getRoomId());
+                    Warehouse warehouse = warehouseById.get(room.getWarehouseId());
+                    return AvailablePalletResponse.builder()
+                            .palletId(pallet.getId())
+                            .palletCode(pallet.getPalletCode())
+                            .palletName(pallet.getPalletName())
+                            .shelfId(shelf.getId())
+                            .shelfCode(shelf.getShelfCode())
+                            .rackId(rack.getId())
+                            .rackCode(rack.getRackCode())
+                            .roomId(room.getId())
+                            .roomCode(room.getRoomCode())
+                            .warehouseId(warehouse.getId())
+                            .warehouseCode(warehouse.getWarehouseCode())
+                            .storageCondition(pallet.getStorageCondition())
+                            .build();
+                })
+                .toList();
+    }
+
+    @Override
     public Pallet updatePallet(UUID shelfId, UUID id, UpdatePalletRequest request) {
         String actor = authenticatedActorService.currentActor();
         ensureShelfExists(shelfId);
@@ -402,6 +540,7 @@ public class WarehouseLocationServiceImpl implements WarehouseLocationService {
     public void deactivatePallet(UUID id) {
         String actor = authenticatedActorService.currentActor();
         Pallet pallet = getPalletById(id);
+        ensurePalletNotInUse(id);
         pallet.setIsActive(false);
         pallet.setUpdatedBy(actor);
         pallet.setUpdatedAt(LocalDateTime.now());
@@ -449,5 +588,26 @@ public class WarehouseLocationServiceImpl implements WarehouseLocationService {
         Shelf shelf = getShelfById(shelfId);
         Rack rack = getRackById(shelf.getRackId());
         return getRoomById(rack.getRoomId());
+    }
+
+    private List<UUID> getOccupiedPalletIds(List<UUID> palletIds) {
+        if (palletIds.isEmpty()) {
+            return List.of();
+        }
+
+        java.util.LinkedHashSet<UUID> occupiedPalletIds = new java.util.LinkedHashSet<>(
+                inventoryRepository.findDistinctActivePalletIdsByPalletIdIn(palletIds)
+        );
+        occupiedPalletIds.addAll(grnItemRepository.findDistinctActiveUsagePalletIdsByPalletIdIn(palletIds));
+        return List.copyOf(occupiedPalletIds);
+    }
+
+    private void ensurePalletNotInUse(UUID palletId) {
+        if (inventoryRepository.existsByPalletIdAndIsActiveTrue(palletId)) {
+            throw new BusinessConflictException("Cannot deactivate pallet with active inventory");
+        }
+        if (grnItemRepository.existsActiveUsageByPalletId(palletId)) {
+            throw new BusinessConflictException("Cannot deactivate pallet with active GRN usage");
+        }
     }
 }

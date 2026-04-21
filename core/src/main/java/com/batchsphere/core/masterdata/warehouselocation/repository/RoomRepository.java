@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface RoomRepository extends JpaRepository<Room, UUID> {
@@ -18,4 +19,6 @@ public interface RoomRepository extends JpaRepository<Room, UUID> {
     Page<Room> findByIsActiveTrue(Pageable pageable);
 
     Page<Room> findByWarehouseIdAndIsActiveTrue(UUID warehouseId, Pageable pageable);
+
+    List<Room> findByWarehouseIdInAndIsActiveTrueOrderByRoomCodeAsc(List<UUID> warehouseIds);
 }

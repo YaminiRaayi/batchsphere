@@ -21,6 +21,7 @@ import com.batchsphere.core.transactions.sampling.dto.SamplingContainerSampleReq
 import com.batchsphere.core.transactions.sampling.dto.SamplingContainerSampleResponse;
 import com.batchsphere.core.transactions.sampling.dto.SamplingPlanResponse;
 import com.batchsphere.core.transactions.sampling.dto.SamplingRequestResponse;
+import com.batchsphere.core.transactions.sampling.dto.SamplingSummaryResponse;
 import com.batchsphere.core.transactions.sampling.dto.UpdateSamplingPlanRequest;
 import com.batchsphere.core.transactions.sampling.entity.SamplingContainerSample;
 import com.batchsphere.core.transactions.sampling.entity.SamplingMethod;
@@ -40,7 +41,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -114,6 +117,21 @@ public class SamplingServiceImpl implements SamplingService {
 
     @Override
     @Transactional(readOnly = true)
+    public SamplingSummaryResponse getSamplingSummary() {
+        Map<SamplingRequestStatus, Long> counts = new LinkedHashMap<>();
+        for (SamplingRequestStatus status : SamplingRequestStatus.values()) {
+            counts.put(status, 0L);
+        }
+        for (Object[] row : samplingRequestRepository.countActiveByStatus()) {
+            counts.put((SamplingRequestStatus) row[0], (Long) row[1]);
+        }
+        return SamplingSummaryResponse.builder()
+                .countsByStatus(counts)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public SamplingRequestResponse getSamplingRequestById(UUID id) {
         return toResponse(getSamplingRequest(id));
     }
@@ -123,6 +141,9 @@ public class SamplingServiceImpl implements SamplingService {
     public SamplingRequestResponse createSamplingPlan(UUID samplingRequestId, CreateSamplingPlanRequest request) {
         String actor = authenticatedActorService.currentActor();
         SamplingRequest samplingRequest = getSamplingRequest(samplingRequestId);
+        if (samplingRequest.getRequestStatus() != SamplingRequestStatus.REQUESTED) {
+            throw new BusinessConflictException("Sampling plan can only be created for requested sampling workflows");
+        }
         if (samplingPlanRepository.findBySamplingRequestId(samplingRequestId).isPresent()) {
             throw new BusinessConflictException("Sampling plan already exists for request: " + samplingRequestId);
         }
@@ -177,6 +198,9 @@ public class SamplingServiceImpl implements SamplingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Sampling plan not found with id: " + planId));
         if (!plan.getSamplingRequestId().equals(samplingRequestId)) {
             throw new BusinessConflictException("Sampling plan does not belong to sampling request");
+        }
+        if (samplingRequest.getRequestStatus() != SamplingRequestStatus.PLAN_DEFINED) {
+            throw new BusinessConflictException("Sampling plan can only be updated before sampling is completed");
         }
 
         Material material = getMaterial(samplingRequest.getMaterialId());
@@ -245,10 +269,16 @@ public class SamplingServiceImpl implements SamplingService {
         if (plan.getSamplingMethod() == SamplingMethod.COA_BASED_RELEASE) {
             throw new BusinessConflictException("Sampling completion is not required for vendor CoA based release");
         }
+        if (samplingRequest.getRequestStatus() != SamplingRequestStatus.PLAN_DEFINED) {
+            throw new BusinessConflictException("Sampling can only be completed after the plan is defined");
+        }
 
-        if (samplingContainerSampleRepository.findBySamplingPlanIdOrderByContainerNumber(plan.getId()).isEmpty()) {
+        List<SamplingContainerSample> containerSamples = samplingContainerSampleRepository.findBySamplingPlanIdOrderByContainerNumber(plan.getId());
+        if (containerSamples.isEmpty()) {
             throw new BusinessConflictException("Enter sampled quantities before completing sampling");
         }
+
+        reconcileContainerSamples(plan, containerSamples, actor);
 
         samplingRequest.setRequestStatus(SamplingRequestStatus.UNDER_TEST);
         samplingRequest.setUpdatedBy(actor);
@@ -266,6 +296,19 @@ public class SamplingServiceImpl implements SamplingService {
         SamplingRequest samplingRequest = getSamplingRequest(samplingRequestId);
         SamplingPlan plan = samplingPlanRepository.findBySamplingRequestId(samplingRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Sampling plan not found for request: " + samplingRequestId));
+
+        if (samplingRequest.getRequestStatus() == SamplingRequestStatus.APPROVED
+                || samplingRequest.getRequestStatus() == SamplingRequestStatus.REJECTED) {
+            throw new BusinessConflictException("QC decision has already been recorded for this sampling request");
+        }
+
+        if (plan.getSamplingMethod() == SamplingMethod.COA_BASED_RELEASE) {
+            if (samplingRequest.getRequestStatus() != SamplingRequestStatus.PLAN_DEFINED) {
+                throw new BusinessConflictException("CoA-based release can only be decided after the sampling plan is defined");
+            }
+        } else if (samplingRequest.getRequestStatus() != SamplingRequestStatus.UNDER_TEST) {
+            throw new BusinessConflictException("QC decision can only be recorded after sampling is completed");
+        }
 
         samplingRequest.setRequestStatus(Boolean.TRUE.equals(request.getApproved())
                 ? SamplingRequestStatus.APPROVED
@@ -312,6 +355,9 @@ public class SamplingServiceImpl implements SamplingService {
                 .orElseThrow(() -> new ResourceNotFoundException("Sampling tool not found with id: " + samplingToolId));
 
         if (method == SamplingMethod.COA_BASED_RELEASE) {
+            if (!Boolean.TRUE.equals(samplingRequest.getVendorCoaReleaseAllowed())) {
+                throw new BusinessConflictException("Vendor CoA based release is not allowed for this sampling request");
+            }
             if (containerSamples != null && !containerSamples.isEmpty()) {
                 throw new BusinessConflictException("Container sample quantities are not required for vendor CoA based release");
             }
@@ -326,6 +372,7 @@ public class SamplingServiceImpl implements SamplingService {
         if (containerSamples.size() != requiredContainers) {
             throw new BusinessConflictException("Selected container count must match the calculated sampling requirement");
         }
+        validateContainerSamplesBelongToSamplingRequest(samplingRequest, containerSamples);
 
         BigDecimal commonSampleQuantity = containerSamples.get(0).getSampledQuantity().setScale(3, RoundingMode.HALF_UP);
         if (commonSampleQuantity.signum() <= 0) {
@@ -360,6 +407,33 @@ public class SamplingServiceImpl implements SamplingService {
         return specMethod;
     }
 
+    private void reconcileContainerSamples(SamplingPlan plan,
+                                           List<SamplingContainerSample> samples,
+                                           String actor) {
+        LocalDateTime now = LocalDateTime.now();
+        for (SamplingContainerSample sample : samples) {
+            GrnContainer container = grnContainerRepository.findById(sample.getGrnContainerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("GRN container not found with id: " + sample.getGrnContainerId()));
+            if (!Boolean.TRUE.equals(container.getIsActive())) {
+                throw new ResourceNotFoundException("GRN container not found with id: " + sample.getGrnContainerId());
+            }
+            if (sample.getSampledQuantity().compareTo(container.getQuantity()) > 0) {
+                throw new BusinessConflictException("Sampled quantity cannot exceed available container quantity");
+            }
+
+            container.setQuantity(container.getQuantity().subtract(sample.getSampledQuantity()).setScale(3, RoundingMode.HALF_UP));
+            container.setSampled(true);
+            container.setSampledQuantity(sample.getSampledQuantity().setScale(3, RoundingMode.HALF_UP));
+            container.setSamplingLocation(plan.getSamplingLocation());
+            container.setSampledBy(actor);
+            container.setSampledAt(now);
+            container.setInventoryStatus(InventoryStatus.UNDER_TEST);
+            container.setUpdatedBy(actor);
+            container.setUpdatedAt(now);
+            grnContainerRepository.save(container);
+        }
+    }
+
     private int calculateContainersToSample(SamplingMethod method, Integer totalContainers) {
         return switch (method) {
             case HUNDRED_PERCENT -> totalContainers;
@@ -379,6 +453,26 @@ public class SamplingServiceImpl implements SamplingService {
                 .map(SamplingContainerSampleRequest::getSampledQuantity)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(3, RoundingMode.HALF_UP);
+    }
+
+    private void validateContainerSamplesBelongToSamplingRequest(SamplingRequest samplingRequest,
+                                                                 List<SamplingContainerSampleRequest> containerSamples) {
+        List<UUID> seenContainerIds = new ArrayList<>();
+        for (SamplingContainerSampleRequest containerSample : containerSamples) {
+            if (seenContainerIds.contains(containerSample.getGrnContainerId())) {
+                throw new BusinessConflictException("Container sample selections must not contain duplicates");
+            }
+            seenContainerIds.add(containerSample.getGrnContainerId());
+
+            GrnContainer container = grnContainerRepository.findById(containerSample.getGrnContainerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("GRN container not found with id: " + containerSample.getGrnContainerId()));
+            if (!Boolean.TRUE.equals(container.getIsActive())) {
+                throw new ResourceNotFoundException("GRN container not found with id: " + containerSample.getGrnContainerId());
+            }
+            if (!container.getGrnItemId().equals(samplingRequest.getGrnItemId())) {
+                throw new BusinessConflictException("Selected containers must belong to the current sampling request");
+            }
+        }
     }
 
     private void replaceContainerSamples(UUID samplingPlanId, List<SamplingContainerSampleRequest> requests, String actor) {

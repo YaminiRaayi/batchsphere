@@ -5,6 +5,7 @@ import com.batchsphere.core.transactions.sampling.dto.QcDecisionRequest;
 import com.batchsphere.core.transactions.sampling.dto.SamplingLabelUpdateRequest;
 import com.batchsphere.core.transactions.sampling.dto.SamplingCompletionRequest;
 import com.batchsphere.core.transactions.sampling.dto.SamplingRequestResponse;
+import com.batchsphere.core.transactions.sampling.dto.SamplingSummaryResponse;
 import com.batchsphere.core.transactions.sampling.dto.UpdateSamplingPlanRequest;
 import com.batchsphere.core.transactions.sampling.service.SamplingService;
 import jakarta.validation.Valid;
@@ -32,6 +33,11 @@ public class SamplingController {
     @GetMapping
     public ResponseEntity<Page<SamplingRequestResponse>> getAllSamplingRequests(Pageable pageable) {
         return ResponseEntity.ok(samplingService.getAllSamplingRequests(pageable));
+    }
+
+    @GetMapping("/summary")
+    public ResponseEntity<SamplingSummaryResponse> getSamplingSummary() {
+        return ResponseEntity.ok(samplingService.getSamplingSummary());
     }
 
     @GetMapping("/{id}")

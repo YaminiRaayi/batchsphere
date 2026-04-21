@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BatchSphere – Master Data</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #f8fafc; color: #1e293b; }
+  .sidebar { background: #1e3a8a; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #bfdbfe; transition: all 0.15s; }
+  .nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .nav-item.active { background: rgba(255,255,255,0.15); color: #fff; font-weight: 600; }
+  .nav-section { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: #60a5fa; text-transform: uppercase; padding: 14px 14px 4px; }
+  .master-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; cursor: pointer; transition: all 0.2s; }
+  .master-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); border-color: var(--accent); }
+  .count-badge { font-size: 28px; font-weight: 800; line-height: 1; }
+  .recent-row { border-bottom: 1px solid #f8fafc; padding: 8px 14px; display: flex; align-items: center; gap: 10px; font-size: 12px; cursor: pointer; }
+  .recent-row:hover { background: #f8fafc; }
+  .status-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; }
+</style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+<aside class="sidebar w-60 flex-shrink-0 flex flex-col overflow-y-auto">
+  <div class="p-4 border-b border-blue-700">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-white flex items-center justify-center font-bold text-blue-700 text-sm shadow">BS</div>
+      <div><div class="font-bold text-white text-sm">BatchSphere</div><div class="text-[10px] text-blue-300">Pharma ERP v2.1</div></div>
+    </div>
+  </div>
+  <nav class="flex-1 p-3 space-y-0.5">
+    <div class="nav-section">Master Data</div>
+    <div class="nav-item active">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7C5 4 4 5 4 7z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 11h6m-6 4h4"/></svg>
+      Master Data Hub
+    </div>
+    <a href="08-materials.html" class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
+      Materials
+    </a>
+    <a href="07-vms.html" class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16"/></svg>
+      Vendors
+    </a>
+    <a href="04b-wms-setup.html" class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4"/></svg>
+      Warehouse Locations
+    </a>
+    <a href="06-hrms.html" class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
+      Employees
+    </a>
+    <div class="nav-section">Navigate</div>
+    <a href="01-dashboard.html" class="nav-item">← Dashboard</a>
+  </nav>
+  <div class="p-3 border-t border-blue-800 text-[10px] text-blue-400 text-center">BatchSphere © 2026</div>
+</aside>
+
+<main class="flex-1 flex flex-col overflow-hidden">
+  <header class="h-14 bg-white border-b border-slate-100 flex items-center px-6 gap-4 flex-shrink-0 shadow-sm">
+    <div class="text-xs text-slate-400">Admin / <span class="text-slate-700 font-medium">Master Data</span></div>
+    <div class="ml-auto flex items-center gap-3">
+      <div class="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-1.5 text-xs text-slate-400 border border-slate-100">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-width="2" d="m21 21-4.35-4.35"/></svg>
+        Search master data... ⌘K
+      </div>
+      <div class="text-xs text-slate-400 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">Fri, 18 Apr 2026</div>
+    </div>
+  </header>
+
+  <div class="flex-1 overflow-y-auto p-6">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h1 class="text-xl font-bold text-slate-800">Master Data</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Central configuration for materials, vendors, locations, and reference data</p>
+      </div>
+    </div>
+
+    <!-- Main Master Data Cards -->
+    <div class="grid grid-cols-3 gap-5 mb-6">
+
+      <!-- Materials -->
+      <a href="08-materials.html" class="master-card block" style="--accent:#0ea5e9; border-top: 3px solid #0ea5e9;">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center">
+            <svg class="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M12 2v3m0 14v3M2 12h3m14 0h3m-2.636-6.364-2.121 2.121M6.757 17.243l-2.121 2.121M17.243 17.243l2.121 2.121M6.757 6.757 4.636 4.636"/></svg>
+          </div>
+          <span class="count-badge text-sky-600">142</span>
+        </div>
+        <div class="font-bold text-slate-800 mb-1">Materials</div>
+        <div class="text-xs text-slate-500 mb-3">Raw materials, excipients, packaging, finished goods</div>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="status-pill bg-green-100 text-green-700">48 API</span>
+          <span class="status-pill bg-blue-100 text-blue-700">61 Excipients</span>
+          <span class="status-pill bg-violet-100 text-violet-700">33 Packaging</span>
+        </div>
+      </a>
+
+      <!-- Vendors -->
+      <a href="07-vms.html" class="master-card block" style="--accent:#f97316; border-top: 3px solid #f97316;">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+            <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5"/></svg>
+          </div>
+          <span class="count-badge text-orange-600">34</span>
+        </div>
+        <div class="font-bold text-slate-800 mb-1">Vendors</div>
+        <div class="text-xs text-slate-500 mb-3">Approved supplier list, qualification status, contacts</div>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="status-pill bg-green-100 text-green-700">28 Approved</span>
+          <span class="status-pill bg-amber-100 text-amber-700">4 Review</span>
+          <span class="status-pill bg-red-100 text-red-700">2 Suspended</span>
+        </div>
+      </a>
+
+      <!-- Warehouse Locations -->
+      <a href="04b-wms-setup.html" class="master-card block" style="--accent:#6366f1; border-top: 3px solid #6366f1;">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+            <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/></svg>
+          </div>
+          <span class="count-badge text-indigo-600">312</span>
+        </div>
+        <div class="font-bold text-slate-800 mb-1">Warehouse Locations</div>
+        <div class="text-xs text-slate-500 mb-3">Warehouses, rooms, racks, shelves, pallet positions</div>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="status-pill bg-green-100 text-green-700">3 Warehouses</span>
+          <span class="status-pill bg-indigo-100 text-indigo-700">8 Rooms</span>
+          <span class="status-pill bg-slate-100 text-slate-700">301 Positions</span>
+        </div>
+      </a>
+
+      <!-- Employees -->
+      <a href="06-hrms.html" class="master-card block" style="--accent:#a855f7; border-top: 3px solid #a855f7;">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
+          </div>
+          <span class="count-badge text-purple-600">87</span>
+        </div>
+        <div class="font-bold text-slate-800 mb-1">Employees</div>
+        <div class="text-xs text-slate-500 mb-3">Staff records, departments, roles, qualifications</div>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="status-pill bg-green-100 text-green-700">79 Active</span>
+          <span class="status-pill bg-amber-100 text-amber-700">8 On Leave</span>
+        </div>
+      </a>
+
+      <!-- Units of Measure -->
+      <div class="master-card" style="--accent:#10b981; border-top: 3px solid #10b981;">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+            <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </div>
+          <span class="count-badge text-emerald-600">18</span>
+        </div>
+        <div class="font-bold text-slate-800 mb-1">Units of Measure</div>
+        <div class="text-xs text-slate-500 mb-3">kg, g, mg, L, mL, units, pcs, rolls…</div>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="status-pill bg-emerald-100 text-emerald-700">Weight</span>
+          <span class="status-pill bg-emerald-100 text-emerald-700">Volume</span>
+          <span class="status-pill bg-emerald-100 text-emerald-700">Count</span>
+        </div>
+      </div>
+
+      <!-- Storage Conditions -->
+      <div class="master-card" style="--accent:#f59e0b; border-top: 3px solid #f59e0b;">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+            <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v11a3 3 0 106 0V3M9 3h6M9 3H6m9 0h3"/></svg>
+          </div>
+          <span class="count-badge text-amber-600">7</span>
+        </div>
+        <div class="font-bold text-slate-800 mb-1">Storage Conditions</div>
+        <div class="text-xs text-slate-500 mb-3">Temperature zones, humidity limits, light sensitivity</div>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="status-pill bg-blue-100 text-blue-700">Cold Chain</span>
+          <span class="status-pill bg-amber-100 text-amber-700">Controlled</span>
+          <span class="status-pill bg-slate-100 text-slate-700">Ambient</span>
+        </div>
+      </div>
+
+      <!-- Specifications -->
+      <a href="05-documents.html" class="master-card block" style="--accent:#8b5cf6; border-top: 3px solid #8b5cf6;">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center">
+            <svg class="w-5 h-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          </div>
+          <span class="count-badge text-violet-600">96</span>
+        </div>
+        <div class="font-bold text-slate-800 mb-1">Specs &amp; MoA</div>
+        <div class="text-xs text-slate-500 mb-3">Material specifications, Method of Analysis, STPs</div>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="status-pill bg-green-100 text-green-700">81 Current</span>
+          <span class="status-pill bg-amber-100 text-amber-700">9 Draft</span>
+          <span class="status-pill bg-red-100 text-red-700">6 Expired</span>
+        </div>
+      </a>
+
+      <!-- Customers -->
+      <div class="master-card" style="--accent:#ec4899; border-top: 3px solid #ec4899;">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center">
+            <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          </div>
+          <span class="count-badge text-pink-600">22</span>
+        </div>
+        <div class="font-bold text-slate-800 mb-1">Customers</div>
+        <div class="text-xs text-slate-500 mb-3">Hospitals, distributors, retail chains, export accounts</div>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="status-pill bg-green-100 text-green-700">20 Active</span>
+          <span class="status-pill bg-slate-100 text-slate-600">2 Inactive</span>
+        </div>
+      </div>
+
+      <!-- Material Categories -->
+      <div class="master-card" style="--accent:#14b8a6; border-top: 3px solid #14b8a6;">
+        <div class="flex items-start justify-between mb-3">
+          <div class="w-10 h-10 rounded-xl bg-teal-100 flex items-center justify-center">
+            <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
+          </div>
+          <span class="count-badge text-teal-600">12</span>
+        </div>
+        <div class="font-bold text-slate-800 mb-1">Material Categories</div>
+        <div class="text-xs text-slate-500 mb-3">API, Excipient, Solvent, Packaging, Finished Goods…</div>
+        <div class="flex items-center gap-2 text-xs">
+          <span class="status-pill bg-teal-100 text-teal-700">12 active</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Recent Changes -->
+    <div class="grid grid-cols-2 gap-5">
+      <div class="bg-white border border-slate-200 rounded-14px overflow-hidden shadow-sm" style="border-radius:14px">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-slate-50">
+          <span class="font-semibold text-sm text-slate-700">Recent Master Data Changes</span>
+          <span class="text-xs text-slate-400">Last 7 days</span>
+        </div>
+        <div class="divide-y divide-slate-50">
+          <div class="recent-row">
+            <div class="w-7 h-7 rounded-full bg-sky-100 flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-sky-700">M</div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-slate-800">New material added: Crospovidone XL10</div>
+              <div class="text-[10px] text-slate-400">Excipient · RM-CRO-019 · Yamini R. · 17 Apr</div>
+            </div>
+            <span class="status-pill bg-green-100 text-green-700 text-[10px]">Added</span>
+          </div>
+          <div class="recent-row">
+            <div class="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-orange-700">V</div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-slate-800">Vendor re-approved: Granules India Ltd.</div>
+              <div class="text-[10px] text-slate-400">VEN-0007 · QA: Nisha K. · 16 Apr</div>
+            </div>
+            <span class="status-pill bg-green-100 text-green-700 text-[10px]">Updated</span>
+          </div>
+          <div class="recent-row">
+            <div class="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-indigo-700">L</div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-slate-800">New pallet position added: WH-A / R4-S3-P6</div>
+              <div class="text-[10px] text-slate-400">Cold store · Suresh V. · 15 Apr</div>
+            </div>
+            <span class="status-pill bg-blue-100 text-blue-700 text-[10px]">Added</span>
+          </div>
+          <div class="recent-row">
+            <div class="w-7 h-7 rounded-full bg-sky-100 flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-sky-700">M</div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-slate-800">Material spec linked: Paracetamol API → SP-2024-PARA v4</div>
+              <div class="text-[10px] text-slate-400">RM-PARA-001 · Yamini R. · 14 Apr</div>
+            </div>
+            <span class="status-pill bg-violet-100 text-violet-700 text-[10px]">Updated</span>
+          </div>
+          <div class="recent-row">
+            <div class="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-red-700">V</div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-slate-800">Vendor suspended: Chemsol India</div>
+              <div class="text-[10px] text-slate-400">VEN-0021 · QA: Yamini R. · 12 Apr</div>
+            </div>
+            <span class="status-pill bg-red-100 text-red-700 text-[10px]">Suspended</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Links -->
+      <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+        <div class="px-5 py-3 border-b border-slate-100 bg-slate-50">
+          <span class="font-semibold text-sm text-slate-700">Quick Create</span>
+        </div>
+        <div class="p-4 grid grid-cols-2 gap-3">
+          <a href="08b-material-create.html" class="flex items-center gap-3 p-3 rounded-xl border border-sky-100 bg-sky-50 hover:bg-sky-100 cursor-pointer">
+            <div class="w-8 h-8 rounded-lg bg-sky-500 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-sky-800">New Material</div>
+              <div class="text-[10px] text-sky-600">Add RM / PM / FG</div>
+            </div>
+          </a>
+          <a href="07b-vendor-create.html" class="flex items-center gap-3 p-3 rounded-xl border border-orange-100 bg-orange-50 hover:bg-orange-100 cursor-pointer">
+            <div class="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-orange-800">New Vendor</div>
+              <div class="text-[10px] text-orange-600">Register supplier</div>
+            </div>
+          </a>
+          <a href="04b-wms-setup.html" class="flex items-center gap-3 p-3 rounded-xl border border-indigo-100 bg-indigo-50 hover:bg-indigo-100 cursor-pointer">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-indigo-800">New Location</div>
+              <div class="text-[10px] text-indigo-600">Add warehouse/rack</div>
+            </div>
+          </a>
+          <div class="flex items-center gap-3 p-3 rounded-xl border border-emerald-100 bg-emerald-50 hover:bg-emerald-100 cursor-pointer">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-emerald-800">New UOM</div>
+              <div class="text-[10px] text-emerald-600">Unit of measure</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-xl border border-teal-100 bg-teal-50 hover:bg-teal-100 cursor-pointer">
+            <div class="w-8 h-8 rounded-lg bg-teal-500 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-teal-800">New Category</div>
+              <div class="text-[10px] text-teal-600">Material category</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 p-3 rounded-xl border border-pink-100 bg-pink-50 hover:bg-pink-100 cursor-pointer">
+            <div class="w-8 h-8 rounded-lg bg-pink-500 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-pink-800">New Customer</div>
+              <div class="text-[10px] text-pink-600">Add buyer account</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

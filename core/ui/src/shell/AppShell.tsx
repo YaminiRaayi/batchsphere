@@ -194,8 +194,8 @@ function ModIcon({ abbr, color, size = 32, active = false, soon = false }: ModIc
         width: size,
         height: size,
         fontSize: size * 0.34,
-        backgroundColor: soon ? "#CBD5E1" : active ? color : "#E2E8F0",
-        color: soon || !active ? "#94A3B8" : "#FFFFFF",
+        backgroundColor: soon ? "rgba(255,255,255,0.14)" : active ? "#FFFFFF" : "rgba(255,255,255,0.08)",
+        color: soon ? "#BFDBFE" : active ? "#1D4ED8" : "#BFDBFE",
         transition: "background-color 150ms, color 150ms",
       }}
     >
@@ -208,8 +208,8 @@ function ModIcon({ abbr, color, size = 32, active = false, soon = false }: ModIc
 
 function SoonBadge() {
   return (
-    <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold
-                     uppercase tracking-wider text-slate-400">
+    <span className="rounded-full bg-white/15 px-1.5 py-0.5 text-[9px] font-bold
+                     uppercase tracking-wider text-blue-100">
       Soon
     </span>
   );
@@ -257,17 +257,14 @@ export function AppShell() {
   // ── Sidebar inner ───────────────────────────────────────────────────────────
   const sidebarInner = (
     <div className="flex h-full flex-col">
-
-      {/* Logo row */}
       <div
-        className="flex h-16 shrink-0 items-center border-b border-slate-100"
+        className="flex h-16 shrink-0 items-center border-b border-blue-800"
         style={{ padding: collapsed ? "0 16px" : "0 16px", justifyContent: collapsed ? "center" : "space-between" }}
       >
         {collapsed ? (
-          // Collapsed: show BS mark only
           <div
             className="flex h-9 w-9 items-center justify-center rounded-xl text-xs font-bold text-white"
-            style={{ backgroundColor: "#0F172A" }}
+            style={{ backgroundColor: "#FFFFFF", color: "#1D4ED8" }}
           >
             BS
           </div>
@@ -276,25 +273,24 @@ export function AppShell() {
             <div className="flex items-center gap-2.5">
               <div
                 className="flex h-9 w-9 items-center justify-center rounded-xl text-xs font-bold text-white"
-                style={{ backgroundColor: "#0F172A" }}
+                style={{ backgroundColor: "#FFFFFF", color: "#1D4ED8" }}
               >
                 BS
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-400">
+                <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-blue-200">
                   BatchSphere
                 </p>
-                <p className="text-sm font-semibold leading-none text-slate-900">
-                  Operations Cloud
+                <p className="text-sm font-semibold leading-none text-white">
+                  Pharma ERP v2.1
                 </p>
               </div>
             </div>
-            {/* Collapse button — desktop only */}
             <button
               type="button"
               onClick={() => setSidebarCollapsed(true)}
-              className="hidden rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100
-                         hover:text-slate-600 lg:flex"
+              className="hidden rounded-lg p-1.5 text-blue-200 transition hover:bg-white/10
+                         hover:text-white lg:flex"
               aria-label="Collapse sidebar"
             >
               <ChevronLeftIcon />
@@ -303,30 +299,38 @@ export function AppShell() {
         )}
       </div>
 
-      {/* Navigation */}
+      {!collapsed && (
+        <div className="border-b border-blue-800 p-3">
+          <div className="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">
+              {currentUser.initials}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-xs font-semibold text-white">{currentUser.name}</div>
+              <div className="text-[10px] text-blue-200">{currentUser.role}</div>
+            </div>
+            <div className="h-2 w-2 rounded-full bg-green-400" />
+          </div>
+        </div>
+      )}
+
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-4">
         {NAV_GROUPS.map((group, gi) => (
           <div key={group.label} style={{ marginBottom: collapsed ? 16 : 24 }}>
-
-            {/* Group label (hidden when collapsed) */}
             {!collapsed && (
-              <p className="mb-1 px-4 text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">
+              <p className="mb-1 px-4 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">
                 {group.label}
               </p>
             )}
 
-            {/* Divider dot when collapsed */}
             {collapsed && gi > 0 && (
-              <div className="mx-auto mb-3 h-px w-8 bg-slate-100" />
+              <div className="mx-auto mb-3 h-px w-8 bg-blue-800" />
             )}
 
-            {/* Nav items */}
             <div style={{ padding: collapsed ? "0 8px" : "0 8px" }} className="space-y-0.5">
               {group.items
                 .filter((item) => item.soon || canAccessNavPath(authUser, item.to))
                 .map((item) => {
-
-                // ── Coming Soon item ────────────────────────────────────
                 if (item.soon) {
                   return (
                     <div
@@ -342,7 +346,7 @@ export function AppShell() {
                       <ModIcon abbr={item.abbr} color={item.color} size={30} soon />
                       {!collapsed && (
                         <>
-                          <span className="flex-1 truncate text-sm text-slate-500">
+                          <span className="flex-1 truncate text-sm text-blue-100">
                             {item.label}
                           </span>
                           <SoonBadge />
@@ -352,7 +356,6 @@ export function AppShell() {
                   );
                 }
 
-                // ── Live nav item ───────────────────────────────────────
                 return (
                   <NavLink
                     key={item.to}
@@ -362,16 +365,15 @@ export function AppShell() {
                     className="relative block rounded-xl outline-none transition-colors
                                focus-visible:ring-2 focus-visible:ring-blue-500"
                     style={({ isActive }) => ({
-                      backgroundColor: isActive ? item.lightBg : "transparent",
+                      backgroundColor: isActive ? "rgba(255,255,255,0.15)" : "transparent",
                     })}
                   >
                     {({ isActive }) => (
                       <>
-                        {/* Active left-edge bar */}
                         {isActive && (
                           <div
                             className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full"
-                            style={{ backgroundColor: item.color }}
+                            style={{ backgroundColor: "#FFFFFF" }}
                           />
                         )}
 
@@ -392,7 +394,7 @@ export function AppShell() {
                           {!collapsed && (
                             <span
                               className="flex-1 truncate text-sm font-medium"
-                              style={{ color: isActive ? item.color : "#475569" }}
+                              style={{ color: isActive ? "#FFFFFF" : "#BFDBFE" }}
                             >
                               {item.label}
                             </span>
@@ -408,35 +410,32 @@ export function AppShell() {
         ))}
       </nav>
 
-      {/* Sidebar footer */}
-      <div className="shrink-0 border-t border-slate-100">
-        {/* Site selector */}
+      <div className="shrink-0 border-t border-blue-800">
         {!collapsed && (
           <div className="px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-slate-400">
+            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-blue-300">
               Site
             </p>
-            <p className="mt-0.5 text-sm font-medium text-slate-700">Hyderabad</p>
+            <p className="mt-0.5 text-sm font-medium text-white">Hyderabad</p>
             <button
               type="button"
               onClick={() => {
                 void handleSignOut();
               }}
-              className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 transition hover:text-slate-900"
+              className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-blue-200 transition hover:text-white"
             >
               Sign out
             </button>
           </div>
         )}
 
-        {/* Expand button (desktop, when collapsed) */}
         {collapsed && (
           <div className="flex justify-center py-3">
             <button
               type="button"
               onClick={() => setSidebarCollapsed(false)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400
-                         transition hover:bg-slate-100 hover:text-slate-600"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-blue-200
+                         transition hover:bg-white/10 hover:text-white"
               aria-label="Expand sidebar"
             >
               <ChevronRightIcon />
@@ -449,9 +448,7 @@ export function AppShell() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: "#F8FAFC" }}>
-
-      {/* ── Mobile overlay ───────────────────────────────────────────────────── */}
+    <div className="flex min-h-screen" style={{ backgroundColor: "#F0F4FF" }}>
       {mobileOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/30 backdrop-blur-[2px] lg:hidden"
@@ -460,83 +457,72 @@ export function AppShell() {
         />
       )}
 
-      {/* ── Sidebar ──────────────────────────────────────────────────────────── */}
       <aside
         className={[
-          "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-slate-200 bg-white",
+          "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-blue-800",
           "shadow-bar transition-all duration-200",
-          // Mobile: hidden by default, shown when mobileOpen
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         ].join(" ")}
-        style={{ width: sidebarW }}
+        style={{ width: sidebarW, backgroundColor: "#1E3A8A" }}
         aria-label="Sidebar navigation"
       >
         {sidebarInner}
       </aside>
 
-      {/* ── Main area (shifts right to make space for sidebar on desktop) ─────── */}
       <div
         className="flex min-h-screen flex-1 flex-col transition-all duration-200"
         style={{ paddingLeft: `max(0px, ${sidebarW})` }}
       >
-
-        {/* ── Top bar ────────────────────────────────────────────────────────── */}
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-4 border-b border-slate-200
-                           bg-white/95 px-5 backdrop-blur">
-
-          {/* Mobile hamburger */}
+        <header className="sticky top-0 z-20 flex h-14 items-center gap-4 border-b border-blue-100 bg-white px-6 shadow-sm">
           <button
             type="button"
             onClick={() => setMobileOpen((v) => !v)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200
-                       text-slate-500 transition hover:bg-slate-50 lg:hidden"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-100
+                       text-slate-500 transition hover:bg-blue-50 lg:hidden"
             aria-label="Open navigation"
           >
             <MenuIcon />
           </button>
 
-          {/* Active module indicator */}
-          {activeItem ? (
-            <div className="flex items-center gap-2.5">
-              {/* Module color dot */}
-              <div
-                className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: activeItem.color }}
-              />
-              <span className="text-sm font-semibold text-slate-900">
-                {activeItem.label}
-              </span>
-              {/* Module abbr badge */}
-              <span
-                className="rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white"
-                style={{ backgroundColor: activeItem.color }}
-              >
-                {activeItem.abbr}
-              </span>
-            </div>
-          ) : (
-            <span className="text-sm font-semibold text-slate-700">BatchSphere</span>
-          )}
+          <div className="min-w-0 flex-1 text-xs text-slate-400">
+            <Breadcrumbs />
+            {!activeItem ? (
+              <span className="font-medium text-blue-700">Command Center</span>
+            ) : null}
+          </div>
 
-          {/* Right side */}
-          <div className="ml-auto flex items-center gap-2">
-            {/* Environment badge */}
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1
-                             text-[11px] font-semibold text-slate-500">
-              {activeWarehouse} Site
+          <div className="ml-auto flex items-center gap-3">
+            <div className="hidden items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs text-slate-400 md:flex">
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <circle cx="11" cy="11" r="8" />
+                <path strokeLinecap="round" strokeWidth="2" d="m21 21-4.35-4.35" />
+              </svg>
+              Search anything... Ctrl+K
+            </div>
+
+            <button
+              type="button"
+              className="relative rounded-xl p-2 text-slate-500 transition hover:bg-blue-50"
+              aria-label="Notifications"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              <span className="absolute right-1 top-1 h-2 w-2 rounded-full border border-white bg-red-500" />
+            </button>
+
+            <span className="hidden rounded-xl border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs text-slate-500 md:inline-flex">
+              {new Date().toLocaleDateString("en-IN", {
+                weekday: "short",
+                day: "2-digit",
+                month: "short",
+                year: "numeric"
+              })}
             </span>
-
-            {/* User avatar placeholder */}
-            <div className="flex h-8 w-8 items-center justify-center rounded-full
-                            bg-slate-900 text-[11px] font-bold text-white">
-              {currentUser.initials}
-            </div>
           </div>
         </header>
 
-        {/* ── Page content ───────────────────────────────────────────────────── */}
-        <main className="flex-1 p-5 lg:p-6">
-          <Breadcrumbs />
+        <main className="flex-1 p-6">
           <Outlet />
         </main>
       </div>
