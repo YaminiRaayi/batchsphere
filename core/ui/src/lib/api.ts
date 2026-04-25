@@ -1,20 +1,26 @@
 import type { Batch } from "../types/batch";
+import type { BusinessUnit, CreateBusinessUnitRequest } from "../types/business-unit";
 import type { LoginResponse } from "../types/auth";
 import type { CreateMoaRequest, Moa } from "../types/moa";
 import type { InventoryRecord, InventorySummary, InventoryTransaction } from "../types/inventory";
 import type {
   AvailablePallet,
+  CreateMaterialLocationRuleRequest,
   CreatePalletRequest,
   CreateRackRequest,
   CreateRoomRequest,
   CreateShelfRequest,
   CreateWarehouseRequest,
+  CreateWarehouseZoneRuleRequest,
+  MaterialLocationRule,
   Pallet,
   Rack,
   Room,
   Shelf,
   Warehouse,
-  WarehouseTreeNode
+  WarehouseTreeNode,
+  WarehouseZoneRule,
+  WmsSummary
 } from "../types/location";
 import type { CreateMaterialRequest, Material } from "../types/material";
 import type { CreateSamplingToolRequest, SamplingTool } from "../types/sampling-tool";
@@ -33,9 +39,13 @@ import type {
 import type { SamplingPlanRequest, SamplingRequest, SamplingSummary } from "../types/sampling";
 import type {
   CreateVendorBusinessUnitRequest,
+  CreateVendorBusinessUnitAuditRequest,
+  UpdateVendorBusinessUnitRequest,
+  VendorBusinessUnitAudit,
+  VendorBusinessUnitDocument,
   VendorBusinessUnit
 } from "../types/vendor-business-unit";
-import type { CreateVendorRequest, Vendor } from "../types/vendor";
+import type { CreateVendorRequest, Vendor, VendorApprovalRequest, VendorDocument } from "../types/vendor";
 import { useAuthStore } from "../stores/authStore";
 import { useAppShellStore } from "../stores/appShellStore";
 
@@ -223,6 +233,18 @@ async function requestMultipart<T>(path: string, formData: FormData): Promise<T>
   return (await response.json()) as T;
 }
 
+async function requestBlob(path: string): Promise<Blob> {
+  const response = await performRequest(path, {
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined
+  });
+
+  if (!response.ok) {
+    throw await buildError(response);
+  }
+
+  return response.blob();
+}
+
 export function getApiBaseUrl() {
   return API_BASE_URL;
 }
@@ -253,6 +275,16 @@ export async function fetchGrns(page = 0, size = 15) {
     page: String(page),
     size: String(size),
     sort: "createdAt,desc"
+  });
+  return requestJson<PageResponse<Grn>>(`/api/grns?${params.toString()}`);
+}
+
+export async function fetchVendorGrns(vendorId: string, size = 5) {
+  const params = new URLSearchParams({
+    page: "0",
+    size: String(size),
+    sort: "createdAt,desc",
+    vendorId
   });
   return requestJson<PageResponse<Grn>>(`/api/grns?${params.toString()}`);
 }
@@ -380,6 +412,46 @@ export async function deleteVendor(id: string) {
   });
 }
 
+export async function updateVendorApproval(id: string, payload: VendorApprovalRequest) {
+  return requestMutation<Vendor>(`/api/vendors/${id}/approval`, {
+    method: "PATCH",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchVendorDocuments(id: string) {
+  return requestJson<VendorDocument[]>(`/api/vendors/${id}/documents`);
+}
+
+export async function uploadVendorDocument(
+  id: string,
+  payload: {
+    documentTitle: string;
+    documentType: string;
+    expiryDate?: string;
+    file: File;
+  }
+) {
+  const formData = new FormData();
+  formData.set("documentTitle", payload.documentTitle);
+  formData.set("documentType", payload.documentType);
+  if (payload.expiryDate) {
+    formData.set("expiryDate", payload.expiryDate);
+  }
+  formData.set("file", payload.file);
+  return requestMultipart<VendorDocument>(`/api/vendors/${id}/documents`, formData);
+}
+
+export async function deleteVendorDocument(id: string, documentId: string) {
+  return requestVoid(`/api/vendors/${id}/documents/${documentId}`, {
+    method: "DELETE"
+  });
+}
+
+export async function fetchVendorDocumentFile(id: string, documentId: string) {
+  return requestBlob(`/api/vendors/${id}/documents/${documentId}/file`);
+}
+
 export async function fetchVendorBusinessUnits(page = 0, size = 20, vendorId?: string) {
   const params = new URLSearchParams({
     page: String(page),
@@ -409,24 +481,75 @@ export async function createVendorBusinessUnit(
 export async function updateVendorBusinessUnit(
   vendorId: string,
   id: string,
-  payload: CreateVendorBusinessUnitRequest
+  payload: UpdateVendorBusinessUnitRequest
 ) {
   return requestMutation<VendorBusinessUnit>(`/api/vendors/${vendorId}/business-units/${id}`, {
     method: "PUT",
-    body: JSON.stringify({
-      unitName: payload.unitName,
-      address: payload.address,
-      city: payload.city,
-      state: payload.state,
-      country: payload.country,
-      updatedBy: payload.createdBy
-    })
+    body: JSON.stringify(payload)
   });
 }
 
 export async function deleteVendorBusinessUnit(id: string) {
   return requestVoid(`/api/vendor-business-units/${id}`, {
     method: "DELETE"
+  });
+}
+
+export async function fetchVendorBusinessUnitDocuments(id: string) {
+  return requestJson<VendorBusinessUnitDocument[]>(`/api/vendor-business-units/${id}/documents`);
+}
+
+export async function uploadVendorBusinessUnitDocument(
+  id: string,
+  payload: {
+    documentTitle: string;
+    documentType: string;
+    expiryDate?: string;
+    file: File;
+  }
+) {
+  const formData = new FormData();
+  formData.set("documentTitle", payload.documentTitle);
+  formData.set("documentType", payload.documentType);
+  if (payload.expiryDate) {
+    formData.set("expiryDate", payload.expiryDate);
+  }
+  formData.set("file", payload.file);
+  return requestMultipart<VendorBusinessUnitDocument>(`/api/vendor-business-units/${id}/documents`, formData);
+}
+
+export async function deleteVendorBusinessUnitDocument(id: string, documentId: string) {
+  return requestVoid(`/api/vendor-business-units/${id}/documents/${documentId}`, {
+    method: "DELETE"
+  });
+}
+
+export async function fetchVendorBusinessUnitDocumentFile(id: string, documentId: string) {
+  return requestBlob(`/api/vendor-business-units/${id}/documents/${documentId}/file`);
+}
+
+export async function fetchVendorBusinessUnitAudits(id: string) {
+  return requestJson<VendorBusinessUnitAudit[]>(`/api/vendor-business-units/${id}/audits`);
+}
+
+export async function createVendorBusinessUnitAudit(
+  id: string,
+  payload: CreateVendorBusinessUnitAuditRequest
+) {
+  return requestMutation<VendorBusinessUnitAudit>(`/api/vendor-business-units/${id}/audits`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateVendorBusinessUnitAudit(
+  id: string,
+  auditId: string,
+  payload: CreateVendorBusinessUnitAuditRequest
+) {
+  return requestMutation<VendorBusinessUnitAudit>(`/api/vendor-business-units/${id}/audits/${auditId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
   });
 }
 
@@ -551,12 +674,29 @@ export async function createWarehouse(payload: CreateWarehouseRequest) {
   });
 }
 
+export async function fetchBusinessUnits(page = 0, size = 50) {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    sort: "createdAt,desc"
+  });
+  return requestJson<PageResponse<BusinessUnit>>(`/api/business-units?${params.toString()}`);
+}
+
+export async function createBusinessUnit(payload: CreateBusinessUnitRequest) {
+  return requestMutation<BusinessUnit>("/api/business-units", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function updateWarehouse(id: string, payload: CreateWarehouseRequest) {
   return requestMutation<Warehouse>(`/api/warehouses/${id}`, {
     method: "PUT",
     body: JSON.stringify({
       warehouseCode: payload.warehouseCode,
       warehouseName: payload.warehouseName,
+      businessUnitId: payload.businessUnitId,
       description: payload.description,
       updatedBy: payload.createdBy
     })
@@ -596,6 +736,10 @@ export async function updateRoom(warehouseId: string, id: string, payload: Creat
       roomName: payload.roomName,
       storageCondition: payload.storageCondition,
       description: payload.description,
+      maxCapacity: payload.maxCapacity,
+      capacityUom: payload.capacityUom,
+      temperatureRange: payload.temperatureRange,
+      humidityRange: payload.humidityRange,
       updatedBy: payload.createdBy
     })
   });
@@ -723,6 +867,70 @@ export async function updatePallet(shelfId: string, id: string, payload: CreateP
 
 export async function deletePallet(id: string) {
   return requestVoid(`/api/pallets/${id}`, {
+    method: "DELETE"
+  });
+}
+
+export async function fetchWmsSummary() {
+  return requestJson<WmsSummary>("/api/wms/summary");
+}
+
+export async function fetchWarehouseZoneRules(roomId?: string) {
+  const params = new URLSearchParams();
+  if (roomId) {
+    params.set("roomId", roomId);
+  }
+  return requestJson<WarehouseZoneRule[]>(
+    `/api/wms/zone-rules${params.size > 0 ? `?${params.toString()}` : ""}`
+  );
+}
+
+export async function createWarehouseZoneRule(payload: CreateWarehouseZoneRuleRequest) {
+  return requestMutation<WarehouseZoneRule>("/api/wms/zone-rules", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateWarehouseZoneRule(id: string, payload: CreateWarehouseZoneRuleRequest) {
+  return requestMutation<WarehouseZoneRule>(`/api/wms/zone-rules/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteWarehouseZoneRule(id: string) {
+  return requestVoid(`/api/wms/zone-rules/${id}`, {
+    method: "DELETE"
+  });
+}
+
+export async function fetchMaterialLocationRules(materialId?: string) {
+  const params = new URLSearchParams();
+  if (materialId) {
+    params.set("materialId", materialId);
+  }
+  return requestJson<MaterialLocationRule[]>(
+    `/api/wms/material-location-rules${params.size > 0 ? `?${params.toString()}` : ""}`
+  );
+}
+
+export async function createMaterialLocationRule(payload: CreateMaterialLocationRuleRequest) {
+  return requestMutation<MaterialLocationRule>("/api/wms/material-location-rules", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateMaterialLocationRule(id: string, payload: CreateMaterialLocationRuleRequest) {
+  return requestMutation<MaterialLocationRule>(`/api/wms/material-location-rules/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteMaterialLocationRule(id: string) {
+  return requestVoid(`/api/wms/material-location-rules/${id}`, {
     method: "DELETE"
   });
 }

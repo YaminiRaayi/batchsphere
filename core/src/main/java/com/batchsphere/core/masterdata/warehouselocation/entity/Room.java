@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
@@ -44,6 +45,18 @@ public class Room {
 
     @Column(length = 500)
     private String description;
+
+    @Column(name = "max_capacity", precision = 18, scale = 3)
+    private BigDecimal maxCapacity;
+
+    @Column(name = "capacity_uom", length = 20)
+    private String capacityUom;
+
+    @Column(name = "temperature_range", length = 100)
+    private String temperatureRange;
+
+    @Column(name = "humidity_range", length = 100)
+    private String humidityRange;
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;

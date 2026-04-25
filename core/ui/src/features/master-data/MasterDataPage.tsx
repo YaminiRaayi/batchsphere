@@ -65,7 +65,7 @@ import type {
   Warehouse,
   WarehouseTreeNode
 } from "../../types/location";
-import type { CreateMaterialRequest, Material, StorageCondition } from "../../types/material";
+import type { CreateMaterialRequest, LightSensitivity, Material, MaterialCategory, StorageCondition } from "../../types/material";
 import type { CreateMoaRequest, Moa } from "../../types/moa";
 import type { CreateSamplingToolRequest, SamplingTool } from "../../types/sampling-tool";
 import type { CreateSpecRequest, Spec } from "../../types/spec";
@@ -185,6 +185,47 @@ const storageConditions: StorageCondition[] = [
   "DEEP_FREEZER"
 ];
 
+const storageConditionLabels: Record<StorageCondition, string> = {
+  AMBIENT: "Ambient (15–30°C)",
+  ROOM_TEMPERATURE: "Room Temperature",
+  CONTROLLED_ROOM_TEMPERATURE: "Cool / Controlled (8–15°C)",
+  REFRIGERATED_2_TO_8C: "Cold / Refrigerated (2–8°C)",
+  COLD: "Frozen (–20°C)",
+  DEEP_FREEZER: "Deep Frozen (–80°C)"
+};
+
+const materialCategories: MaterialCategory[] = [
+  "API",
+  "EXCIPIENT",
+  "SOLVENT",
+  "PACKAGING_MATERIAL",
+  "FINISHED_GOODS",
+  "REFERENCE_STANDARD"
+];
+
+const materialCategoryLabels: Record<MaterialCategory, string> = {
+  API: "API (Active Pharmaceutical Ingredient)",
+  EXCIPIENT: "Excipient",
+  SOLVENT: "Solvent",
+  PACKAGING_MATERIAL: "Packaging Material",
+  FINISHED_GOODS: "Finished Goods",
+  REFERENCE_STANDARD: "Reference Standard"
+};
+
+const lightSensitivities: LightSensitivity[] = [
+  "NOT_SENSITIVE",
+  "PROTECT_FROM_LIGHT",
+  "AMBER_CONTAINER",
+  "STORE_IN_DARK"
+];
+
+const lightSensitivityLabels: Record<LightSensitivity, string> = {
+  NOT_SENSITIVE: "Not sensitive",
+  PROTECT_FROM_LIGHT: "Protect from light",
+  AMBER_CONTAINER: "Store in amber container",
+  STORE_IN_DARK: "Store in dark"
+};
+
 const materialTypes = ["CRITICAL", "NON_CRITICAL"] as const;
 const specSamplingMethods: SamplingMethod[] = [
   "SQRT_N_PLUS_1",
@@ -196,11 +237,24 @@ function createInitialMaterialForm(currentUserName: string): CreateMaterialReque
   return {
     materialCode: "",
     materialName: "",
+    materialCategory: undefined,
+    genericNames: "",
     materialType: "CRITICAL",
     uom: "KG",
+    specId: "",
+    hsnCode: "",
+    casNumber: "",
+    pharmacopoeialRef: "",
     storageCondition: "AMBIENT",
-    photosensitive: false,
+    maxHumidity: "",
+    lightSensitivity: undefined,
     hygroscopic: false,
+    shelfLifeMonths: undefined,
+    retestPeriodMonths: undefined,
+    reorderLevel: "",
+    leadTimeDays: undefined,
+    controlledSubstance: false,
+    photosensitive: false,
     hazardous: false,
     selectiveMaterial: false,
     vendorCoaReleaseAllowed: false,
@@ -312,6 +366,29 @@ function countWarehouseNodes(tree: WarehouseTreeNode[]) {
   return { rooms, racks, shelves, pallets };
 }
 
+function formatStorageConditionLabel(condition: StorageCondition) {
+  return condition.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (match) => match.toUpperCase());
+}
+
+function formatWarehouseTimestamp(value: string | null | undefined) {
+  if (!value) {
+    return "Not set";
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
 type MasterDataPageProps = {
   section?: MasterDataSection;
   showHeader?: boolean;
@@ -354,6 +431,7 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
   const [selectedRoomId, setSelectedRoomId] = useState("");
   const [selectedRackId, setSelectedRackId] = useState("");
   const [selectedShelfId, setSelectedShelfId] = useState("");
+  const [selectedWmsPalletId, setSelectedWmsPalletId] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isVendorLoading, setIsVendorLoading] = useState(true);
   const [isVendorBusinessUnitLoading, setIsVendorBusinessUnitLoading] = useState(true);
@@ -440,6 +518,62 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
   const rackById = useMemo(() => new Map(racks.map((rack) => [rack.id, rack])), [racks]);
   const shelfById = useMemo(() => new Map(shelves.map((shelf) => [shelf.id, shelf])), [shelves]);
   const palletById = useMemo(() => new Map(pallets.map((pallet) => [pallet.id, pallet])), [pallets]);
+  const activeWarehouseNode = useMemo(
+    () => warehouseTree.find((warehouseNode) => warehouseNode.id === selectedWarehouseId) ?? warehouseTree[0] ?? null,
+    [selectedWarehouseId, warehouseTree]
+  );
+  const activeRoomNode = useMemo(
+    () =>
+      activeWarehouseNode?.rooms.find((roomNode) => roomNode.id === selectedRoomId) ??
+      activeWarehouseNode?.rooms[0] ??
+      null,
+    [activeWarehouseNode, selectedRoomId]
+  );
+  const activeRackNode = useMemo(
+    () =>
+      activeRoomNode?.racks.find((rackNode) => rackNode.id === selectedRackId) ??
+      activeRoomNode?.racks[0] ??
+      null,
+    [activeRoomNode, selectedRackId]
+  );
+  const activeShelfNode = useMemo(
+    () =>
+      activeRackNode?.shelves.find((shelfNode) => shelfNode.id === selectedShelfId) ??
+      activeRackNode?.shelves[0] ??
+      null,
+    [activeRackNode, selectedShelfId]
+  );
+  const activePalletNode = useMemo(
+    () =>
+      activeShelfNode?.pallets.find((palletNode) => palletNode.id === selectedWmsPalletId) ??
+      activeShelfNode?.pallets[0] ??
+      null,
+    [activeShelfNode, selectedWmsPalletId]
+  );
+  const activePallet = useMemo(
+    () => (activePalletNode ? palletById.get(activePalletNode.id) ?? null : null),
+    [activePalletNode, palletById]
+  );
+  const activeRoomStats = useMemo(() => {
+    if (!activeRoomNode) {
+      return { racks: 0, shelves: 0, pallets: 0 };
+    }
+
+    let shelfCount = 0;
+    let palletCount = 0;
+    for (const rackNode of activeRoomNode.racks) {
+      shelfCount += rackNode.shelves.length;
+      for (const shelfNode of rackNode.shelves) {
+        palletCount += shelfNode.pallets.length;
+      }
+    }
+
+    return {
+      racks: activeRoomNode.racks.length,
+      shelves: shelfCount,
+      pallets: palletCount
+    };
+  }, [activeRoomNode]);
 
   async function refreshWarehouseTree() {
     const tree = await fetchWarehouseTree();
@@ -603,6 +737,36 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       setSelectedShelfId("");
     }
   }, [filteredShelves, selectedShelfId]);
+
+  useEffect(() => {
+    if (!selectedWarehouseId && warehouseTree[0]) {
+      setSelectedWarehouseId(warehouseTree[0].id);
+    }
+  }, [selectedWarehouseId, warehouseTree]);
+
+  useEffect(() => {
+    if (activeWarehouseNode && (!selectedRoomId || !activeWarehouseNode.rooms.some((roomNode) => roomNode.id === selectedRoomId))) {
+      setSelectedRoomId(activeWarehouseNode.rooms[0]?.id ?? "");
+    }
+  }, [activeWarehouseNode, selectedRoomId]);
+
+  useEffect(() => {
+    if (activeRoomNode && (!selectedRackId || !activeRoomNode.racks.some((rackNode) => rackNode.id === selectedRackId))) {
+      setSelectedRackId(activeRoomNode.racks[0]?.id ?? "");
+    }
+  }, [activeRoomNode, selectedRackId]);
+
+  useEffect(() => {
+    if (activeRackNode && (!selectedShelfId || !activeRackNode.shelves.some((shelfNode) => shelfNode.id === selectedShelfId))) {
+      setSelectedShelfId(activeRackNode.shelves[0]?.id ?? "");
+    }
+  }, [activeRackNode, selectedShelfId]);
+
+  useEffect(() => {
+    if (activeShelfNode && (!selectedWmsPalletId || !activeShelfNode.pallets.some((palletNode) => palletNode.id === selectedWmsPalletId))) {
+      setSelectedWmsPalletId(activeShelfNode.pallets[0]?.id ?? "");
+    }
+  }, [activeShelfNode, selectedWmsPalletId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -959,7 +1123,14 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
         createdBy: vendorBusinessUnitForm.createdBy.trim()
       };
       const savedUnit = editingVendorBusinessUnitId
-        ? await updateVendorBusinessUnit(selectedVendorId, editingVendorBusinessUnitId, payload)
+        ? await updateVendorBusinessUnit(selectedVendorId, editingVendorBusinessUnitId, {
+            unitName: payload.unitName,
+            address: payload.address,
+            city: payload.city,
+            state: payload.state,
+            country: payload.country,
+            updatedBy: payload.createdBy
+          })
         : await createVendorBusinessUnit(selectedVendorId, payload);
 
       setVendorBusinessUnits((current) =>
@@ -1414,11 +1585,24 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
     setMaterialForm({
       materialCode: material.materialCode,
       materialName: material.materialName,
+      materialCategory: material.materialCategory ?? undefined,
+      genericNames: material.genericNames ?? "",
       materialType: material.materialType,
       uom: material.uom,
+      specId: material.specId ?? "",
+      hsnCode: material.hsnCode ?? "",
+      casNumber: material.casNumber ?? "",
+      pharmacopoeialRef: material.pharmacopoeialRef ?? "",
       storageCondition: material.storageCondition,
-      photosensitive: material.photosensitive,
+      maxHumidity: material.maxHumidity ?? "",
+      lightSensitivity: material.lightSensitivity ?? undefined,
       hygroscopic: material.hygroscopic,
+      shelfLifeMonths: material.shelfLifeMonths ?? undefined,
+      retestPeriodMonths: material.retestPeriodMonths ?? undefined,
+      reorderLevel: material.reorderLevel ?? "",
+      leadTimeDays: material.leadTimeDays ?? undefined,
+      controlledSubstance: material.controlledSubstance,
+      photosensitive: material.photosensitive,
       hazardous: material.hazardous,
       selectiveMaterial: material.selectiveMaterial,
       vendorCoaReleaseAllowed: material.vendorCoaReleaseAllowed,
@@ -2303,54 +2487,129 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
               Material rules drive storage validation, sampling, and release logic downstream.
             </p>
           </div>
-          <form className="mt-6 space-y-4" onSubmit={handleMaterialSubmit}>
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-ink">Material code</span>
-                <input required value={materialForm.materialCode} onChange={(event) => setMaterialForm((current) => ({ ...current, materialCode: event.target.value }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel" placeholder="MAT-001" />
-              </label>
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-ink">Material name</span>
-                <input required value={materialForm.materialName} onChange={(event) => setMaterialForm((current) => ({ ...current, materialName: event.target.value }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel" placeholder="Citric Acid" />
-              </label>
-            </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-ink">Material type</span>
-                <select value={materialForm.materialType} onChange={(event) => setMaterialForm((current) => ({ ...current, materialType: event.target.value }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel">
-                  {materialTypes.map((type) => <option key={type} value={type}>{type}</option>)}
-                </select>
-              </label>
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-ink">UOM</span>
-                <input required value={materialForm.uom} onChange={(event) => setMaterialForm((current) => ({ ...current, uom: event.target.value }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel" placeholder="KG" />
-              </label>
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-ink">Storage condition</span>
-                <select value={materialForm.storageCondition} onChange={(event) => setMaterialForm((current) => ({ ...current, storageCondition: event.target.value as StorageCondition }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel">
-                  {storageConditions.map((condition) => <option key={condition} value={condition}>{condition}</option>)}
-                </select>
-              </label>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {[
-                ["photosensitive", "Photosensitive"],
-                ["hygroscopic", "Hygroscopic"],
-                ["hazardous", "Hazardous"],
-                ["selectiveMaterial", "Selective material"],
-                ["vendorCoaReleaseAllowed", "Vendor CoA release"],
-                ["samplingRequired", "Sampling required"]
-              ].map(([key, label]) => (
-                <label key={key} className="flex items-center gap-3 rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink">
-                  <input type="checkbox" checked={materialForm[key as keyof CreateMaterialRequest] as boolean} onChange={(event) => setMaterialForm((current) => ({ ...current, [key]: event.target.checked }))} />
-                  <span>{label}</span>
+          <form className="mt-6 space-y-6" onSubmit={handleMaterialSubmit}>
+            {/* Basic Information */}
+            <div>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-steel">Basic Information</p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Material name <span className="text-redoxide">*</span></span>
+                  <input required value={materialForm.materialName} onChange={(event) => setMaterialForm((current) => ({ ...current, materialName: event.target.value }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel" placeholder="e.g. Paracetamol" />
+                  <span className="mt-1 block text-xs text-slate">Use the INN / IUPAC name. Avoid brand names.</span>
                 </label>
-              ))}
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Generic / other names</span>
+                  <input value={materialForm.genericNames ?? ""} onChange={(event) => setMaterialForm((current) => ({ ...current, genericNames: event.target.value }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel" placeholder="e.g. Acetaminophen, 4-Acetamidophenol" />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Material category <span className="text-redoxide">*</span></span>
+                  <select value={materialForm.materialCategory ?? ""} onChange={(event) => setMaterialForm((current) => ({ ...current, materialCategory: event.target.value as MaterialCategory || undefined }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel">
+                    <option value="">— Select category —</option>
+                    {materialCategories.map((cat) => <option key={cat} value={cat}>{materialCategoryLabels[cat]}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Material type <span className="text-redoxide">*</span></span>
+                  <select value={materialForm.materialType} onChange={(event) => setMaterialForm((current) => ({ ...current, materialType: event.target.value }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel">
+                    {materialTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Unit of measure (UOM) <span className="text-redoxide">*</span></span>
+                  <select value={materialForm.uom} onChange={(event) => setMaterialForm((current) => ({ ...current, uom: event.target.value }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel">
+                    {["KG", "G", "MG", "L", "ML", "PCS", "STRIPS", "ROLLS"].map((u) => <option key={u} value={u}>{u.toLowerCase()}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">HSN code</span>
+                  <input value={materialForm.hsnCode ?? ""} onChange={(event) => setMaterialForm((current) => ({ ...current, hsnCode: event.target.value }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel" placeholder="e.g. 29242990" />
+                  <span className="mt-1 block text-xs text-slate">Harmonized System of Nomenclature code for GST.</span>
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">CAS number</span>
+                  <input value={materialForm.casNumber ?? ""} onChange={(event) => setMaterialForm((current) => ({ ...current, casNumber: event.target.value }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel" placeholder="e.g. 103-90-2" />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Pharmacopoeial reference</span>
+                  <select value={materialForm.pharmacopoeialRef ?? ""} onChange={(event) => setMaterialForm((current) => ({ ...current, pharmacopoeialRef: event.target.value }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel">
+                    <option value="">— Select —</option>
+                    {["IP 2022", "BP 2024", "USP-NF 2024", "EP 10th Edition", "Non-Pharmacopoeial", "In-house"].map((ref) => <option key={ref} value={ref}>{ref}</option>)}
+                  </select>
+                </label>
+                <label className="col-span-2 block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Material code</span>
+                  <input value={materialForm.materialCode} onChange={(event) => setMaterialForm((current) => ({ ...current, materialCode: event.target.value }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel" placeholder="Auto-generated on save (or enter manually)" />
+                </label>
+                <label className="col-span-2 block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Description / remarks</span>
+                  <textarea value={materialForm.description} onChange={(event) => setMaterialForm((current) => ({ ...current, description: event.target.value }))} className="min-h-20 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel" placeholder="Additional notes, physical description, special handling instructions…" />
+                </label>
+              </div>
             </div>
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-ink">Description</span>
-              <textarea value={materialForm.description} onChange={(event) => setMaterialForm((current) => ({ ...current, description: event.target.value }))} className="min-h-24 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel" placeholder="Raw material for inward receipt" />
-            </label>
+
+            {/* Storage & Handling */}
+            <div>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-steel">Storage &amp; Handling</p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Storage condition <span className="text-redoxide">*</span></span>
+                  <select value={materialForm.storageCondition} onChange={(event) => setMaterialForm((current) => ({ ...current, storageCondition: event.target.value as StorageCondition }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel">
+                    {storageConditions.map((condition) => <option key={condition} value={condition}>{storageConditionLabels[condition]}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Max humidity (%RH)</span>
+                  <input value={materialForm.maxHumidity ?? ""} onChange={(event) => setMaterialForm((current) => ({ ...current, maxHumidity: event.target.value }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel" placeholder="e.g. NMT 65%" />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Light sensitivity</span>
+                  <select value={materialForm.lightSensitivity ?? ""} onChange={(event) => setMaterialForm((current) => ({ ...current, lightSensitivity: event.target.value as LightSensitivity || undefined }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel">
+                    <option value="">— Select —</option>
+                    {lightSensitivities.map((ls) => <option key={ls} value={ls}>{lightSensitivityLabels[ls]}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Hygroscopic</span>
+                  <select value={materialForm.hygroscopic ? "yes" : "no"} onChange={(event) => setMaterialForm((current) => ({ ...current, hygroscopic: event.target.value === "yes" }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel">
+                    <option value="no">No</option>
+                    <option value="yes">Yes – store with desiccant</option>
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Shelf life (months) <span className="text-redoxide">*</span></span>
+                  <input type="number" min={0} value={materialForm.shelfLifeMonths ?? ""} onChange={(event) => setMaterialForm((current) => ({ ...current, shelfLifeMonths: event.target.value ? Number(event.target.value) : undefined }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel" placeholder="e.g. 36" />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Retest period (months)</span>
+                  <input type="number" min={0} value={materialForm.retestPeriodMonths ?? ""} onChange={(event) => setMaterialForm((current) => ({ ...current, retestPeriodMonths: event.target.value ? Number(event.target.value) : undefined }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel" placeholder="e.g. 24" />
+                  <span className="mt-1 block text-xs text-slate">For APIs and critical excipients.</span>
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Reorder level</span>
+                  <input value={materialForm.reorderLevel ?? ""} onChange={(event) => setMaterialForm((current) => ({ ...current, reorderLevel: event.target.value }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel" placeholder="e.g. 50 kg" />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Lead time (days)</span>
+                  <input type="number" min={0} value={materialForm.leadTimeDays ?? ""} onChange={(event) => setMaterialForm((current) => ({ ...current, leadTimeDays: event.target.value ? Number(event.target.value) : undefined }))} className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel" placeholder="e.g. 14" />
+                </label>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {([
+                  ["controlledSubstance", "Controlled substance"],
+                  ["hazardous", "Hazardous material"],
+                  ["photosensitive", "Photosensitive"],
+                  ["selectiveMaterial", "Selective material"],
+                  ["vendorCoaReleaseAllowed", "Vendor CoA release allowed"],
+                  ["samplingRequired", "Sampling required"]
+                ] as [keyof CreateMaterialRequest, string][]).map(([key, label]) => (
+                  <label key={key} className="flex items-center gap-3 rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink">
+                    <input type="checkbox" checked={materialForm[key] as boolean} onChange={(event) => setMaterialForm((current) => ({ ...current, [key]: event.target.checked }))} />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-ink">
                 {editingMaterialId ? "Updated by" : "Created by"}
@@ -2399,6 +2658,284 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
           </div>
 
           <div className="grid gap-6">
+          <div className="overflow-hidden rounded-3xl border border-indigo-100 bg-[#eef2ff] shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-indigo-100 bg-white px-5 py-4">
+              <div>
+                <p className="text-xs text-slate">Warehouse / <span className="font-semibold text-indigo-700">WMS</span></p>
+                <h5 className="mt-1 text-lg font-semibold text-ink">Warehouse Map</h5>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedWarehouseFolder("pallet")}
+                  className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white"
+                >
+                  + New Location
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsRegistryOpen(true)}
+                  className="rounded-xl border border-indigo-200 px-4 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50"
+                >
+                  Export Map
+                </button>
+              </div>
+            </div>
+
+            <div className="grid gap-0 xl:grid-cols-[240px_minmax(0,1fr)_280px]">
+              <div className="border-b border-indigo-100 bg-white xl:border-b-0 xl:border-r">
+                <div className="border-b border-indigo-100 px-4 py-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate">Locations</p>
+                </div>
+                <div className="max-h-[920px] overflow-y-auto p-3">
+                  {warehouseTree.map((warehouseNode) => (
+                    <div key={warehouseNode.id} className="mb-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedWarehouseId(warehouseNode.id);
+                          setSelectedRoomId(warehouseNode.rooms[0]?.id ?? "");
+                        }}
+                        className={[
+                          "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition",
+                          activeWarehouseNode?.id === warehouseNode.id
+                            ? "bg-indigo-100 font-semibold text-indigo-700"
+                            : "text-slate-600 hover:bg-indigo-50"
+                        ].join(" ")}
+                      >
+                        <span>{warehouseNode.warehouseCode}: {warehouseNode.warehouseName}</span>
+                      </button>
+                      <div className="ml-4 mt-1 space-y-1">
+                        {warehouseNode.rooms.map((roomNode) => (
+                          <button
+                            key={roomNode.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedWarehouseId(warehouseNode.id);
+                              setSelectedRoomId(roomNode.id);
+                              setSelectedRackId(roomNode.racks[0]?.id ?? "");
+                              setSelectedShelfId(roomNode.racks[0]?.shelves[0]?.id ?? "");
+                            }}
+                            className={[
+                              "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs transition",
+                              activeRoomNode?.id === roomNode.id
+                                ? "bg-indigo-50 font-semibold text-indigo-600"
+                                : "text-slate hover:bg-indigo-50"
+                            ].join(" ")}
+                          >
+                            <span>{roomNode.roomCode} ({formatStorageConditionLabel(roomNode.storageCondition)})</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t border-indigo-100 px-4 py-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate">Legend</p>
+                  <div className="mt-3 space-y-2 text-[11px] text-slate">
+                    <div className="flex items-center gap-2"><span className="h-4 w-4 rounded border border-green-200 bg-green-100" /> Active pallet</div>
+                    <div className="flex items-center gap-2"><span className="h-4 w-4 rounded border border-slate-200 bg-slate-100" /> Inactive pallet</div>
+                    <div className="flex items-center gap-2"><span className="h-4 w-4 rounded border border-dashed border-indigo-200 bg-white" /> Empty shelf slot</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-b border-indigo-100 p-5 xl:border-b-0">
+                {activeWarehouseNode && activeRoomNode ? (
+                  <>
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div>
+                        <h6 className="text-lg font-bold text-ink">
+                          {activeWarehouseNode.warehouseCode} / {activeRoomNode.roomCode}
+                        </h6>
+                        <p className="mt-1 text-xs text-slate">
+                          {formatStorageConditionLabel(activeRoomNode.storageCondition)} storage · {activeRoomStats.racks} racks · {activeRoomStats.pallets} pallets configured
+                        </p>
+                      </div>
+                      <div className="min-w-[150px]">
+                        <div className="flex items-end justify-between text-xs text-slate">
+                          <span>Occupancy</span>
+                          <span className="font-semibold text-indigo-700">
+                            {activeRoomStats.shelves === 0 ? 0 : Math.round((activeRoomStats.pallets / Math.max(activeRoomStats.shelves, 1)) * 100)}%
+                          </span>
+                        </div>
+                        <div className="mt-2 h-3 overflow-hidden rounded-full bg-indigo-100">
+                          <div
+                            className="h-full rounded-full bg-indigo-500"
+                            style={{
+                              width: `${activeRoomStats.shelves === 0 ? 0 : Math.min(100, Math.round((activeRoomStats.pallets / Math.max(activeRoomStats.shelves, 1)) * 100))}%`
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 space-y-5">
+                      {activeRoomNode.racks.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-indigo-200 bg-white px-4 py-8 text-center text-sm text-slate">
+                          No racks configured for this room yet.
+                        </div>
+                      ) : (
+                        activeRoomNode.racks.map((rackNode) => (
+                          <article key={rackNode.id} className="rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-bold text-indigo-700">{rackNode.rackCode}</p>
+                                <p className="text-[11px] text-slate">{rackNode.shelves.length} shelves</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedRackId(rackNode.id)}
+                                className="rounded-lg bg-indigo-50 px-3 py-1.5 text-[11px] font-semibold text-indigo-600"
+                              >
+                                Focus Rack
+                              </button>
+                            </div>
+                            <div className="mt-4 space-y-2">
+                              {rackNode.shelves.map((shelfNode) => (
+                                <div key={shelfNode.id} className="flex items-center gap-2">
+                                  <div className="w-16 text-right text-[10px] font-semibold text-slate-400">
+                                    {shelfNode.shelfCode}
+                                  </div>
+                                  <div className="grid flex-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
+                                    {shelfNode.pallets.length === 0 ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setSelectedRackId(rackNode.id);
+                                          setSelectedShelfId(shelfNode.id);
+                                          setSelectedWarehouseFolder("pallet");
+                                        }}
+                                        className="min-h-[58px] rounded-lg border border-dashed border-indigo-200 bg-white px-3 py-2 text-center text-[10px] font-semibold text-slate-400"
+                                      >
+                                        Empty
+                                      </button>
+                                    ) : (
+                                      shelfNode.pallets.map((palletNode) => {
+                                        const pallet = palletById.get(palletNode.id);
+                                        const isActivePallet = pallet?.isActive ?? true;
+                                        return (
+                                          <button
+                                            key={palletNode.id}
+                                            type="button"
+                                            onClick={() => {
+                                              setSelectedRackId(rackNode.id);
+                                              setSelectedShelfId(shelfNode.id);
+                                              setSelectedWmsPalletId(palletNode.id);
+                                            }}
+                                            className={[
+                                              "min-h-[58px] rounded-lg border px-3 py-2 text-center transition",
+                                              activePalletNode?.id === palletNode.id
+                                                ? "border-indigo-400 bg-indigo-50 shadow-sm"
+                                                : isActivePallet
+                                                  ? "border-green-200 bg-green-50 hover:border-indigo-300"
+                                                  : "border-slate-200 bg-slate-100 hover:border-indigo-300"
+                                            ].join(" ")}
+                                          >
+                                            <div className="text-[10px] font-bold text-indigo-700">{palletNode.palletCode}</div>
+                                            <div className="mt-1 text-[10px] font-medium text-slate-600">{palletNode.palletName}</div>
+                                            <div className="mt-1 text-[9px] uppercase tracking-[0.12em] text-slate-400">
+                                              {formatStorageConditionLabel(palletNode.storageCondition)}
+                                            </div>
+                                          </button>
+                                        );
+                                      })
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </article>
+                        ))
+                      )}
+
+                      <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                        <div className="rounded-2xl border border-green-100 bg-white px-4 py-3 text-center shadow-sm">
+                          <p className="text-lg font-bold text-green-600">{pallets.filter((pallet) => pallet.isActive).length}</p>
+                          <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-slate">Active pallets</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center shadow-sm">
+                          <p className="text-lg font-bold text-slate-600">{pallets.filter((pallet) => !pallet.isActive).length}</p>
+                          <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-slate">Inactive pallets</p>
+                        </div>
+                        <div className="rounded-2xl border border-indigo-100 bg-white px-4 py-3 text-center shadow-sm">
+                          <p className="text-lg font-bold text-indigo-600">{activeRoomStats.racks}</p>
+                          <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-slate">Racks in room</p>
+                        </div>
+                        <div className="rounded-2xl border border-amber-100 bg-white px-4 py-3 text-center shadow-sm">
+                          <p className="text-lg font-bold text-amber-600">{activeRoomStats.shelves}</p>
+                          <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-slate">Shelves in room</p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-indigo-200 bg-white px-4 py-10 text-center text-sm text-slate">
+                    No warehouse structure exists yet.
+                  </div>
+                )}
+              </div>
+
+              <aside className="bg-white">
+                <div className="border-b border-indigo-100 bg-indigo-50 px-4 py-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-indigo-700">Pallet Detail</p>
+                  <p className="mt-1 font-mono text-base font-bold text-ink">
+                    {activePalletNode?.palletCode ?? "No pallet"}
+                  </p>
+                </div>
+                <div className="space-y-4 p-4 text-sm">
+                  {activePalletNode ? (
+                    <>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate">Location</p>
+                        <p className="mt-1 text-xs font-semibold text-ink">
+                          {activeWarehouseNode?.warehouseCode} / {activeRoomNode?.roomCode} / {activeRackNode?.rackCode} / {activeShelfNode?.shelfCode} / {activePalletNode.palletCode}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate">Pallet Name</p>
+                        <p className="mt-1 text-xs font-semibold text-ink">{activePalletNode.palletName}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate">Storage Condition</p>
+                        <p className="mt-1 text-xs font-semibold text-indigo-700">
+                          {formatStorageConditionLabel(activePalletNode.storageCondition)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate">Status</p>
+                        <span className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ${activePallet?.isActive ?? true ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"}`}>
+                          {activePallet?.isActive ?? true ? "Active" : "Inactive"}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate">Audit</p>
+                        <p className="mt-1 text-xs text-slate">Created by {activePallet?.createdBy ?? "System"}</p>
+                        <p className="mt-1 text-xs text-slate">{formatWarehouseTimestamp(activePallet?.updatedAt ?? activePallet?.createdAt)}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        {activePallet ? (
+                          <>
+                            <button type="button" onClick={() => startEditingPallet(activePallet)} className="rounded-lg border border-ink/10 px-3 py-2 text-xs font-semibold text-ink">
+                              Edit
+                            </button>
+                            <button type="button" onClick={() => void handleDeletePallet(activePallet)} className="rounded-lg border border-redoxide/20 px-3 py-2 text-xs font-semibold text-redoxide">
+                              Delete
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-indigo-200 px-4 py-8 text-center text-sm text-slate">
+                      Select a pallet to inspect its detail.
+                    </div>
+                  )}
+                </div>
+              </aside>
+            </div>
+          </div>
+
           <div className="rounded-3xl border border-ink/10 bg-white/70 p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -2904,22 +3441,36 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
                 <table className="min-w-full text-left text-sm">
                   <thead className="bg-ink/5 text-slate">
                     <tr>
-                      <th className="px-4 py-3 font-medium">Code</th>
-                      <th className="px-4 py-3 font-medium">Name</th>
-                      <th className="px-4 py-3 font-medium">Condition</th>
-                      <th className="px-4 py-3 font-medium">Sampling</th>
-                      <th className="px-4 py-3 font-medium">CoA</th>
-                      <th className="px-4 py-3 font-medium">Actions</th>
+                      <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wide">Material Code</th>
+                      <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wide">Material Name</th>
+                      <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wide">Category</th>
+                      <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wide">UOM</th>
+                      <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wide">Storage</th>
+                      <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wide">Status</th>
+                      <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wide">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {materials.map((material) => (
                       <tr key={material.id} className="border-t border-ink/10">
-                        <td className="px-4 py-3">{material.materialCode}</td>
-                        <td className="px-4 py-3">{material.materialName}</td>
-                        <td className="px-4 py-3">{material.storageCondition}</td>
-                        <td className="px-4 py-3">{material.samplingRequired ? "YES" : "NO"}</td>
-                        <td className="px-4 py-3">{material.vendorCoaReleaseAllowed ? "ALLOWED" : "NOT ALLOWED"}</td>
+                        <td className="px-4 py-3 font-mono font-semibold text-steel">{material.materialCode}</td>
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-ink">{material.materialName}</div>
+                          {material.genericNames ? <div className="text-xs text-slate">{material.genericNames}</div> : null}
+                        </td>
+                        <td className="px-4 py-3">
+                          {material.materialCategory ? (
+                            <span className="inline-flex rounded-md bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-700">{materialCategoryLabels[material.materialCategory as MaterialCategory] ?? material.materialCategory}</span>
+                          ) : <span className="text-slate">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-slate">{material.uom.toLowerCase()}</td>
+                        <td className="px-4 py-3 text-slate">{storageConditionLabels[material.storageCondition] ?? material.storageCondition}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${material.isActive ? "bg-moss/15 text-moss" : "bg-ink/5 text-slate"}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${material.isActive ? "bg-moss" : "bg-slate-400"}`} />
+                            {material.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-2">
                             <button type="button" onClick={() => startEditingMaterial(material)} className="rounded-full border border-ink/10 px-3 py-1 text-xs font-medium text-ink">Edit</button>

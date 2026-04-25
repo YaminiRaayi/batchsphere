@@ -32,6 +32,9 @@ public class Material {
     @Column(name = "uom", nullable = false, length = 50)
     private String uom;
 
+    @Column(name = "spec_id")
+    private UUID specId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "storage_condition", nullable = false, length = 50)
     private StorageCondition storageCondition;

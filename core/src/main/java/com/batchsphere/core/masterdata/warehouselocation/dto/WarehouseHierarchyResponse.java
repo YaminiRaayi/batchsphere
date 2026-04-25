@@ -3,6 +3,7 @@ package com.batchsphere.core.masterdata.warehouselocation.dto;
 import com.batchsphere.core.masterdata.material.entity.StorageCondition;
 import lombok.Builder;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -11,6 +12,9 @@ public record WarehouseHierarchyResponse(
         UUID id,
         String warehouseCode,
         String warehouseName,
+        UUID businessUnitId,
+        String businessUnitCode,
+        String businessUnitName,
         List<RoomNode> rooms
 ) {
     @Builder
@@ -19,6 +23,10 @@ public record WarehouseHierarchyResponse(
             String roomCode,
             String roomName,
             StorageCondition storageCondition,
+            BigDecimal maxCapacity,
+            String capacityUom,
+            String temperatureRange,
+            String humidityRange,
             List<RackNode> racks
     ) {
     }

@@ -6,13 +6,16 @@ import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.masterdata.material.dto.MaterialRequest;
 import com.batchsphere.core.masterdata.material.entity.Material;
 import com.batchsphere.core.masterdata.material.repository.MaterialRepository;
+import com.batchsphere.core.masterdata.spec.repository.SpecRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -20,21 +23,26 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class MaterialServiceImpl implements  MaterialServiceInterface{
     private final MaterialRepository materialRepository;
+    private final SpecRepository specRepository;
     private final AuthenticatedActorService authenticatedActorService;
 
     @Override
     public Material createMaterial(MaterialRequest materialRequest) {
         String actor = authenticatedActorService.currentActor();
-        if(materialRepository.existsByMaterialCode(materialRequest.getMaterialCode())){
+        String materialCode = resolveMaterialCodeForCreate(materialRequest);
+        if(materialRepository.existsByMaterialCode(materialCode)){
             throw new DuplicateResourceException("Matreila code already exists");
         }
+        specRepository.findById(materialRequest.getSpecId())
+                .orElseThrow(() -> new ResourceNotFoundException("Spec not found with id: " + materialRequest.getSpecId()));
         log.info("Creating material with request: {}", materialRequest.toString());
 
         Material material = Material.builder().id(UUID.randomUUID())
-                .materialCode(materialRequest.getMaterialCode())
+                .materialCode(materialCode)
                 .materialName(materialRequest.getMaterialName())
                 .materialType(materialRequest.getMaterialType())
                 .uom(materialRequest.getUom())
+                .specId(materialRequest.getSpecId())
                 .storageCondition(materialRequest.getStorageCondition())
                 .photosensitive(materialRequest.getPhotosensitive())
                 .hygroscopic(materialRequest.getHygroscopic())
@@ -91,14 +99,20 @@ public class MaterialServiceImpl implements  MaterialServiceInterface{
         String actor = authenticatedActorService.currentActor();
         Material material = materialRepository.findById(id)
                 .orElseThrow(()->new ResourceNotFoundException("Materila not found with id: "+ id));
-        if(!material.getMaterialCode().equals(request.getMaterialCode()) &&
-        materialRepository.existsByMaterialCode(request.getMaterialCode())){
-            throw  new DuplicateResourceException("Material code already exists: "+ request.getMaterialCode());
+        String materialCode = StringUtils.hasText(request.getMaterialCode())
+                ? request.getMaterialCode().trim().toUpperCase(Locale.ROOT)
+                : material.getMaterialCode();
+        if(!material.getMaterialCode().equals(materialCode) &&
+        materialRepository.existsByMaterialCode(materialCode)){
+            throw  new DuplicateResourceException("Material code already exists: "+ materialCode);
         }
-        material.setMaterialCode(request.getMaterialCode());
+        specRepository.findById(request.getSpecId())
+                .orElseThrow(() -> new ResourceNotFoundException("Spec not found with id: " + request.getSpecId()));
+        material.setMaterialCode(materialCode);
         material.setMaterialName(request.getMaterialName());
         material.setMaterialType(request.getMaterialType());
         material.setUom(request.getUom());
+        material.setSpecId(request.getSpecId());
         material.setStorageCondition(request.getStorageCondition());
         material.setPhotosensitive(request.getPhotosensitive());
         material.setHygroscopic(request.getHygroscopic());
@@ -111,5 +125,33 @@ public class MaterialServiceImpl implements  MaterialServiceInterface{
         material.setUpdatedBy(actor);
 
         return  materialRepository.save(material);
+    }
+
+    private String resolveMaterialCodeForCreate(MaterialRequest request) {
+        if (StringUtils.hasText(request.getMaterialCode())) {
+            return request.getMaterialCode().trim().toUpperCase(Locale.ROOT);
+        }
+        String prefix = materialCodePrefix(request.getMaterialType());
+        int nextSequence = materialRepository.findByMaterialCodeStartingWith(prefix + "-").stream()
+                .map(Material::getMaterialCode)
+                .map(code -> code.substring((prefix + "-").length()))
+                .filter(suffix -> suffix.matches("\\d+"))
+                .mapToInt(Integer::parseInt)
+                .max()
+                .orElse(0) + 1;
+        return "%s-%05d".formatted(prefix, nextSequence);
+    }
+
+    private String materialCodePrefix(String materialType) {
+        if (materialType == null) {
+            return "MAT";
+        }
+        return switch (materialType.trim().toUpperCase(Locale.ROOT)) {
+            case "CRITICAL" -> "RM";
+            case "NON_CRITICAL" -> "PM";
+            case "FINISHED_GOODS" -> "FG";
+            case "IN_PROCESS" -> "IP";
+            default -> "MAT";
+        };
     }
 }

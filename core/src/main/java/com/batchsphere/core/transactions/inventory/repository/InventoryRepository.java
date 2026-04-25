@@ -16,6 +16,8 @@ public interface InventoryRepository extends JpaRepository<Inventory, UUID> {
 
     Page<Inventory> findByIsActiveTrue(Pageable pageable);
 
+    List<Inventory> findByIsActiveTrue();
+
     boolean existsByPalletIdAndIsActiveTrue(UUID palletId);
 
     Optional<Inventory> findByMaterialIdAndBatchIdAndPalletIdAndIsActiveTrue(
@@ -29,6 +31,8 @@ public interface InventoryRepository extends JpaRepository<Inventory, UUID> {
             UUID batchId,
             UUID palletId
     );
+
+    List<Inventory> findByMaterialIdAndStatusAndIsActiveTrue(UUID materialId, InventoryStatus status);
 
     @Query("select distinct i.palletId from Inventory i where i.isActive = true and i.palletId in :palletIds")
     List<UUID> findDistinctActivePalletIdsByPalletIdIn(@Param("palletIds") List<UUID> palletIds);

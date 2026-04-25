@@ -27,6 +27,8 @@ public interface GrnService {
 
     Page<GrnResponse> getAllGrns(Pageable pageable);
 
+    Page<GrnResponse> getGrnsByVendor(UUID vendorId, Pageable pageable);
+
     GrnResponse updateGrn(UUID id, UpdateGrnRequest request);
 
     GrnResponse receiveGrn(UUID id, String updatedBy);

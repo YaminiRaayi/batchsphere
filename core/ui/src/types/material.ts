@@ -6,15 +6,42 @@ export type StorageCondition =
   | "COLD"
   | "DEEP_FREEZER";
 
+export type MaterialCategory =
+  | "API"
+  | "EXCIPIENT"
+  | "SOLVENT"
+  | "PACKAGING_MATERIAL"
+  | "FINISHED_GOODS"
+  | "REFERENCE_STANDARD";
+
+export type LightSensitivity =
+  | "NOT_SENSITIVE"
+  | "PROTECT_FROM_LIGHT"
+  | "AMBER_CONTAINER"
+  | "STORE_IN_DARK";
+
 export type Material = {
   id: string;
   materialCode: string;
   materialName: string;
+  materialCategory: MaterialCategory | null;
+  genericNames: string | null;
   materialType: string;
   uom: string;
+  specId: string | null;
+  hsnCode: string | null;
+  casNumber: string | null;
+  pharmacopoeialRef: string | null;
   storageCondition: StorageCondition;
-  photosensitive: boolean;
+  maxHumidity: string | null;
+  lightSensitivity: LightSensitivity | null;
   hygroscopic: boolean;
+  shelfLifeMonths: number | null;
+  retestPeriodMonths: number | null;
+  reorderLevel: string | null;
+  leadTimeDays: number | null;
+  controlledSubstance: boolean;
+  photosensitive: boolean;
   hazardous: boolean;
   selectiveMaterial: boolean;
   vendorCoaReleaseAllowed: boolean;
@@ -30,11 +57,24 @@ export type Material = {
 export type CreateMaterialRequest = {
   materialCode: string;
   materialName: string;
+  materialCategory?: MaterialCategory;
+  genericNames?: string;
   materialType: string;
   uom: string;
+  specId: string;
+  hsnCode?: string;
+  casNumber?: string;
+  pharmacopoeialRef?: string;
   storageCondition: StorageCondition;
-  photosensitive: boolean;
+  maxHumidity?: string;
+  lightSensitivity?: LightSensitivity;
   hygroscopic: boolean;
+  shelfLifeMonths?: number;
+  retestPeriodMonths?: number;
+  reorderLevel?: string;
+  leadTimeDays?: number;
+  controlledSubstance: boolean;
+  photosensitive: boolean;
   hazardous: boolean;
   selectiveMaterial: boolean;
   vendorCoaReleaseAllowed: boolean;

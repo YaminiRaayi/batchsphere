@@ -169,6 +169,14 @@ public class GrnServiceImpl implements GrnService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<GrnResponse> getGrnsByVendor(UUID vendorId, Pageable pageable) {
+        getActiveVendor(vendorId);
+        return grnRepository.findByVendorIdAndIsActiveTrue(vendorId, pageable)
+                .map(grn -> toResponse(grn, grnItemRepository.findByGrnIdAndIsActiveTrueOrderByLineNumber(grn.getId())));
+    }
+
+    @Override
     @Transactional
     public GrnResponse updateGrn(UUID id, UpdateGrnRequest request) {
         String actor = authenticatedActorService.currentActor();

@@ -5,13 +5,20 @@ import com.batchsphere.core.masterdata.warehouselocation.dto.CreateRackRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.CreateRoomRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.CreateShelfRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.CreateWarehouseRequest;
+import com.batchsphere.core.masterdata.warehouselocation.dto.CreateWarehouseZoneRuleRequest;
+import com.batchsphere.core.masterdata.warehouselocation.dto.CreateMaterialLocationRuleRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.AvailablePalletResponse;
+import com.batchsphere.core.masterdata.warehouselocation.dto.MaterialLocationRuleResponse;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdatePalletRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateRackRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateRoomRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateShelfRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateWarehouseRequest;
+import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateWarehouseZoneRuleRequest;
+import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateMaterialLocationRuleRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.WarehouseHierarchyResponse;
+import com.batchsphere.core.masterdata.warehouselocation.dto.WarehouseZoneRuleResponse;
+import com.batchsphere.core.masterdata.warehouselocation.dto.WmsSummaryResponse;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Pallet;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Rack;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Room;
@@ -181,6 +188,53 @@ public class WarehouseLocationController {
     @DeleteMapping("/pallets/{id}")
     public ResponseEntity<Void> deactivatePallet(@PathVariable UUID id) {
         warehouseLocationService.deactivatePallet(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/wms/summary")
+    public ResponseEntity<WmsSummaryResponse> getWmsSummary() {
+        return ResponseEntity.ok(warehouseLocationService.getWmsSummary());
+    }
+
+    @GetMapping("/wms/zone-rules")
+    public ResponseEntity<List<WarehouseZoneRuleResponse>> getZoneRules(@RequestParam(required = false) UUID roomId) {
+        return ResponseEntity.ok(warehouseLocationService.getZoneRules(roomId));
+    }
+
+    @PostMapping("/wms/zone-rules")
+    public ResponseEntity<WarehouseZoneRuleResponse> createZoneRule(@Valid @RequestBody CreateWarehouseZoneRuleRequest request) {
+        return ResponseEntity.ok(warehouseLocationService.createZoneRule(request));
+    }
+
+    @PutMapping("/wms/zone-rules/{id}")
+    public ResponseEntity<WarehouseZoneRuleResponse> updateZoneRule(@PathVariable UUID id, @Valid @RequestBody UpdateWarehouseZoneRuleRequest request) {
+        return ResponseEntity.ok(warehouseLocationService.updateZoneRule(id, request));
+    }
+
+    @DeleteMapping("/wms/zone-rules/{id}")
+    public ResponseEntity<Void> deactivateZoneRule(@PathVariable UUID id) {
+        warehouseLocationService.deactivateZoneRule(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/wms/material-location-rules")
+    public ResponseEntity<List<MaterialLocationRuleResponse>> getMaterialLocationRules(@RequestParam(required = false) UUID materialId) {
+        return ResponseEntity.ok(warehouseLocationService.getMaterialLocationRules(materialId));
+    }
+
+    @PostMapping("/wms/material-location-rules")
+    public ResponseEntity<MaterialLocationRuleResponse> createMaterialLocationRule(@Valid @RequestBody CreateMaterialLocationRuleRequest request) {
+        return ResponseEntity.ok(warehouseLocationService.createMaterialLocationRule(request));
+    }
+
+    @PutMapping("/wms/material-location-rules/{id}")
+    public ResponseEntity<MaterialLocationRuleResponse> updateMaterialLocationRule(@PathVariable UUID id, @Valid @RequestBody UpdateMaterialLocationRuleRequest request) {
+        return ResponseEntity.ok(warehouseLocationService.updateMaterialLocationRule(id, request));
+    }
+
+    @DeleteMapping("/wms/material-location-rules/{id}")
+    public ResponseEntity<Void> deactivateMaterialLocationRule(@PathVariable UUID id) {
+        warehouseLocationService.deactivateMaterialLocationRule(id);
         return ResponseEntity.noContent().build();
     }
 }

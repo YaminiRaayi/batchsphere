@@ -4,6 +4,7 @@ export type Warehouse = {
   id: string;
   warehouseCode: string;
   warehouseName: string;
+  businessUnitId: string | null;
   description: string | null;
   isActive: boolean;
   createdBy: string;
@@ -19,6 +20,10 @@ export type Room = {
   roomName: string;
   storageCondition: StorageCondition;
   description: string | null;
+  maxCapacity?: number | null;
+  capacityUom?: string | null;
+  temperatureRange?: string | null;
+  humidityRange?: string | null;
   isActive: boolean;
   createdBy: string;
   createdAt: string;
@@ -92,6 +97,10 @@ export type WarehouseTreeRoom = {
   roomCode: string;
   roomName: string;
   storageCondition: StorageCondition;
+  maxCapacity?: number | null;
+  capacityUom?: string | null;
+  temperatureRange?: string | null;
+  humidityRange?: string | null;
   racks: WarehouseTreeRack[];
 };
 
@@ -99,6 +108,9 @@ export type WarehouseTreeNode = {
   id: string;
   warehouseCode: string;
   warehouseName: string;
+  businessUnitId: string | null;
+  businessUnitCode: string | null;
+  businessUnitName: string | null;
   rooms: WarehouseTreeRoom[];
 };
 
@@ -120,6 +132,7 @@ export type AvailablePallet = {
 export type CreateWarehouseRequest = {
   warehouseCode: string;
   warehouseName: string;
+  businessUnitId?: string;
   description?: string;
   createdBy: string;
 };
@@ -129,7 +142,116 @@ export type CreateRoomRequest = {
   roomName: string;
   storageCondition: StorageCondition;
   description?: string;
+  maxCapacity?: number;
+  capacityUom?: string;
+  temperatureRange?: string;
+  humidityRange?: string;
   createdBy: string;
+};
+
+export type WarehouseZoneRule = {
+  id: string;
+  roomId: string;
+  roomCode: string | null;
+  roomName: string | null;
+  zoneName: string;
+  allowedMaterialType: string | null;
+  allowedStorageCondition: StorageCondition | null;
+  restrictedAccess: boolean;
+  quarantineOnly: boolean;
+  rejectedOnly: boolean;
+  notes: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedBy: string | null;
+  updatedAt: string | null;
+};
+
+export type CreateWarehouseZoneRuleRequest = {
+  roomId: string;
+  zoneName: string;
+  allowedMaterialType?: string;
+  allowedStorageCondition?: StorageCondition;
+  restrictedAccess?: boolean;
+  quarantineOnly?: boolean;
+  rejectedOnly?: boolean;
+  notes?: string;
+};
+
+export type MaterialLocationRule = {
+  id: string;
+  materialId: string;
+  materialCode: string | null;
+  materialName: string | null;
+  materialType: string | null;
+  storageCondition: string | null;
+  defaultWarehouseId: string | null;
+  defaultWarehouseCode: string | null;
+  defaultRoomId: string | null;
+  defaultRoomCode: string | null;
+  defaultRackId: string | null;
+  defaultRackCode: string | null;
+  quarantineWarehouseId: string | null;
+  quarantineWarehouseCode: string | null;
+  quarantineRoomId: string | null;
+  quarantineRoomCode: string | null;
+  notes: string | null;
+  currentLots: number;
+  currentStock: number;
+  stockUom: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedBy: string | null;
+  updatedAt: string | null;
+};
+
+export type CreateMaterialLocationRuleRequest = {
+  materialId: string;
+  defaultWarehouseId?: string;
+  defaultRoomId?: string;
+  defaultRackId?: string;
+  quarantineWarehouseId?: string;
+  quarantineRoomId?: string;
+  notes?: string;
+};
+
+export type WmsSummary = {
+  warehouses: {
+    warehouseId: string;
+    businessUnitId: string | null;
+    businessUnitCode: string | null;
+    businessUnitName: string | null;
+    warehouseCode: string;
+    warehouseName: string;
+    roomCount: number;
+    rackCount: number;
+    shelfCount: number;
+    palletCount: number;
+  }[];
+  rooms: {
+    roomId: string;
+    warehouseId: string;
+    businessUnitId: string | null;
+    businessUnitCode: string | null;
+    businessUnitName: string | null;
+    warehouseCode: string | null;
+    roomCode: string;
+    roomName: string;
+    storageCondition: StorageCondition;
+    maxCapacity: number | null;
+    capacityUom: string | null;
+    temperatureRange: string | null;
+    humidityRange: string | null;
+    currentLoad: number;
+    currentLots: number;
+    activePallets: number;
+    totalPallets: number;
+    rackCount: number;
+    shelfCount: number;
+    occupancyPercent: number;
+  }[];
+  zoneRules: WarehouseZoneRule[];
+  materialLocations: MaterialLocationRule[];
 };
 
 export type CreateRackRequest = {

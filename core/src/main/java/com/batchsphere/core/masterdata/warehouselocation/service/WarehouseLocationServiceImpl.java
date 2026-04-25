@@ -1,31 +1,49 @@
 package com.batchsphere.core.masterdata.warehouselocation.service;
 
 import com.batchsphere.core.auth.service.AuthenticatedActorService;
+import com.batchsphere.core.batch.entity.Batch;
+import com.batchsphere.core.batch.repository.BatchRepository;
 import com.batchsphere.core.exception.BusinessConflictException;
 import com.batchsphere.core.exception.DuplicateResourceException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
+import com.batchsphere.core.masterdata.businessunit.entity.BusinessUnit;
+import com.batchsphere.core.masterdata.businessunit.repository.BusinessUnitRepository;
 import com.batchsphere.core.masterdata.warehouselocation.dto.CreatePalletRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.CreateRackRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.CreateRoomRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.CreateShelfRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.CreateWarehouseRequest;
+import com.batchsphere.core.masterdata.warehouselocation.dto.CreateWarehouseZoneRuleRequest;
+import com.batchsphere.core.masterdata.warehouselocation.dto.CreateMaterialLocationRuleRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.AvailablePalletResponse;
+import com.batchsphere.core.masterdata.warehouselocation.dto.MaterialLocationRuleResponse;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdatePalletRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateRackRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateRoomRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateShelfRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateWarehouseRequest;
+import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateWarehouseZoneRuleRequest;
+import com.batchsphere.core.masterdata.warehouselocation.dto.UpdateMaterialLocationRuleRequest;
 import com.batchsphere.core.masterdata.warehouselocation.dto.WarehouseHierarchyResponse;
+import com.batchsphere.core.masterdata.warehouselocation.dto.WarehouseZoneRuleResponse;
+import com.batchsphere.core.masterdata.warehouselocation.dto.WmsSummaryResponse;
+import com.batchsphere.core.masterdata.warehouselocation.entity.MaterialLocationRule;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Pallet;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Rack;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Room;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Shelf;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Warehouse;
+import com.batchsphere.core.masterdata.warehouselocation.entity.WarehouseZoneRule;
+import com.batchsphere.core.masterdata.material.entity.Material;
+import com.batchsphere.core.masterdata.material.repository.MaterialRepository;
+import com.batchsphere.core.masterdata.warehouselocation.repository.MaterialLocationRuleRepository;
 import com.batchsphere.core.masterdata.warehouselocation.repository.PalletRepository;
 import com.batchsphere.core.masterdata.warehouselocation.repository.RackRepository;
 import com.batchsphere.core.masterdata.warehouselocation.repository.RoomRepository;
 import com.batchsphere.core.masterdata.warehouselocation.repository.ShelfRepository;
 import com.batchsphere.core.masterdata.warehouselocation.repository.WarehouseRepository;
+import com.batchsphere.core.masterdata.warehouselocation.repository.WarehouseZoneRuleRepository;
+import com.batchsphere.core.transactions.inventory.entity.Inventory;
 import com.batchsphere.core.transactions.grn.repository.GrnItemRepository;
 import com.batchsphere.core.transactions.inventory.repository.InventoryRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,11 +51,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -52,6 +74,11 @@ public class WarehouseLocationServiceImpl implements WarehouseLocationService {
     private final AuthenticatedActorService authenticatedActorService;
     private final InventoryRepository inventoryRepository;
     private final GrnItemRepository grnItemRepository;
+    private final WarehouseZoneRuleRepository warehouseZoneRuleRepository;
+    private final MaterialLocationRuleRepository materialLocationRuleRepository;
+    private final MaterialRepository materialRepository;
+    private final BatchRepository batchRepository;
+    private final BusinessUnitRepository businessUnitRepository;
 
     @Override
     public Warehouse createWarehouse(CreateWarehouseRequest request) {
@@ -59,11 +86,13 @@ public class WarehouseLocationServiceImpl implements WarehouseLocationService {
         if (warehouseRepository.existsByWarehouseCode(request.getWarehouseCode())) {
             throw new DuplicateResourceException("Warehouse code already exists: " + request.getWarehouseCode());
         }
+        ensureBusinessUnitExists(request.getBusinessUnitId());
 
         Warehouse warehouse = Warehouse.builder()
                 .id(UUID.randomUUID())
                 .warehouseCode(request.getWarehouseCode())
                 .warehouseName(request.getWarehouseName())
+                .businessUnitId(request.getBusinessUnitId())
                 .description(request.getDescription())
                 .isActive(true)
                 .createdBy(actor)
@@ -88,6 +117,13 @@ public class WarehouseLocationServiceImpl implements WarehouseLocationService {
     @Override
     public List<WarehouseHierarchyResponse> getWarehouseTree() {
         List<Warehouse> warehouses = warehouseRepository.findByIsActiveTrueOrderByWarehouseCodeAsc();
+        Map<UUID, BusinessUnit> businessUnitById = businessUnitRepository.findByIdInAndIsActiveTrue(
+                warehouses.stream()
+                        .map(Warehouse::getBusinessUnitId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList()
+        ).stream().collect(java.util.stream.Collectors.toMap(BusinessUnit::getId, businessUnit -> businessUnit));
         List<UUID> warehouseIds = warehouses.stream().map(Warehouse::getId).toList();
         if (warehouseIds.isEmpty()) {
             return List.of();
@@ -126,12 +162,19 @@ public class WarehouseLocationServiceImpl implements WarehouseLocationService {
                         .id(warehouse.getId())
                         .warehouseCode(warehouse.getWarehouseCode())
                         .warehouseName(warehouse.getWarehouseName())
+                        .businessUnitId(warehouse.getBusinessUnitId())
+                        .businessUnitCode(businessUnitById.get(warehouse.getBusinessUnitId()) != null ? businessUnitById.get(warehouse.getBusinessUnitId()).getUnitCode() : null)
+                        .businessUnitName(businessUnitById.get(warehouse.getBusinessUnitId()) != null ? businessUnitById.get(warehouse.getBusinessUnitId()).getUnitName() : null)
                         .rooms(roomsByWarehouseId.getOrDefault(warehouse.getId(), List.of()).stream()
                                 .map(room -> WarehouseHierarchyResponse.RoomNode.builder()
                                         .id(room.getId())
                                         .roomCode(room.getRoomCode())
                                         .roomName(room.getRoomName())
                                         .storageCondition(room.getStorageCondition())
+                                        .maxCapacity(room.getMaxCapacity())
+                                        .capacityUom(room.getCapacityUom())
+                                        .temperatureRange(room.getTemperatureRange())
+                                        .humidityRange(room.getHumidityRange())
                                         .racks(racksByRoomId.getOrDefault(room.getId(), List.of()).stream()
                                                 .map(rack -> WarehouseHierarchyResponse.RackNode.builder()
                                                         .id(rack.getId())
@@ -168,9 +211,11 @@ public class WarehouseLocationServiceImpl implements WarehouseLocationService {
                 && warehouseRepository.existsByWarehouseCode(request.getWarehouseCode())) {
             throw new DuplicateResourceException("Warehouse code already exists: " + request.getWarehouseCode());
         }
+        ensureBusinessUnitExists(request.getBusinessUnitId());
 
         warehouse.setWarehouseCode(request.getWarehouseCode());
         warehouse.setWarehouseName(request.getWarehouseName());
+        warehouse.setBusinessUnitId(request.getBusinessUnitId());
         warehouse.setDescription(request.getDescription());
         warehouse.setUpdatedBy(actor);
         warehouse.setUpdatedAt(LocalDateTime.now());
@@ -208,6 +253,10 @@ public class WarehouseLocationServiceImpl implements WarehouseLocationService {
                 .roomName(request.getRoomName())
                 .storageCondition(request.getStorageCondition())
                 .description(request.getDescription())
+                .maxCapacity(request.getMaxCapacity())
+                .capacityUom(request.getCapacityUom())
+                .temperatureRange(request.getTemperatureRange())
+                .humidityRange(request.getHumidityRange())
                 .isActive(true)
                 .createdBy(actor)
                 .createdAt(LocalDateTime.now())
@@ -249,6 +298,10 @@ public class WarehouseLocationServiceImpl implements WarehouseLocationService {
         }
         room.setStorageCondition(request.getStorageCondition());
         room.setDescription(request.getDescription());
+        room.setMaxCapacity(request.getMaxCapacity());
+        room.setCapacityUom(request.getCapacityUom());
+        room.setTemperatureRange(request.getTemperatureRange());
+        room.setHumidityRange(request.getHumidityRange());
         room.setUpdatedBy(actor);
         room.setUpdatedAt(LocalDateTime.now());
         room.setDeletedAt(null);
@@ -548,12 +601,422 @@ public class WarehouseLocationServiceImpl implements WarehouseLocationService {
         palletRepository.save(pallet);
     }
 
+    @Override
+    public WmsSummaryResponse getWmsSummary() {
+        List<Warehouse> warehouses = warehouseRepository.findByIsActiveTrueOrderByWarehouseCodeAsc();
+        Map<UUID, BusinessUnit> businessUnitById = businessUnitRepository.findByIdInAndIsActiveTrue(
+                warehouses.stream()
+                        .map(Warehouse::getBusinessUnitId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList()
+        ).stream().collect(java.util.stream.Collectors.toMap(BusinessUnit::getId, businessUnit -> businessUnit));
+        List<Room> rooms = roomRepository.findAll().stream()
+                .filter(Room::getIsActive)
+                .sorted(Comparator.comparing(Room::getRoomCode))
+                .toList();
+        List<Rack> racks = rackRepository.findAll().stream()
+                .filter(Rack::getIsActive)
+                .sorted(Comparator.comparing(Rack::getRackCode))
+                .toList();
+        List<Shelf> shelves = shelfRepository.findAll().stream()
+                .filter(Shelf::getIsActive)
+                .sorted(Comparator.comparing(Shelf::getShelfCode))
+                .toList();
+        List<Pallet> pallets = palletRepository.findByIsActiveTrueOrderByPalletCodeAsc();
+        List<Inventory> inventories = inventoryRepository.findByIsActiveTrue();
+        List<Batch> batches = batchRepository.findByIsActiveTrue();
+        List<WarehouseZoneRuleResponse> zoneRules = getZoneRules(null);
+        List<MaterialLocationRuleResponse> materialLocations = getMaterialLocationRules(null);
+
+        Map<UUID, List<Rack>> racksByRoomId = new HashMap<>();
+        for (Rack rack : racks) {
+            racksByRoomId.computeIfAbsent(rack.getRoomId(), key -> new ArrayList<>()).add(rack);
+        }
+        Map<UUID, List<Shelf>> shelvesByRackId = new HashMap<>();
+        for (Shelf shelf : shelves) {
+            shelvesByRackId.computeIfAbsent(shelf.getRackId(), key -> new ArrayList<>()).add(shelf);
+        }
+        Map<UUID, List<Pallet>> palletsByShelfId = new HashMap<>();
+        for (Pallet pallet : pallets) {
+            palletsByShelfId.computeIfAbsent(pallet.getShelfId(), key -> new ArrayList<>()).add(pallet);
+        }
+        Map<UUID, Shelf> shelfById = shelves.stream().collect(java.util.stream.Collectors.toMap(Shelf::getId, shelf -> shelf));
+        Map<UUID, Rack> rackById = racks.stream().collect(java.util.stream.Collectors.toMap(Rack::getId, rack -> rack));
+        Map<UUID, Batch> batchById = batches.stream().collect(java.util.stream.Collectors.toMap(Batch::getId, batch -> batch));
+
+        Map<UUID, BigDecimal> roomLoadByRoomId = new HashMap<>();
+        Map<UUID, HashSet<UUID>> roomLotsByRoomId = new HashMap<>();
+        for (Inventory inventory : inventories) {
+            Shelf shelf = shelfById.get(getPalletById(inventory.getPalletId()).getShelfId());
+            if (shelf == null) {
+                continue;
+            }
+            Rack rack = rackById.get(shelf.getRackId());
+            if (rack == null) {
+                continue;
+            }
+            roomLoadByRoomId.merge(rack.getRoomId(), inventory.getQuantityOnHand(), BigDecimal::add);
+            Batch batch = batchById.get(inventory.getBatchId());
+            if (batch != null) {
+                roomLotsByRoomId.computeIfAbsent(rack.getRoomId(), key -> new HashSet<>()).add(batch.getId());
+            }
+        }
+
+        List<WmsSummaryResponse.WarehouseSummary> warehouseSummaries = warehouses.stream()
+                .map(warehouse -> {
+                    List<Room> warehouseRooms = rooms.stream().filter(room -> room.getWarehouseId().equals(warehouse.getId())).toList();
+                    long rackCount = warehouseRooms.stream().mapToLong(room -> racksByRoomId.getOrDefault(room.getId(), List.of()).size()).sum();
+                    long shelfCount = warehouseRooms.stream()
+                            .flatMap(room -> racksByRoomId.getOrDefault(room.getId(), List.of()).stream())
+                            .mapToLong(rack -> shelvesByRackId.getOrDefault(rack.getId(), List.of()).size())
+                            .sum();
+                    long palletCount = warehouseRooms.stream()
+                            .flatMap(room -> racksByRoomId.getOrDefault(room.getId(), List.of()).stream())
+                            .flatMap(rack -> shelvesByRackId.getOrDefault(rack.getId(), List.of()).stream())
+                            .mapToLong(shelf -> palletsByShelfId.getOrDefault(shelf.getId(), List.of()).size())
+                            .sum();
+                    return WmsSummaryResponse.WarehouseSummary.builder()
+                            .warehouseId(warehouse.getId())
+                            .businessUnitId(warehouse.getBusinessUnitId())
+                            .businessUnitCode(businessUnitById.get(warehouse.getBusinessUnitId()) != null ? businessUnitById.get(warehouse.getBusinessUnitId()).getUnitCode() : null)
+                            .businessUnitName(businessUnitById.get(warehouse.getBusinessUnitId()) != null ? businessUnitById.get(warehouse.getBusinessUnitId()).getUnitName() : null)
+                            .warehouseCode(warehouse.getWarehouseCode())
+                            .warehouseName(warehouse.getWarehouseName())
+                            .roomCount(warehouseRooms.size())
+                            .rackCount(rackCount)
+                            .shelfCount(shelfCount)
+                            .palletCount(palletCount)
+                            .build();
+                })
+                .toList();
+
+        List<WmsSummaryResponse.RoomSummary> roomSummaries = rooms.stream()
+                .map(room -> {
+                    List<Rack> roomRacks = racksByRoomId.getOrDefault(room.getId(), List.of());
+                    long shelfCount = roomRacks.stream().mapToLong(rack -> shelvesByRackId.getOrDefault(rack.getId(), List.of()).size()).sum();
+                    long palletCount = roomRacks.stream()
+                            .flatMap(rack -> shelvesByRackId.getOrDefault(rack.getId(), List.of()).stream())
+                            .mapToLong(shelf -> palletsByShelfId.getOrDefault(shelf.getId(), List.of()).size())
+                            .sum();
+                    BigDecimal currentLoad = roomLoadByRoomId.getOrDefault(room.getId(), BigDecimal.ZERO);
+                    BigDecimal occupancyPercent = room.getMaxCapacity() != null
+                            && room.getMaxCapacity().compareTo(BigDecimal.ZERO) > 0
+                            ? currentLoad.multiply(BigDecimal.valueOf(100)).divide(room.getMaxCapacity(), 2, java.math.RoundingMode.HALF_UP)
+                            : BigDecimal.ZERO;
+                    Warehouse warehouse = warehouses.stream().filter(entry -> entry.getId().equals(room.getWarehouseId())).findFirst().orElse(null);
+                    BusinessUnit businessUnit = warehouse != null && warehouse.getBusinessUnitId() != null
+                            ? businessUnitById.get(warehouse.getBusinessUnitId())
+                            : null;
+                    return WmsSummaryResponse.RoomSummary.builder()
+                            .roomId(room.getId())
+                            .warehouseId(room.getWarehouseId())
+                            .businessUnitId(warehouse != null ? warehouse.getBusinessUnitId() : null)
+                            .businessUnitCode(businessUnit != null ? businessUnit.getUnitCode() : null)
+                            .businessUnitName(businessUnit != null ? businessUnit.getUnitName() : null)
+                            .warehouseCode(warehouse != null ? warehouse.getWarehouseCode() : null)
+                            .roomCode(room.getRoomCode())
+                            .roomName(room.getRoomName())
+                            .storageCondition(room.getStorageCondition())
+                            .maxCapacity(room.getMaxCapacity())
+                            .capacityUom(room.getCapacityUom())
+                            .temperatureRange(room.getTemperatureRange())
+                            .humidityRange(room.getHumidityRange())
+                            .currentLoad(currentLoad)
+                            .currentLots(roomLotsByRoomId.getOrDefault(room.getId(), new HashSet<>()).size())
+                            .activePallets(palletCount)
+                            .totalPallets(palletCount)
+                            .rackCount(roomRacks.size())
+                            .shelfCount(shelfCount)
+                            .occupancyPercent(occupancyPercent)
+                            .build();
+                })
+                .toList();
+
+        return WmsSummaryResponse.builder()
+                .warehouses(warehouseSummaries)
+                .rooms(roomSummaries)
+                .zoneRules(zoneRules)
+                .materialLocations(materialLocations)
+                .build();
+    }
+
+    @Override
+    public List<WarehouseZoneRuleResponse> getZoneRules(UUID roomId) {
+        List<WarehouseZoneRule> rules = roomId == null
+                ? warehouseZoneRuleRepository.findByIsActiveTrueOrderByZoneNameAsc()
+                : warehouseZoneRuleRepository.findByRoomIdAndIsActiveTrueOrderByZoneNameAsc(roomId);
+        Map<UUID, Room> roomsById = roomRepository.findAllById(rules.stream().map(WarehouseZoneRule::getRoomId).distinct().toList())
+                .stream().collect(java.util.stream.Collectors.toMap(Room::getId, room -> room));
+        return rules.stream().map(rule -> toZoneRuleResponse(rule, roomsById.get(rule.getRoomId()))).toList();
+    }
+
+    @Override
+    public WarehouseZoneRuleResponse createZoneRule(CreateWarehouseZoneRuleRequest request) {
+        String actor = authenticatedActorService.currentActor();
+        ensureRoomExists(request.getRoomId());
+        if (warehouseZoneRuleRepository.existsByRoomIdAndZoneNameAndAllowedMaterialTypeAndAllowedStorageConditionAndIsActiveTrue(
+                request.getRoomId(),
+                request.getZoneName(),
+                request.getAllowedMaterialType(),
+                request.getAllowedStorageCondition()
+        )) {
+            throw new DuplicateResourceException("Zone rule already exists for room: " + request.getZoneName());
+        }
+
+        WarehouseZoneRule rule = WarehouseZoneRule.builder()
+                .id(UUID.randomUUID())
+                .roomId(request.getRoomId())
+                .zoneName(request.getZoneName())
+                .allowedMaterialType(request.getAllowedMaterialType())
+                .allowedStorageCondition(request.getAllowedStorageCondition())
+                .restrictedAccess(Boolean.TRUE.equals(request.getRestrictedAccess()))
+                .quarantineOnly(Boolean.TRUE.equals(request.getQuarantineOnly()))
+                .rejectedOnly(Boolean.TRUE.equals(request.getRejectedOnly()))
+                .notes(request.getNotes())
+                .isActive(true)
+                .createdBy(actor)
+                .createdAt(LocalDateTime.now())
+                .build();
+        WarehouseZoneRule saved = warehouseZoneRuleRepository.save(rule);
+        return toZoneRuleResponse(saved, getRoomById(saved.getRoomId()));
+    }
+
+    @Override
+    public WarehouseZoneRuleResponse updateZoneRule(UUID id, UpdateWarehouseZoneRuleRequest request) {
+        String actor = authenticatedActorService.currentActor();
+        WarehouseZoneRule rule = getActiveZoneRule(id);
+        ensureRoomExists(request.getRoomId());
+        if ((!rule.getRoomId().equals(request.getRoomId())
+                || !Objects.equals(rule.getZoneName(), request.getZoneName())
+                || !Objects.equals(rule.getAllowedMaterialType(), request.getAllowedMaterialType())
+                || !Objects.equals(rule.getAllowedStorageCondition(), request.getAllowedStorageCondition()))
+                && warehouseZoneRuleRepository.existsByRoomIdAndZoneNameAndAllowedMaterialTypeAndAllowedStorageConditionAndIsActiveTrue(
+                request.getRoomId(),
+                request.getZoneName(),
+                request.getAllowedMaterialType(),
+                request.getAllowedStorageCondition()
+        )) {
+            throw new DuplicateResourceException("Zone rule already exists for room: " + request.getZoneName());
+        }
+        rule.setRoomId(request.getRoomId());
+        rule.setZoneName(request.getZoneName());
+        rule.setAllowedMaterialType(request.getAllowedMaterialType());
+        rule.setAllowedStorageCondition(request.getAllowedStorageCondition());
+        rule.setRestrictedAccess(Boolean.TRUE.equals(request.getRestrictedAccess()));
+        rule.setQuarantineOnly(Boolean.TRUE.equals(request.getQuarantineOnly()));
+        rule.setRejectedOnly(Boolean.TRUE.equals(request.getRejectedOnly()));
+        rule.setNotes(request.getNotes());
+        rule.setUpdatedBy(actor);
+        rule.setUpdatedAt(LocalDateTime.now());
+        WarehouseZoneRule saved = warehouseZoneRuleRepository.save(rule);
+        return toZoneRuleResponse(saved, getRoomById(saved.getRoomId()));
+    }
+
+    @Override
+    public void deactivateZoneRule(UUID id) {
+        WarehouseZoneRule rule = getActiveZoneRule(id);
+        rule.setIsActive(false);
+        rule.setUpdatedBy(authenticatedActorService.currentActor());
+        rule.setUpdatedAt(LocalDateTime.now());
+        warehouseZoneRuleRepository.save(rule);
+    }
+
+    @Override
+    public List<MaterialLocationRuleResponse> getMaterialLocationRules(UUID materialId) {
+        List<MaterialLocationRule> rules = materialId == null
+                ? materialLocationRuleRepository.findByIsActiveTrueOrderByCreatedAtAsc()
+                : materialLocationRuleRepository.findByMaterialIdAndIsActiveTrue(materialId).stream().toList();
+        return buildMaterialLocationRuleResponses(rules);
+    }
+
+    @Override
+    public MaterialLocationRuleResponse createMaterialLocationRule(CreateMaterialLocationRuleRequest request) {
+        String actor = authenticatedActorService.currentActor();
+        ensureMaterialExists(request.getMaterialId());
+        if (materialLocationRuleRepository.findByMaterialIdAndIsActiveTrue(request.getMaterialId()).isPresent()) {
+            throw new DuplicateResourceException("Material location rule already exists for material");
+        }
+        validateMaterialLocationReferences(request.getDefaultWarehouseId(), request.getDefaultRoomId(), request.getDefaultRackId(), request.getQuarantineWarehouseId(), request.getQuarantineRoomId());
+        MaterialLocationRule rule = MaterialLocationRule.builder()
+                .id(UUID.randomUUID())
+                .materialId(request.getMaterialId())
+                .defaultWarehouseId(request.getDefaultWarehouseId())
+                .defaultRoomId(request.getDefaultRoomId())
+                .defaultRackId(request.getDefaultRackId())
+                .quarantineWarehouseId(request.getQuarantineWarehouseId())
+                .quarantineRoomId(request.getQuarantineRoomId())
+                .notes(request.getNotes())
+                .isActive(true)
+                .createdBy(actor)
+                .createdAt(LocalDateTime.now())
+                .build();
+        return buildMaterialLocationRuleResponses(List.of(materialLocationRuleRepository.save(rule))).get(0);
+    }
+
+    @Override
+    public MaterialLocationRuleResponse updateMaterialLocationRule(UUID id, UpdateMaterialLocationRuleRequest request) {
+        String actor = authenticatedActorService.currentActor();
+        ensureMaterialExists(request.getMaterialId());
+        validateMaterialLocationReferences(request.getDefaultWarehouseId(), request.getDefaultRoomId(), request.getDefaultRackId(), request.getQuarantineWarehouseId(), request.getQuarantineRoomId());
+        MaterialLocationRule rule = getActiveMaterialLocationRule(id);
+        materialLocationRuleRepository.findByMaterialIdAndIsActiveTrue(request.getMaterialId())
+                .filter(existing -> !existing.getId().equals(id))
+                .ifPresent(existing -> {
+                    throw new DuplicateResourceException("Material location rule already exists for material");
+                });
+        rule.setMaterialId(request.getMaterialId());
+        rule.setDefaultWarehouseId(request.getDefaultWarehouseId());
+        rule.setDefaultRoomId(request.getDefaultRoomId());
+        rule.setDefaultRackId(request.getDefaultRackId());
+        rule.setQuarantineWarehouseId(request.getQuarantineWarehouseId());
+        rule.setQuarantineRoomId(request.getQuarantineRoomId());
+        rule.setNotes(request.getNotes());
+        rule.setUpdatedBy(actor);
+        rule.setUpdatedAt(LocalDateTime.now());
+        return buildMaterialLocationRuleResponses(List.of(materialLocationRuleRepository.save(rule))).get(0);
+    }
+
+    @Override
+    public void deactivateMaterialLocationRule(UUID id) {
+        MaterialLocationRule rule = getActiveMaterialLocationRule(id);
+        rule.setIsActive(false);
+        rule.setUpdatedBy(authenticatedActorService.currentActor());
+        rule.setUpdatedAt(LocalDateTime.now());
+        materialLocationRuleRepository.save(rule);
+    }
+
+    private WarehouseZoneRule getActiveZoneRule(UUID id) {
+        return warehouseZoneRuleRepository.findByIdAndIsActiveTrue(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Warehouse zone rule not found with id: " + id));
+    }
+
+    private MaterialLocationRule getActiveMaterialLocationRule(UUID id) {
+        return materialLocationRuleRepository.findByIdAndIsActiveTrue(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Material location rule not found with id: " + id));
+    }
+
+    private void ensureMaterialExists(UUID materialId) {
+        Material material = materialRepository.findById(materialId)
+                .orElseThrow(() -> new ResourceNotFoundException("Material not found with id: " + materialId));
+        if (!Boolean.TRUE.equals(material.getIsActive())) {
+            throw new BusinessConflictException("Material is inactive: " + materialId);
+        }
+    }
+
+    private void validateMaterialLocationReferences(
+            UUID defaultWarehouseId,
+            UUID defaultRoomId,
+            UUID defaultRackId,
+            UUID quarantineWarehouseId,
+            UUID quarantineRoomId
+    ) {
+        if (defaultWarehouseId != null) {
+            ensureWarehouseExists(defaultWarehouseId);
+        }
+        if (defaultRoomId != null) {
+            ensureRoomExists(defaultRoomId);
+        }
+        if (defaultRackId != null) {
+            ensureRackExists(defaultRackId);
+        }
+        if (quarantineWarehouseId != null) {
+            ensureWarehouseExists(quarantineWarehouseId);
+        }
+        if (quarantineRoomId != null) {
+            ensureRoomExists(quarantineRoomId);
+        }
+    }
+
+    private WarehouseZoneRuleResponse toZoneRuleResponse(WarehouseZoneRule rule, Room room) {
+        return WarehouseZoneRuleResponse.builder()
+                .id(rule.getId())
+                .roomId(rule.getRoomId())
+                .roomCode(room != null ? room.getRoomCode() : null)
+                .roomName(room != null ? room.getRoomName() : null)
+                .zoneName(rule.getZoneName())
+                .allowedMaterialType(rule.getAllowedMaterialType())
+                .allowedStorageCondition(rule.getAllowedStorageCondition())
+                .restrictedAccess(rule.getRestrictedAccess())
+                .quarantineOnly(rule.getQuarantineOnly())
+                .rejectedOnly(rule.getRejectedOnly())
+                .notes(rule.getNotes())
+                .createdBy(rule.getCreatedBy())
+                .createdAt(rule.getCreatedAt())
+                .updatedBy(rule.getUpdatedBy())
+                .updatedAt(rule.getUpdatedAt())
+                .build();
+    }
+
+    private List<MaterialLocationRuleResponse> buildMaterialLocationRuleResponses(List<MaterialLocationRule> rules) {
+        List<Material> materials = materialRepository.findByIsActiveTrueOrderByMaterialCodeAsc();
+        List<Warehouse> warehouses = warehouseRepository.findByIsActiveTrueOrderByWarehouseCodeAsc();
+        List<Room> rooms = roomRepository.findAll().stream().filter(Room::getIsActive).toList();
+        List<Rack> racks = rackRepository.findAll().stream().filter(Rack::getIsActive).toList();
+        List<Inventory> inventories = inventoryRepository.findByIsActiveTrue();
+
+        Map<UUID, Material> materialById = materials.stream().collect(java.util.stream.Collectors.toMap(Material::getId, material -> material));
+        Map<UUID, Warehouse> warehouseById = warehouses.stream().collect(java.util.stream.Collectors.toMap(Warehouse::getId, warehouse -> warehouse));
+        Map<UUID, Room> roomById = rooms.stream().collect(java.util.stream.Collectors.toMap(Room::getId, room -> room));
+        Map<UUID, Rack> rackById = racks.stream().collect(java.util.stream.Collectors.toMap(Rack::getId, rack -> rack));
+
+        Map<UUID, Long> lotsByMaterialId = new HashMap<>();
+        Map<UUID, BigDecimal> stockByMaterialId = new HashMap<>();
+        Map<UUID, String> uomByMaterialId = new HashMap<>();
+        for (Inventory inventory : inventories) {
+            lotsByMaterialId.merge(inventory.getMaterialId(), 1L, Long::sum);
+            stockByMaterialId.merge(inventory.getMaterialId(), inventory.getQuantityOnHand(), BigDecimal::add);
+            uomByMaterialId.putIfAbsent(inventory.getMaterialId(), inventory.getUom());
+        }
+
+        return rules.stream().map(rule -> {
+            Material material = materialById.get(rule.getMaterialId());
+            Warehouse defaultWarehouse = rule.getDefaultWarehouseId() != null ? warehouseById.get(rule.getDefaultWarehouseId()) : null;
+            Room defaultRoom = rule.getDefaultRoomId() != null ? roomById.get(rule.getDefaultRoomId()) : null;
+            Rack defaultRack = rule.getDefaultRackId() != null ? rackById.get(rule.getDefaultRackId()) : null;
+            Warehouse quarantineWarehouse = rule.getQuarantineWarehouseId() != null ? warehouseById.get(rule.getQuarantineWarehouseId()) : null;
+            Room quarantineRoom = rule.getQuarantineRoomId() != null ? roomById.get(rule.getQuarantineRoomId()) : null;
+            return MaterialLocationRuleResponse.builder()
+                    .id(rule.getId())
+                    .materialId(rule.getMaterialId())
+                    .materialCode(material != null ? material.getMaterialCode() : null)
+                    .materialName(material != null ? material.getMaterialName() : null)
+                    .materialType(material != null ? material.getMaterialType() : null)
+                    .storageCondition(material != null && material.getStorageCondition() != null ? material.getStorageCondition().name() : null)
+                    .defaultWarehouseId(rule.getDefaultWarehouseId())
+                    .defaultWarehouseCode(defaultWarehouse != null ? defaultWarehouse.getWarehouseCode() : null)
+                    .defaultRoomId(rule.getDefaultRoomId())
+                    .defaultRoomCode(defaultRoom != null ? defaultRoom.getRoomCode() : null)
+                    .defaultRackId(rule.getDefaultRackId())
+                    .defaultRackCode(defaultRack != null ? defaultRack.getRackCode() : null)
+                    .quarantineWarehouseId(rule.getQuarantineWarehouseId())
+                    .quarantineWarehouseCode(quarantineWarehouse != null ? quarantineWarehouse.getWarehouseCode() : null)
+                    .quarantineRoomId(rule.getQuarantineRoomId())
+                    .quarantineRoomCode(quarantineRoom != null ? quarantineRoom.getRoomCode() : null)
+                    .notes(rule.getNotes())
+                    .currentLots(lotsByMaterialId.getOrDefault(rule.getMaterialId(), 0L))
+                    .currentStock(stockByMaterialId.getOrDefault(rule.getMaterialId(), BigDecimal.ZERO))
+                    .stockUom(uomByMaterialId.get(rule.getMaterialId()))
+                    .createdBy(rule.getCreatedBy())
+                    .createdAt(rule.getCreatedAt())
+                    .updatedBy(rule.getUpdatedBy())
+                    .updatedAt(rule.getUpdatedAt())
+                    .build();
+        }).toList();
+    }
+
     private void ensureWarehouseExists(UUID warehouseId) {
         if (!warehouseRepository.existsById(warehouseId)) {
             throw new ResourceNotFoundException("Warehouse not found with id: " + warehouseId);
         }
         if (!warehouseRepository.existsByIdAndIsActiveTrue(warehouseId)) {
             throw new BusinessConflictException("Warehouse is inactive: " + warehouseId);
+        }
+    }
+
+    private void ensureBusinessUnitExists(UUID businessUnitId) {
+        if (!businessUnitRepository.existsByIdAndIsActiveTrue(businessUnitId)) {
+            throw new ResourceNotFoundException("Business unit not found with id: " + businessUnitId);
         }
     }
 

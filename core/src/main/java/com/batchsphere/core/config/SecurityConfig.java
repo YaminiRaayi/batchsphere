@@ -35,6 +35,8 @@ public class SecurityConfig {
                         .hasAnyRole("SUPER_ADMIN", "QC_ANALYST", "QC_MANAGER")
                         .requestMatchers("/api/suppliers/**", "/api/vendors/**", "/api/vendor-business-units/**")
                         .hasAnyRole("SUPER_ADMIN", "PROCUREMENT")
+                        .requestMatchers("/api/business-units/**")
+                        .hasAnyRole("SUPER_ADMIN", "WAREHOUSE_OP", "QC_ANALYST", "QC_MANAGER")
                         .requestMatchers("/api/materials/**", "/api/warehouses/**", "/api/rooms/**", "/api/racks/**", "/api/shelves/**", "/api/pallets/**")
                         .hasAnyRole("SUPER_ADMIN", "WAREHOUSE_OP", "QC_ANALYST", "QC_MANAGER")
                         .requestMatchers("/api/**").hasRole("SUPER_ADMIN")

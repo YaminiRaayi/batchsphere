@@ -23,12 +23,15 @@ const InventoryPage = lazy(() =>
 const SamplingPage = lazy(() =>
   import("./features/sampling/SamplingPage").then((module) => ({ default: module.SamplingPage }))
 );
+const WarehousePage = lazy(() =>
+  import("./features/warehouse/WarehousePage").then((module) => ({ default: module.WarehousePage }))
+);
 const MasterDataLayout = lazy(() => import("./features/master-data/MasterDataLayout"));
 const SuppliersPage = lazy(() => import("./features/master-data/partners/SuppliersPage"));
 const VendorsPage = lazy(() => import("./features/master-data/partners/VendorsPage"));
 const VendorBUsPage = lazy(() => import("./features/master-data/partners/VendorBUsPage"));
 const MaterialsPage = lazy(() => import("./features/master-data/materials/MaterialsPage"));
-const WarehousePage = lazy(() => import("./features/master-data/locations/WarehousePage"));
+const MaterialCreatePage = lazy(() => import("./features/master-data/materials/MaterialCreatePage"));
 const SpecsPage = lazy(() => import("./features/master-data/qc-refs/SpecsPage"));
 const MoaPage = lazy(() => import("./features/master-data/qc-refs/MoaPage"));
 const SamplingToolsPage = lazy(() => import("./features/master-data/qc-refs/SamplingToolsPage"));
@@ -64,7 +67,6 @@ export const router = createBrowserRouter([
             element: renderLazyRoute(<MasterDataLayout />),
             handle: { breadcrumb: "Master Data" },
             children: [
-              { index: true, element: <Navigate to="materials/materials" replace /> },
               {
                 element: <ProtectedRoute allowedRoles={["SUPER_ADMIN", "PROCUREMENT"]} />,
                 path: "partners",
@@ -84,7 +86,8 @@ export const router = createBrowserRouter([
                 path: "materials",
                 handle: { breadcrumb: "Materials" },
                 children: [
-                  { path: "materials", element: renderLazyRoute(<MaterialsPage />), handle: { breadcrumb: "Materials" } }
+                  { path: "materials", element: renderLazyRoute(<MaterialsPage />), handle: { breadcrumb: "Materials" } },
+                  { path: "new", element: renderLazyRoute(<MaterialCreatePage />), handle: { breadcrumb: "New Material" } }
                 ]
               },
               {
@@ -115,13 +118,24 @@ export const router = createBrowserRouter([
             element: <ProtectedRoute allowedRoles={["SUPER_ADMIN", "WAREHOUSE_OP"]} />,
             children: [
               { path: "inbound/grn", element: renderLazyRoute(<GrnPage />), handle: { breadcrumb: "Inbound GRN" } },
-              { path: "inventory", element: renderLazyRoute(<InventoryPage />), handle: { breadcrumb: "Inventory" } }
+              { path: "inventory", element: renderLazyRoute(<InventoryPage />), handle: { breadcrumb: "Inventory" } },
+              { path: "warehouse", element: renderLazyRoute(<WarehousePage />), handle: { breadcrumb: "Warehouse" } }
             ]
           },
           {
             element: <ProtectedRoute allowedRoles={["SUPER_ADMIN", "QC_ANALYST", "QC_MANAGER"]} />,
             children: [
               { path: "qc/sampling", element: renderLazyRoute(<SamplingPage />), handle: { breadcrumb: "Sampling & QC" } }
+            ]
+          },
+          {
+            element: <ProtectedRoute allowedRoles={["SUPER_ADMIN", "PROCUREMENT"]} />,
+            children: [
+              {
+                path: "vendor-qualifications",
+                element: <Navigate to="/master-data/partners/vendors" replace />,
+                handle: { breadcrumb: "Vendor Management" }
+              }
             ]
           }
         ]

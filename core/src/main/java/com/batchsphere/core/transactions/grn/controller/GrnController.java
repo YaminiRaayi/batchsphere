@@ -54,7 +54,11 @@ public class GrnController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<GrnResponse>> getAllGrns(Pageable pageable) {
+    public ResponseEntity<Page<GrnResponse>> getAllGrns(Pageable pageable,
+                                                        @RequestParam(required = false) UUID vendorId) {
+        if (vendorId != null) {
+            return ResponseEntity.ok(grnService.getGrnsByVendor(vendorId, pageable));
+        }
         return ResponseEntity.ok(grnService.getAllGrns(pageable));
     }
 

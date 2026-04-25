@@ -1,19 +1,25 @@
 package com.batchsphere.core.transactions.inventory.service;
 
 import com.batchsphere.core.auth.service.AuthenticatedActorService;
+import com.batchsphere.core.batch.entity.Batch;
+import com.batchsphere.core.batch.repository.BatchRepository;
 import com.batchsphere.core.exception.BusinessConflictException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.masterdata.material.entity.StorageCondition;
+import com.batchsphere.core.masterdata.material.entity.Material;
+import com.batchsphere.core.masterdata.material.repository.MaterialRepository;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Pallet;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Rack;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Room;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Shelf;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Warehouse;
+import com.batchsphere.core.masterdata.warehouselocation.entity.WarehouseZoneRule;
 import com.batchsphere.core.masterdata.warehouselocation.repository.PalletRepository;
 import com.batchsphere.core.masterdata.warehouselocation.repository.RackRepository;
 import com.batchsphere.core.masterdata.warehouselocation.repository.RoomRepository;
 import com.batchsphere.core.masterdata.warehouselocation.repository.ShelfRepository;
 import com.batchsphere.core.masterdata.warehouselocation.repository.WarehouseRepository;
+import com.batchsphere.core.masterdata.warehouselocation.repository.WarehouseZoneRuleRepository;
 import com.batchsphere.core.transactions.grn.entity.GrnItem;
 import com.batchsphere.core.transactions.inventory.dto.InventoryAdjustmentRequest;
 import com.batchsphere.core.transactions.inventory.dto.InventoryResponse;
@@ -36,10 +42,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashMap;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.UUID;
 
 @Service
@@ -54,6 +63,9 @@ public class InventoryServiceImpl implements InventoryService {
     private final RackRepository rackRepository;
     private final RoomRepository roomRepository;
     private final WarehouseRepository warehouseRepository;
+    private final WarehouseZoneRuleRepository warehouseZoneRuleRepository;
+    private final MaterialRepository materialRepository;
+    private final BatchRepository batchRepository;
 
     private static final Map<InventoryStatus, EnumSet<InventoryStatus>> ALLOWED_TRANSITIONS = Map.of(
             InventoryStatus.QUARANTINE, EnumSet.of(InventoryStatus.SAMPLING),
@@ -154,6 +166,7 @@ public class InventoryServiceImpl implements InventoryService {
     public InventoryResponse adjustInventory(UUID id, InventoryAdjustmentRequest request) {
         String actor = authenticatedActorService.currentActor();
         Inventory inventory = getActiveInventory(id);
+        validateFefoReduction(inventory, request);
         BigDecimal signedDelta = Boolean.TRUE.equals(request.getIncrease())
                 ? request.getQuantityDelta()
                 : request.getQuantityDelta().negate();
@@ -198,6 +211,7 @@ public class InventoryServiceImpl implements InventoryService {
         Pallet sourcePallet = getActivePallet(sourceInventory.getPalletId());
         Pallet destinationPallet = getActivePallet(request.getDestinationPalletId());
         validateTransferStorageCondition(sourcePallet, destinationPallet);
+        validateDestinationRoomRules(sourceInventory, destinationPallet);
 
         LocalDateTime now = LocalDateTime.now();
         sourceInventory.setQuantityOnHand(sourceInventory.getQuantityOnHand().subtract(request.getQuantity()));
@@ -377,6 +391,107 @@ public class InventoryServiceImpl implements InventoryService {
         }
     }
 
+    private void validateDestinationRoomRules(Inventory inventory, Pallet destinationPallet) {
+        Material material = materialRepository.findById(inventory.getMaterialId())
+                .orElseThrow(() -> new ResourceNotFoundException("Material not found with id: " + inventory.getMaterialId()));
+        Room destinationRoom = getRoomForPallet(destinationPallet);
+        List<WarehouseZoneRule> rules = warehouseZoneRuleRepository.findByRoomIdAndIsActiveTrueOrderByZoneNameAsc(destinationRoom.getId());
+
+        if (rules.isEmpty()) {
+            return;
+        }
+
+        List<WarehouseZoneRule> compatibleRules = rules.stream()
+                .filter(rule -> isCompatibleRule(rule, material))
+                .toList();
+
+        if (!compatibleRules.isEmpty()) {
+          rules = compatibleRules;
+        }
+
+        boolean quarantineStock = EnumSet.of(InventoryStatus.QUARANTINE, InventoryStatus.SAMPLING, InventoryStatus.UNDER_TEST)
+                .contains(inventory.getStatus());
+        boolean rejectedStock = EnumSet.of(InventoryStatus.REJECTED, InventoryStatus.BLOCKED)
+                .contains(inventory.getStatus());
+
+        if (quarantineStock && rules.stream().noneMatch(rule -> Boolean.TRUE.equals(rule.getQuarantineOnly()))) {
+            throw new BusinessConflictException("Destination room is not configured for quarantine / under-test stock");
+        }
+
+        if (rejectedStock && rules.stream().noneMatch(rule -> Boolean.TRUE.equals(rule.getRejectedOnly()))) {
+            throw new BusinessConflictException("Destination room is not configured for rejected / blocked stock");
+        }
+
+        if (!quarantineStock && !rejectedStock
+                && rules.stream().anyMatch(rule -> Boolean.TRUE.equals(rule.getQuarantineOnly()) || Boolean.TRUE.equals(rule.getRejectedOnly()))) {
+            throw new BusinessConflictException("Released stock cannot be moved into quarantine-only or rejected-only room");
+        }
+    }
+
+    private boolean isCompatibleRule(WarehouseZoneRule rule, Material material) {
+        boolean materialTypeMatch = rule.getAllowedMaterialType() == null
+                || rule.getAllowedMaterialType().isBlank()
+                || rule.getAllowedMaterialType().equalsIgnoreCase(material.getMaterialType());
+        boolean storageConditionMatch = rule.getAllowedStorageCondition() == null
+                || rule.getAllowedStorageCondition() == material.getStorageCondition();
+        return materialTypeMatch && storageConditionMatch;
+    }
+
+    private void validateFefoReduction(Inventory inventory, InventoryAdjustmentRequest request) {
+        if (Boolean.TRUE.equals(request.getIncrease())
+                || inventory.getStatus() != InventoryStatus.RELEASED
+                || request.getQuantityDelta().compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+
+        List<Inventory> releasedLots = inventoryRepository.findByMaterialIdAndStatusAndIsActiveTrue(
+                inventory.getMaterialId(),
+                InventoryStatus.RELEASED
+        ).stream()
+                .filter(candidate -> candidate.getQuantityOnHand() != null && candidate.getQuantityOnHand().compareTo(BigDecimal.ZERO) > 0)
+                .toList();
+
+        if (releasedLots.size() <= 1) {
+            return;
+        }
+
+        Map<UUID, Batch> batchesById = new HashMap<>();
+        for (Batch batch : batchRepository.findAllById(releasedLots.stream().map(Inventory::getBatchId).distinct().toList())) {
+            batchesById.put(batch.getId(), batch);
+        }
+
+        List<Inventory> fefoOrderedLots = releasedLots.stream()
+                .sorted(Comparator
+                        .comparing((Inventory candidate) -> getFefoDate(batchesById.get(candidate.getBatchId())),
+                                Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(candidate -> batchesById.get(candidate.getBatchId()) != null
+                                ? batchesById.get(candidate.getBatchId()).getBatchNumber()
+                                : candidate.getId().toString()))
+                .toList();
+
+        Inventory firstAvailableLot = fefoOrderedLots.get(0);
+        if (!firstAvailableLot.getId().equals(inventory.getId())) {
+            Batch requestedBatch = batchesById.get(inventory.getBatchId());
+            Batch firstBatch = batchesById.get(firstAvailableLot.getBatchId());
+            throw new BusinessConflictException(
+                    "FEFO violation: consume batch "
+                            + (firstBatch != null ? firstBatch.getBatchNumber() : firstAvailableLot.getId())
+                            + " first before reducing batch "
+                            + (requestedBatch != null ? requestedBatch.getBatchNumber() : inventory.getId())
+            );
+        }
+    }
+
+    private LocalDate getFefoDate(Batch batch) {
+        if (batch == null) {
+            return null;
+        }
+        if (batch.getExpiryDate() != null) {
+            return batch.getExpiryDate();
+        }
+        return batch.getRetestDate();
+    }
+
     private Inventory getActiveInventory(UUID id) {
         Inventory inventory = inventoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Inventory not found with id: " + id));
@@ -396,12 +511,9 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     private String buildWarehouseLocation(Pallet pallet) {
-        Shelf shelf = shelfRepository.findById(pallet.getShelfId())
-                .orElseThrow(() -> new ResourceNotFoundException("Shelf not found with id: " + pallet.getShelfId()));
-        Rack rack = rackRepository.findById(shelf.getRackId())
-                .orElseThrow(() -> new ResourceNotFoundException("Rack not found with id: " + shelf.getRackId()));
-        Room room = roomRepository.findById(rack.getRoomId())
-                .orElseThrow(() -> new ResourceNotFoundException("Room not found with id: " + rack.getRoomId()));
+        Shelf shelf = getShelfForPallet(pallet);
+        Rack rack = getRackForShelf(shelf);
+        Room room = getRoomForRack(rack);
         Warehouse warehouse = warehouseRepository.findById(room.getWarehouseId())
                 .orElseThrow(() -> new ResourceNotFoundException("Warehouse not found with id: " + room.getWarehouseId()));
         return warehouse.getWarehouseCode()
@@ -409,6 +521,25 @@ public class InventoryServiceImpl implements InventoryService {
                 + "/" + rack.getRackCode()
                 + "/" + shelf.getShelfCode()
                 + "/" + pallet.getPalletCode();
+    }
+
+    private Shelf getShelfForPallet(Pallet pallet) {
+        return shelfRepository.findById(pallet.getShelfId())
+                .orElseThrow(() -> new ResourceNotFoundException("Shelf not found with id: " + pallet.getShelfId()));
+    }
+
+    private Rack getRackForShelf(Shelf shelf) {
+        return rackRepository.findById(shelf.getRackId())
+                .orElseThrow(() -> new ResourceNotFoundException("Rack not found with id: " + shelf.getRackId()));
+    }
+
+    private Room getRoomForRack(Rack rack) {
+        return roomRepository.findById(rack.getRoomId())
+                .orElseThrow(() -> new ResourceNotFoundException("Room not found with id: " + rack.getRoomId()));
+    }
+
+    private Room getRoomForPallet(Pallet pallet) {
+        return getRoomForRack(getRackForShelf(getShelfForPallet(pallet)));
     }
 
     private InventoryTransaction buildTransaction(Inventory inventory,

@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.math.BigDecimal;
+
 @Data
 public class UpdateRoomRequest {
 
@@ -18,6 +20,10 @@ public class UpdateRoomRequest {
     private StorageCondition storageCondition;
 
     private String description;
+    private BigDecimal maxCapacity;
+    private String capacityUom;
+    private String temperatureRange;
+    private String humidityRange;
 
     @NotBlank
     private String updatedBy;

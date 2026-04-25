@@ -1211,9 +1211,11 @@ export function GrnPage() {
       </section>
       ) : (
       <section className="overflow-hidden rounded-[24px] border border-blue-100 bg-white shadow-sm">
-        <form id="grn-create-form" className="space-y-4" onSubmit={handleSubmit}>
-          <div className="grid gap-0 xl:grid-cols-[220px_minmax(0,1fr)]">
-            <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
+        <form id="grn-create-form" onSubmit={handleSubmit}>
+          <div className="grid xl:grid-cols-[220px_minmax(0,1fr)]">
+
+            {/* Step sidebar */}
+            <div className="border-r border-blue-100 bg-blue-50/70 p-5">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Progress</p>
               <div className="mt-4 space-y-2">
                 {[
@@ -1223,23 +1225,12 @@ export function GrnPage() {
                   ["4", "Documents", "CoA and attachments"],
                   ["5", "Review & Submit", "Finalize GRN"]
                 ].map(([step, title, note], index) => (
-                  <div
-                    key={step}
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 ${
-                      index === 0 ? "border border-blue-200 bg-white" : ""
-                    }`}
-                  >
-                    <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${
-                        index === 0 ? "bg-blue-600 text-white shadow-sm" : "bg-slate-200 text-slate-500"
-                      }`}
-                    >
+                  <div key={step} className={`flex items-center gap-3 rounded-xl px-3 py-2 ${index === 0 ? "border border-blue-200 bg-white" : ""}`}>
+                    <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${index === 0 ? "bg-blue-600 text-white shadow-sm" : "bg-slate-200 text-slate-500"}`}>
                       {step}
                     </div>
                     <div>
-                      <div className={`text-xs font-bold ${index === 0 ? "text-blue-700" : "text-slate-600"}`}>
-                        {title}
-                      </div>
+                      <div className={`text-xs font-bold ${index === 0 ? "text-blue-700" : "text-slate-500"}`}>{title}</div>
                       <div className="text-[10px] text-slate-400">{note}</div>
                     </div>
                   </div>
@@ -1248,7 +1239,7 @@ export function GrnPage() {
               <div className="mt-5 rounded-xl border border-blue-100 bg-white p-3">
                 <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Auto-assigned</div>
                 <div className="mt-2 text-[10px] text-slate-500">GRN number</div>
-                <div className="text-xs font-semibold text-blue-700">{form.grnNumber || "Will be assigned"}</div>
+                <div className="font-mono text-xs font-semibold text-blue-700">{form.grnNumber || "Will be assigned"}</div>
                 <div className="mt-2 text-[10px] text-slate-500">Created by</div>
                 <div className="text-xs font-semibold text-slate-700">{currentUserName}</div>
                 <div className="mt-2 text-[10px] text-slate-500">Receipt date</div>
@@ -1256,554 +1247,367 @@ export function GrnPage() {
               </div>
             </div>
 
-            <div className="space-y-4 bg-[#f7faff] p-6">
-              <div className="mx-auto w-full max-w-4xl space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">GRN number</span>
-                  <input
-                    required
-                    value={form.grnNumber}
-                    onChange={(event) => setForm((current) => ({ ...current, grnNumber: event.target.value }))}
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                    placeholder="GRN-001"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">Receipt date</span>
-                  <input
-                    required
-                    type="date"
-                    value={form.receiptDate}
-                    onChange={(event) => setForm((current) => ({ ...current, receiptDate: event.target.value }))}
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                  />
-                </label>
-              </div>
+            {/* Scrollable form area */}
+            <div className="max-h-[calc(100vh-180px)] overflow-y-auto bg-[#f7faff] p-6">
+              <div className="mx-auto max-w-3xl space-y-5">
 
-              <div className="grid gap-4 md:grid-cols-3">
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">Supplier</span>
-                  <select
-                    required
-                    value={form.supplierId}
-                    onChange={(event) => setForm((current) => ({ ...current, supplierId: event.target.value }))}
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                  >
-                    <option value="">Select supplier</option>
-                    {suppliers.map((supplier) => (
-                      <option key={supplier.id} value={supplier.id}>
-                        {supplier.supplierCode} - {supplier.supplierName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">Vendor</span>
-                  <select
-                    required
-                    value={form.vendorId}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        vendorId: event.target.value,
-                        vendorBusinessUnitId: ""
-                      }))
-                    }
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                  >
-                    <option value="">Select vendor</option>
-                    {vendors.map((vendor) => (
-                      <option key={vendor.id} value={vendor.id}>
-                        {vendor.vendorCode} - {vendor.vendorName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">Vendor business unit</span>
-                  <select
-                    required
-                    value={form.vendorBusinessUnitId}
-                    onChange={(event) =>
-                      setForm((current) => ({ ...current, vendorBusinessUnitId: event.target.value }))
-                    }
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                  >
-                    <option value="">Select business unit</option>
-                    {filteredVendorBusinessUnits.map((unit) => (
-                      <option key={unit.id} value={unit.id}>
-                        {unit.unitName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">Invoice number</span>
-                  <input
-                    value={form.invoiceNumber}
-                    onChange={(event) => setForm((current) => ({ ...current, invoiceNumber: event.target.value }))}
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                    placeholder="INV-001"
-                  />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block text-sm font-medium text-ink">Created by</span>
-                  <input
-                    required
-                    value={form.createdBy}
-                    onChange={(event) => setForm((current) => ({ ...current, createdBy: event.target.value }))}
-                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                  />
-                </label>
-              </div>
-
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-ink">Remarks</span>
-                <textarea
-                  value={form.remarks}
-                  onChange={(event) => setForm((current) => ({ ...current, remarks: event.target.value }))}
-                  className="min-h-24 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                  placeholder="Initial inward receipt"
-                />
-              </label>
-
-              <div className="rounded-3xl border border-blue-100 bg-blue-50/40 p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <h5 className="text-base font-semibold text-ink">Line items</h5>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm((current) => ({ ...current, items: [...current.items, createEmptyGrnItem()] }))
-                    }
-                    className="rounded-xl border border-blue-200 bg-white px-4 py-2 text-sm font-medium text-blue-700"
-                  >
-                    Add Item
-                  </button>
+                {/* ── Section 1: Header Info ── */}
+                <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white shadow-sm">1</div>
+                    <div>
+                      <div className="font-semibold text-slate-700">Header Information</div>
+                      <div className="text-xs text-slate-400">Supplier details and purchase order reference</div>
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">GRN Number <span className="text-red-400">*</span></span>
+                      <input required value={form.grnNumber} onChange={(e) => setForm((c) => ({ ...c, grnNumber: e.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:bg-white"
+                        placeholder="GRN-2026-0001" />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">Receipt Date &amp; Time <span className="text-red-400">*</span></span>
+                      <input required type="date" value={form.receiptDate} onChange={(e) => setForm((c) => ({ ...c, receiptDate: e.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:bg-white" />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">Supplier <span className="text-red-400">*</span></span>
+                      <select required value={form.supplierId} onChange={(e) => setForm((c) => ({ ...c, supplierId: e.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:bg-white">
+                        <option value="">Select supplier…</option>
+                        {suppliers.map((s) => <option key={s.id} value={s.id}>{s.supplierCode} – {s.supplierName}</option>)}
+                      </select>
+                      <p className="mt-1 text-[10px] text-slate-400">Commercial supplier / invoicing party</p>
+                    </label>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">Vendor (Corporate) <span className="text-red-400">*</span></span>
+                      <select required value={form.vendorId}
+                        onChange={(e) => setForm((c) => ({ ...c, vendorId: e.target.value, vendorBusinessUnitId: "" }))}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:bg-white">
+                        <option value="">Select vendor…</option>
+                        {vendors.map((v) => <option key={v.id} value={v.id}>{v.vendorCode} – {v.vendorName}</option>)}
+                      </select>
+                      <p className="mt-1 text-[10px] text-slate-400">Corporate legal entity</p>
+                    </label>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">Manufacturing Site / VBU</span>
+                      <select value={form.vendorBusinessUnitId} onChange={(e) => setForm((c) => ({ ...c, vendorBusinessUnitId: e.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:bg-white">
+                        <option value="">No site selected</option>
+                        {filteredVendorBusinessUnits.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.buCode ? `${u.buCode} – ` : ""}{u.unitName}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-[10px] text-slate-400">Optional for now. Select the actual supplying site when you want site-level qualification and audit tracking.</p>
+                    </label>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">Supplier Invoice No.</span>
+                      <input value={form.invoiceNumber} onChange={(e) => setForm((c) => ({ ...c, invoiceNumber: e.target.value }))}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:bg-white"
+                        placeholder="INV-SA-20260417" />
+                    </label>
+                  </div>
+                  <label className="mt-4 block">
+                    <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">Remarks</span>
+                    <textarea value={form.remarks} onChange={(e) => setForm((c) => ({ ...c, remarks: e.target.value }))}
+                      className="min-h-[72px] w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:bg-white"
+                      placeholder="Initial inward receipt" />
+                  </label>
                 </div>
 
-                <div className="mt-4 space-y-5">
-                  {form.items.map((item, index) => {
-                    const selectedMaterial = materials.find((material) => material.id === item.materialId);
-                    const filteredPallets = pallets.filter(
-                      (pallet) =>
-                        !selectedMaterial || pallet.storageCondition === selectedMaterial.storageCondition
-                    );
-
-                    return (
-                      <div key={`line-item-${index}`} className="rounded-2xl border border-blue-100 bg-white p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-semibold text-ink">Line item {index + 1}</p>
-                            <p className="text-xs text-slate">Material, pallet, quantities, dates, and pricing.</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setForm((current) => ({
-                                ...current,
-                                items:
-                                  current.items.length === 1
-                                    ? current.items
-                                    : current.items.filter((_, itemIndex) => itemIndex !== index)
-                              }))
-                            }
-                            disabled={form.items.length === 1}
-                            className="rounded-xl border border-ink/10 px-3 py-2 text-sm text-slate disabled:cursor-not-allowed disabled:text-slate/40"
-                          >
-                            Remove
-                          </button>
-                        </div>
-
-                        <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                          <label className="block">
-                            <span className="mb-2 block text-sm font-medium text-ink">Material</span>
-                            <select
-                              required
-                              value={item.materialId}
-                              onChange={(event) =>
-                                setForm((current) => ({
-                                  ...current,
-                                  items: current.items.map((currentItem, itemIndex) =>
-                                    itemIndex === index
-                                      ? {
-                                          ...currentItem,
-                                          materialId: event.target.value,
-                                          uom:
-                                            materials.find((material) => material.id === event.target.value)?.uom ??
-                                            currentItem.uom
-                                        }
-                                      : currentItem
-                                  )
-                                }))
-                              }
-                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                            >
-                              <option value="">Select material</option>
-                              {materials.map((material) => (
-                                <option key={material.id} value={material.id}>
-                                  {material.materialCode} - {material.materialName}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="block">
-                            <span className="mb-2 block text-sm font-medium text-ink">In-house batch</span>
-                            <input
-                              readOnly
-                              value="Auto-generated from GRN receipt"
-                              className="w-full rounded-2xl border border-ink/10 bg-mist px-4 py-3 text-sm text-slate outline-none"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="mb-2 block text-sm font-medium text-ink">Pallet</span>
-                            <select
-                              required
-                              value={item.palletId}
-                              onChange={(event) =>
-                                setForm((current) => ({
-                                  ...current,
-                                  items: current.items.map((currentItem, itemIndex) =>
-                                    itemIndex === index
-                                      ? { ...currentItem, palletId: event.target.value }
-                                      : currentItem
-                                  )
-                                }))
-                              }
-                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                            >
-                              <option value="">Select pallet</option>
-                              {filteredPallets.map((pallet) => (
-                                <option key={pallet.id} value={pallet.id}>
-                                  {pallet.palletCode} - {pallet.palletName} ({pallet.storageCondition})
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="block">
-                            <span className="mb-2 block text-sm font-medium text-ink">Material type</span>
-                            <input
-                              readOnly
-                              value={selectedMaterial?.materialType ?? "Select material first"}
-                              className="w-full rounded-2xl border border-ink/10 bg-mist px-4 py-3 text-sm text-ink outline-none"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="mb-2 block text-sm font-medium text-ink">Received qty</span>
-                            <input
-                              required
-                              type="number"
-                              min="0"
-                              step="0.001"
-                              value={item.receivedQuantity}
-                              onChange={(event) =>
-                                setForm((current) => ({
-                                  ...current,
-                                  items: current.items.map((currentItem, itemIndex) =>
-                                    itemIndex === index
-                                      ? { ...currentItem, receivedQuantity: Number(event.target.value) }
-                                      : currentItem
-                                  )
-                                }))
-                              }
-                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="mb-2 block text-sm font-medium text-ink">Accepted qty</span>
-                            <input
-                              required
-                              type="number"
-                              min="0"
-                              step="0.001"
-                              value={item.acceptedQuantity}
-                              onChange={(event) =>
-                                setForm((current) => ({
-                                  ...current,
-                                  items: current.items.map((currentItem, itemIndex) =>
-                                    itemIndex === index
-                                      ? { ...currentItem, acceptedQuantity: Number(event.target.value) }
-                                      : currentItem
-                                  )
-                                }))
-                              }
-                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="mb-2 block text-sm font-medium text-ink">Rejected qty</span>
-                            <input
-                              required
-                              type="number"
-                              min="0"
-                              step="0.001"
-                              value={item.rejectedQuantity}
-                              onChange={(event) =>
-                                setForm((current) => ({
-                                  ...current,
-                                  items: current.items.map((currentItem, itemIndex) =>
-                                    itemIndex === index
-                                      ? { ...currentItem, rejectedQuantity: Number(event.target.value) }
-                                      : currentItem
-                                  )
-                                }))
-                              }
-                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="mb-2 block text-sm font-medium text-ink">UOM</span>
-                            <input
-                              required
-                              value={item.uom}
-                              onChange={(event) =>
-                                setForm((current) => ({
-                                  ...current,
-                                  items: current.items.map((currentItem, itemIndex) =>
-                                    itemIndex === index ? { ...currentItem, uom: event.target.value } : currentItem
-                                  )
-                                }))
-                              }
-                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="mb-2 block text-sm font-medium text-ink">Container type</span>
-                            <select
-                              value={item.containerType}
-                              onChange={(event) =>
-                                setForm((current) => ({
-                                  ...current,
-                                  items: current.items.map((currentItem, itemIndex) =>
-                                    itemIndex === index
-                                      ? { ...currentItem, containerType: event.target.value as ContainerType }
-                                      : currentItem
-                                  )
-                                }))
-                              }
-                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                            >
-                              {containerTypes.map((type) => (
-                                <option key={type} value={type}>
-                                  {type}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <label className="block">
-                            <span className="mb-2 block text-sm font-medium text-ink">Containers</span>
-                            <input
-                              required
-                              type="number"
-                              min="1"
-                              step="1"
-                              value={item.numberOfContainers}
-                              onChange={(event) =>
-                                setForm((current) => ({
-                                  ...current,
-                                  items: current.items.map((currentItem, itemIndex) =>
-                                    itemIndex === index
-                                      ? { ...currentItem, numberOfContainers: Number(event.target.value) }
-                                      : currentItem
-                                  )
-                                }))
-                              }
-                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="mb-2 block text-sm font-medium text-ink">Qty per container</span>
-                            <input
-                              required
-                              type="number"
-                              min="0"
-                              step="0.001"
-                              value={item.quantityPerContainer}
-                              onChange={(event) =>
-                                setForm((current) => ({
-                                  ...current,
-                                  items: current.items.map((currentItem, itemIndex) =>
-                                    itemIndex === index
-                                      ? { ...currentItem, quantityPerContainer: Number(event.target.value) }
-                                      : currentItem
-                                  )
-                                }))
-                              }
-                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="mb-2 block text-sm font-medium text-ink">Vendor batch</span>
-                            <input
-                              required
-                              value={item.vendorBatch}
-                              onChange={(event) =>
-                                setForm((current) => ({
-                                  ...current,
-                                  items: current.items.map((currentItem, itemIndex) =>
-                                    itemIndex === index
-                                      ? { ...currentItem, vendorBatch: event.target.value }
-                                      : currentItem
-                                  )
-                                }))
-                              }
-                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="mb-2 block text-sm font-medium text-ink">Unit price</span>
-                            <input
-                              required
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={item.unitPrice}
-                              onChange={(event) =>
-                                setForm((current) => ({
-                                  ...current,
-                                  items: current.items.map((currentItem, itemIndex) =>
-                                    itemIndex === index
-                                      ? { ...currentItem, unitPrice: Number(event.target.value) }
-                                      : currentItem
-                                  )
-                                }))
-                              }
-                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="mb-2 block text-sm font-medium text-ink">QC status</span>
-                            <select
-                              value={item.qcStatus}
-                              onChange={(event) =>
-                                setForm((current) => ({
-                                  ...current,
-                                  items: current.items.map((currentItem, itemIndex) =>
-                                    itemIndex === index
-                                      ? { ...currentItem, qcStatus: event.target.value as QcStatus }
-                                      : currentItem
-                                  )
-                                }))
-                              }
-                              className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                            >
-                              {qcStatuses.map((status) => (
-                                <option key={status} value={status}>
-                                  {status}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                        </div>
-
-                        <div className="mt-4 grid gap-4 md:grid-cols-3">
-                          {["manufactureDate", "expiryDate", "retestDate"].map((field) => (
-                            <label key={field} className="block">
-                              <span className="mb-2 block text-sm font-medium capitalize text-ink">
-                                {field.replace(/([A-Z])/g, " $1")}
-                              </span>
-                              <input
-                                type="date"
-                                value={item[field as keyof CreateGrnItemRequest] as string}
-                                onChange={(event) =>
-                                  setForm((current) => ({
-                                    ...current,
-                                    items: current.items.map((currentItem, itemIndex) =>
-                                      itemIndex === index
-                                        ? { ...currentItem, [field]: event.target.value }
-                                        : currentItem
-                                    )
-                                  }))
-                                }
-                                className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                              />
-                            </label>
-                          ))}
-                        </div>
-
-                        <label className="mt-4 block">
-                          <span className="mb-2 block text-sm font-medium text-ink">Description</span>
-                          <textarea
-                            value={item.description}
-                            onChange={(event) =>
-                              setForm((current) => ({
-                                ...current,
-                                items: current.items.map((currentItem, itemIndex) =>
-                                  itemIndex === index
-                                    ? { ...currentItem, description: event.target.value }
-                                    : currentItem
-                                )
-                              }))
-                            }
-                            className="min-h-24 w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                          />
-                        </label>
+                {/* ── Section 2: Material Details (line items) ── */}
+                <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+                  <div className="mb-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white shadow-sm">2</div>
+                      <div>
+                        <div className="font-semibold text-slate-700">Material Details</div>
+                        <div className="text-xs text-slate-400">What material was received — one card per line item</div>
                       </div>
-                    );
-                  })}
+                    </div>
+                    <button type="button"
+                      onClick={() => setForm((c) => ({ ...c, items: [...c.items, createEmptyGrnItem()] }))}
+                      className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100">
+                      + Add Item
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {form.items.map((item, index) => {
+                      const selectedMaterial = materials.find((m) => m.id === item.materialId);
+                      const filteredPallets = pallets.filter((p) => !selectedMaterial || p.storageCondition === selectedMaterial.storageCondition);
+                      const fld = "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:bg-white";
+                      const lbl = "mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500";
+
+                      return (
+                        <div key={`line-item-${index}`} className="rounded-xl border border-blue-100 bg-slate-50/60 p-4">
+                          <div className="mb-3 flex items-center justify-between">
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">Line Item {index + 1}</p>
+                              {selectedMaterial && (
+                                <p className="mt-0.5 text-xs font-semibold text-blue-700">{selectedMaterial.materialCode} – {selectedMaterial.materialName}</p>
+                              )}
+                            </div>
+                            <button type="button" disabled={form.items.length === 1}
+                              onClick={() => setForm((c) => ({ ...c, items: c.items.length === 1 ? c.items : c.items.filter((_, i) => i !== index) }))}
+                              className="rounded-lg border border-red-100 px-2.5 py-1 text-[11px] font-semibold text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-slate-300">
+                              Remove
+                            </button>
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                            <label className="col-span-full block sm:col-span-2 lg:col-span-2">
+                              <span className={lbl}>Material <span className="text-red-400">*</span></span>
+                              <select required value={item.materialId}
+                                onChange={(e) => setForm((c) => ({ ...c, items: c.items.map((ci, i) => i === index ? { ...ci, materialId: e.target.value, uom: materials.find((m) => m.id === e.target.value)?.uom ?? ci.uom } : ci) }))}
+                                className={fld}>
+                                <option value="">Search material by code or name…</option>
+                                {materials.map((m) => <option key={m.id} value={m.id}>{m.materialCode} – {m.materialName}</option>)}
+                              </select>
+                            </label>
+                            <label className="block">
+                              <span className={lbl}>Material Type</span>
+                              <input readOnly value={selectedMaterial?.materialType ?? "–"} className="w-full rounded-xl border border-slate-100 bg-slate-100 px-3 py-2.5 text-sm text-slate-500 outline-none" />
+                            </label>
+                            <label className="block">
+                              <span className={lbl}>Supplier Batch No. <span className="text-red-400">*</span></span>
+                              <input required value={item.vendorBatch} placeholder="As on CoA"
+                                onChange={(e) => setForm((c) => ({ ...c, items: c.items.map((ci, i) => i === index ? { ...ci, vendorBatch: e.target.value } : ci) }))}
+                                className={fld} />
+                              <span className="mt-1 block text-[11px] text-slate-400">Enter the supplier or manufacturer batch shown on the CoA or packing label.</span>
+                            </label>
+                            <label className="block">
+                              <span className={lbl}>System Batch No.</span>
+                              <input readOnly value="Generated after GRN creation" className="w-full rounded-xl border border-slate-100 bg-slate-100 px-3 py-2.5 text-sm text-slate-500 outline-none" />
+                              <span className="mt-1 block text-[11px] text-slate-400">This internal batch number is created by the system only after the GRN is saved.</span>
+                            </label>
+                            <label className="block">
+                              <span className={lbl}>Pallet <span className="text-red-400">*</span></span>
+                              <select required value={item.palletId}
+                                onChange={(e) => setForm((c) => ({ ...c, items: c.items.map((ci, i) => i === index ? { ...ci, palletId: e.target.value } : ci) }))}
+                                className={fld}>
+                                <option value="">Select pallet…</option>
+                                {filteredPallets.map((p) => <option key={p.id} value={p.id}>{p.palletCode} – {p.palletName} ({p.storageCondition})</option>)}
+                              </select>
+                            </label>
+                          </div>
+
+                          {/* Qty row */}
+                          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                            <label className="block">
+                              <span className={lbl}>Received Qty <span className="text-red-400">*</span></span>
+                              <div className="flex gap-1.5">
+                                <input required type="number" min="0" step="0.001" value={item.receivedQuantity}
+                                  onChange={(e) => setForm((c) => ({ ...c, items: c.items.map((ci, i) => i === index ? { ...ci, receivedQuantity: Number(e.target.value) } : ci) }))}
+                                  className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:bg-white" />
+                                <input required value={item.uom}
+                                  onChange={(e) => setForm((c) => ({ ...c, items: c.items.map((ci, i) => i === index ? { ...ci, uom: e.target.value } : ci) }))}
+                                  className="w-16 rounded-xl border border-slate-200 bg-slate-50 px-2 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:bg-white" />
+                              </div>
+                            </label>
+                            <label className="block">
+                              <span className={lbl}>Accepted Qty <span className="text-red-400">*</span></span>
+                              <input required type="number" min="0" step="0.001" value={item.acceptedQuantity}
+                                onChange={(e) => setForm((c) => ({ ...c, items: c.items.map((ci, i) => i === index ? { ...ci, acceptedQuantity: Number(e.target.value) } : ci) }))}
+                                className={fld} />
+                            </label>
+                            <label className="block">
+                              <span className={lbl}>Rejected Qty</span>
+                              <input type="number" min="0" step="0.001" value={item.rejectedQuantity}
+                                onChange={(e) => setForm((c) => ({ ...c, items: c.items.map((ci, i) => i === index ? { ...ci, rejectedQuantity: Number(e.target.value) } : ci) }))}
+                                className={fld} />
+                            </label>
+                            <label className="block">
+                              <span className={lbl}>Unit Price</span>
+                              <input type="number" min="0" step="0.01" value={item.unitPrice}
+                                onChange={(e) => setForm((c) => ({ ...c, items: c.items.map((ci, i) => i === index ? { ...ci, unitPrice: Number(e.target.value) } : ci) }))}
+                                className={fld} />
+                            </label>
+                          </div>
+
+                          {/* Dates row */}
+                          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                            {(["manufactureDate", "expiryDate", "retestDate"] as const).map((field) => (
+                              <label key={field} className="block">
+                                <span className={lbl}>{field === "manufactureDate" ? "Mfg Date" : field === "expiryDate" ? "Expiry Date" : "Retest Date"}</span>
+                                <input type="date" value={item[field] as string}
+                                  onChange={(e) => setForm((c) => ({ ...c, items: c.items.map((ci, i) => i === index ? { ...ci, [field]: e.target.value } : ci) }))}
+                                  className={fld} />
+                              </label>
+                            ))}
+                          </div>
+
+                          <label className="mt-3 block">
+                            <span className={lbl}>Description</span>
+                            <textarea value={item.description}
+                              onChange={(e) => setForm((c) => ({ ...c, items: c.items.map((ci, i) => i === index ? { ...ci, description: e.target.value } : ci) }))}
+                              className="min-h-[60px] w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:bg-white" />
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                <div className="mt-4 rounded-2xl border border-blue-100 bg-white p-4">
-                  <h6 className="text-sm font-semibold text-ink">Line item document</h6>
-                  <p className="mt-1 text-sm text-slate">Optional document upload for the first created line item.</p>
-                  <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <input
-                      value={createDocumentDraft.documentName}
-                      onChange={(event) =>
-                        setCreateDocumentDraft((current) => ({ ...current, documentName: event.target.value }))
-                      }
-                      className="rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                      placeholder="Document name"
-                    />
-                    <input
-                      value={createDocumentDraft.documentType}
-                      onChange={(event) =>
-                        setCreateDocumentDraft((current) => ({ ...current, documentType: event.target.value }))
-                      }
-                      className="rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                      placeholder="Document type"
-                    />
+                {/* ── Section 3: Container / Package Details ── */}
+                <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white shadow-sm">3</div>
+                    <div>
+                      <div className="font-semibold text-slate-700">Container / Package Details</div>
+                      <div className="text-xs text-slate-400">Record container type and quantity per line item</div>
+                    </div>
                   </div>
-                  <div className="mt-4 grid gap-4 md:grid-cols-[1.2fr_1fr]">
-                    <input
-                      value={createDocumentDraft.documentUrl}
-                      onChange={(event) =>
-                        setCreateDocumentDraft((current) => ({ ...current, documentUrl: event.target.value }))
-                      }
-                      className="rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none focus:border-blue-300"
-                      placeholder="Optional URL/path"
-                    />
-                    <input
-                      type="file"
-                      onChange={(event) =>
-                        setCreateDocumentDraft((current) => ({
-                          ...current,
-                          file: event.target.files?.[0] ?? null
-                        }))
-                      }
-                      className="rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none"
-                    />
+
+                  <div className="space-y-3">
+                    {form.items.map((item, index) => {
+                      const selectedMaterial = materials.find((m) => m.id === item.materialId);
+                      const fld = "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:bg-white";
+                      const lbl = "mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500";
+                      return (
+                        <div key={`container-${index}`} className="rounded-xl border border-blue-100 bg-slate-50/60 p-4">
+                          <p className="mb-3 text-xs font-bold text-blue-600">
+                            Line {index + 1}{selectedMaterial ? ` — ${selectedMaterial.materialName}` : ""}
+                          </p>
+                          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                            <label className="block">
+                              <span className={lbl}>Container Type</span>
+                              <select value={item.containerType}
+                                onChange={(e) => setForm((c) => ({ ...c, items: c.items.map((ci, i) => i === index ? { ...ci, containerType: e.target.value as ContainerType } : ci) }))}
+                                className={fld}>
+                                {containerTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+                              </select>
+                            </label>
+                            <label className="block">
+                              <span className={lbl}>No. of Containers <span className="text-red-400">*</span></span>
+                              <input required type="number" min="1" step="1" value={item.numberOfContainers}
+                                onChange={(e) => setForm((c) => ({ ...c, items: c.items.map((ci, i) => i === index ? { ...ci, numberOfContainers: Number(e.target.value) } : ci) }))}
+                                className={fld} />
+                            </label>
+                            <label className="block">
+                              <span className={lbl}>Qty / Container <span className="text-red-400">*</span></span>
+                              <input required type="number" min="0" step="0.001" value={item.quantityPerContainer}
+                                onChange={(e) => setForm((c) => ({ ...c, items: c.items.map((ci, i) => i === index ? { ...ci, quantityPerContainer: Number(e.target.value) } : ci) }))}
+                                className={fld} />
+                            </label>
+                            <label className="block">
+                              <span className={lbl}>QC Status</span>
+                              <select value={item.qcStatus}
+                                onChange={(e) => setForm((c) => ({ ...c, items: c.items.map((ci, i) => i === index ? { ...ci, qcStatus: e.target.value as QcStatus } : ci) }))}
+                                className={fld}>
+                                {qcStatuses.map((s) => <option key={s} value={s}>{s}</option>)}
+                              </select>
+                            </label>
+                          </div>
+                          {item.numberOfContainers > 0 && item.quantityPerContainer > 0 ? (
+                            <div className={`mt-3 flex items-center gap-6 rounded-xl px-4 py-2.5 text-sm font-semibold ${item.numberOfContainers * item.quantityPerContainer === item.receivedQuantity ? "bg-green-50 text-green-700 border border-green-200" : "bg-amber-50 text-amber-700 border border-amber-200"}`}>
+                              <span>{item.numberOfContainers} × {item.quantityPerContainer} {item.uom} = {item.numberOfContainers * item.quantityPerContainer} {item.uom}</span>
+                              {item.numberOfContainers * item.quantityPerContainer !== item.receivedQuantity ? (
+                                <span className="text-xs font-semibold text-amber-600">⚠ Received qty is {item.receivedQuantity} {item.uom}</span>
+                              ) : <span className="text-xs">✓ Matches received qty</span>}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              </div>
+
+                {/* ── Section 4: Supporting Documents ── */}
+                <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white shadow-sm">4</div>
+                    <div>
+                      <div className="font-semibold text-slate-700">Supporting Documents</div>
+                      <div className="text-xs text-slate-400">Attach CoA, MSDS, invoice copy — required for QC release</div>
+                    </div>
+                  </div>
+
+                  <div className="mb-4 grid grid-cols-3 gap-3">
+                    {[
+                      { icon: "📋", label: "Certificate of Analysis", note: "Required", color: "blue" },
+                      { icon: "☣️", label: "MSDS / SDS", note: "Required", color: "blue" },
+                      { icon: "🧾", label: "Invoice Copy", note: "Optional", color: "slate" }
+                    ].map(({ icon, label, note, color }) => (
+                      <div key={label} className={`cursor-pointer rounded-xl border-2 border-dashed p-3 text-center transition-all ${color === "blue" ? "border-blue-200 bg-blue-50 hover:border-blue-400 hover:bg-blue-100" : "border-slate-200 bg-slate-50 hover:border-slate-400"}`}>
+                        <div className="mb-1 text-2xl">{icon}</div>
+                        <div className={`text-xs font-bold ${color === "blue" ? "text-blue-700" : "text-slate-600"}`}>{label}</div>
+                        <div className={`mt-0.5 text-[10px] ${color === "blue" ? "text-blue-500" : "text-slate-400"}`}>{note}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="rounded-xl border border-blue-100 bg-white p-4">
+                    <p className="mb-3 text-xs font-semibold text-slate-600">Attach document to first line item</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <input value={createDocumentDraft.documentName}
+                        onChange={(e) => setCreateDocumentDraft((c) => ({ ...c, documentName: e.target.value }))}
+                        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:bg-white"
+                        placeholder="Document name (e.g. CoA)" />
+                      <input value={createDocumentDraft.documentType}
+                        onChange={(e) => setCreateDocumentDraft((c) => ({ ...c, documentType: e.target.value }))}
+                        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:bg-white"
+                        placeholder="Type (COA / MSDS / INVOICE)" />
+                      <input value={createDocumentDraft.documentUrl}
+                        onChange={(e) => setCreateDocumentDraft((c) => ({ ...c, documentUrl: e.target.value }))}
+                        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:bg-white"
+                        placeholder="Optional URL / path" />
+                      <input type="file"
+                        onChange={(e) => setCreateDocumentDraft((c) => ({ ...c, file: e.target.files?.[0] ?? null }))}
+                        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 outline-none" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Section 5: Review & Submit ── */}
+                <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white shadow-sm">5</div>
+                    <div>
+                      <div className="font-semibold text-slate-700">Review &amp; Submit</div>
+                      <div className="text-xs text-slate-400">Confirm details and electronic sign-off</div>
+                    </div>
+                  </div>
+
+                  <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div><span className="block text-[10px] font-bold uppercase text-slate-500">Supplier</span><span className="font-semibold text-slate-800">{suppliers.find((s) => s.id === form.supplierId)?.supplierName ?? "Not selected"}</span></div>
+                      <div><span className="block text-[10px] font-bold uppercase text-slate-500">Line Items</span><span className="font-semibold text-slate-800">{form.items.length}</span></div>
+                      <div><span className="block text-[10px] font-bold uppercase text-slate-500">GRN No.</span><span className="font-mono font-bold text-blue-700">{form.grnNumber || "Pending"}</span></div>
+                      <div><span className="block text-[10px] font-bold uppercase text-slate-500">Total Containers</span><span className="font-semibold text-slate-800">{form.items.reduce((sum, item) => sum + item.numberOfContainers, 0)}</span></div>
+                      <div><span className="block text-[10px] font-bold uppercase text-slate-500">Receipt Date</span><span className="font-semibold text-slate-800">{formatDisplayDate(form.receiptDate)}</span></div>
+                      <div><span className="block text-[10px] font-bold uppercase text-slate-500">Document</span><span className={`font-semibold ${createDocumentDraft.file ? "text-green-700" : "text-amber-600"}`}>{createDocumentDraft.file ? createDocumentDraft.documentName || "1 attached" : "None attached"}</span></div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                    <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-600">
+                      <svg className="h-4 w-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                      Electronic Sign-Off
+                    </div>
+                    <div className="mb-3 grid grid-cols-3 gap-4 text-sm">
+                      <div><span className="block text-[10px] text-slate-500 uppercase font-semibold mb-1">Signing as</span><span className="font-bold text-slate-800">{currentUserName}</span></div>
+                      <div><span className="block text-[10px] text-slate-500 uppercase font-semibold mb-1">Role</span><span className="font-semibold text-slate-700">QC Manager</span></div>
+                      <div><span className="block text-[10px] text-slate-500 uppercase font-semibold mb-1">Receipt Date</span><span className="font-semibold text-slate-700">{formatDisplayDate(form.receiptDate)}</span></div>
+                    </div>
+                    <p className="mt-2 text-[10px] text-slate-400">This action will be recorded in the audit trail per 21 CFR Part 11 / EU GMP Annex 11 requirements.</p>
+                  </div>
+                </div>
+
+                {successMessage ? (
+                  <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{successMessage}</div>
+                ) : null}
+                {formError ? (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{formError}</div>
+                ) : null}
+
               </div>
             </div>
           </div>
-
-          {successMessage ? (
-            <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-4 text-sm text-green-700">
-              {successMessage}
-            </div>
-          ) : null}
-          {formError ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700">
-              {formError}
-            </div>
-          ) : null}
-
         </form>
       </section>
       )}

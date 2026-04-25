@@ -389,6 +389,13 @@ public class SamplingServiceImpl implements SamplingService {
     }
 
     private SamplingMethod resolveSamplingMethod(Material material, SamplingRequest request, UUID specId, SamplingMethod requestedMethod) {
+        if (material.getSpecId() == null) {
+            throw new BusinessConflictException("No specification is linked to the material master for this sampling request");
+        }
+        if (!material.getSpecId().equals(specId)) {
+            throw new BusinessConflictException("Sampling must use the specification linked to the material master");
+        }
+
         if ("CRITICAL".equalsIgnoreCase(material.getMaterialType())) {
             return SamplingMethod.HUNDRED_PERCENT;
         }

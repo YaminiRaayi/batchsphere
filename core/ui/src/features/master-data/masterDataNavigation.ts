@@ -41,8 +41,8 @@ export const masterDataNavGroups: MasterDataNavGroup[] = [
     ]
   },
   {
-    title: "Materials & Locations",
-    description: "Material attributes and the physical warehouse hierarchy used in storage and traceability.",
+    title: "Materials",
+    description: "Material attributes that drive storage, sampling, and release behavior across operations.",
     accent: "bg-[#13a7b8] text-white",
     items: [
       {
@@ -50,12 +50,6 @@ export const masterDataNavGroups: MasterDataNavGroup[] = [
         description: "Sampling, storage, and release-driving material rules.",
         to: "/master-data/materials/materials",
         section: "material"
-      },
-      {
-        title: "Warehouse",
-        description: "Warehouse, room, rack, shelf, and pallet hierarchy.",
-        to: "/master-data/locations/warehouse",
-        section: "warehouse"
       }
     ]
   },

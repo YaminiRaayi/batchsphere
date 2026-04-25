@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
+  adjustInventory,
   fetchBatches,
   fetchInventory,
   fetchInventoryTransactions,
@@ -89,8 +90,15 @@ const INVENTORY_PAGE_SIZE = 10;
 export function InventoryPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [inventoryPage, setInventoryPage] = useState(0);
+  const [selectedInventoryId, setSelectedInventoryId] = useState<string>("");
+  const [isAdjustOpen, setIsAdjustOpen] = useState(false);
+  const [adjustQuantity, setAdjustQuantity] = useState("");
+  const [adjustReason, setAdjustReason] = useState("");
+  const [adjustMode, setAdjustMode] = useState<"DECREASE" | "INCREASE">("DECREASE");
+  const [adjustError, setAdjustError] = useState<string | null>(null);
+  const [isAdjusting, setIsAdjusting] = useState(false);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["inventory-page"],
     queryFn: async () => {
       const [inventoryPage, transactionPage, materialPage, batchPage, palletPage] = await Promise.all([
@@ -173,6 +181,57 @@ export function InventoryPage() {
     setInventoryPage(0);
   }, [statusFilter]);
 
+  useEffect(() => {
+    if (!selectedInventoryId && filteredInventory[0]) {
+      setSelectedInventoryId(filteredInventory[0].id);
+    } else if (selectedInventoryId && !inventory.some((record) => record.id === selectedInventoryId)) {
+      setSelectedInventoryId(filteredInventory[0]?.id ?? "");
+    }
+  }, [filteredInventory, inventory, selectedInventoryId]);
+
+  const selectedInventory = useMemo(
+    () => inventory.find((record) => record.id === selectedInventoryId) ?? null,
+    [inventory, selectedInventoryId]
+  );
+  const selectedBatch = selectedInventory ? batchMap.get(selectedInventory.batchId) ?? null : null;
+  const selectedMaterial = selectedInventory ? materialMap.get(selectedInventory.materialId) ?? null : null;
+  const selectedPallet = selectedInventory ? palletMap.get(selectedInventory.palletId) ?? null : null;
+
+  async function handleAdjustInventory() {
+    if (!selectedInventory) {
+      setAdjustError("Select an inventory lot first.");
+      return;
+    }
+    if (!adjustQuantity || Number(adjustQuantity) <= 0) {
+      setAdjustError("Enter a valid quantity.");
+      return;
+    }
+    if (!adjustReason.trim()) {
+      setAdjustError("Adjustment reason is required.");
+      return;
+    }
+
+    setIsAdjusting(true);
+    setAdjustError(null);
+    try {
+      await adjustInventory(
+        selectedInventory.id,
+        Number(adjustQuantity),
+        adjustReason.trim(),
+        adjustMode === "INCREASE"
+      );
+      setIsAdjustOpen(false);
+      setAdjustQuantity("");
+      setAdjustReason("");
+      setAdjustMode("DECREASE");
+      await refetch();
+    } catch (adjustRequestError) {
+      setAdjustError(adjustRequestError instanceof Error ? adjustRequestError.message : "Unable to adjust inventory");
+    } finally {
+      setIsAdjusting(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -195,6 +254,12 @@ export function InventoryPage() {
             <button
               key={label}
               type="button"
+              onClick={() => {
+                if (label === "Adjust") {
+                  setIsAdjustOpen(true);
+                  setAdjustError(null);
+                }
+              }}
               className="flex items-center gap-2 rounded-xl border border-sky-200 bg-white px-4 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-50"
             >
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -301,8 +366,19 @@ export function InventoryPage() {
                       const expiry = expiryChip(batch?.expiryDate);
                       return (
                         <tr key={record.id} className="border-b border-sky-50 transition hover:bg-sky-50">
-                          <td className="px-4 py-2.5 font-mono font-medium text-sky-700">
-                            {batch?.batchNumber ?? record.batchId.slice(0, 8)}
+                          <td className="px-4 py-2.5">
+                            <label className="flex items-center gap-3">
+                              <input
+                                type="radio"
+                                name="selectedInventoryLot"
+                                checked={selectedInventoryId === record.id}
+                                onChange={() => setSelectedInventoryId(record.id)}
+                                className="h-4 w-4 border-sky-300 text-sky-600 focus:ring-sky-500"
+                              />
+                              <span className="font-mono font-medium text-sky-700">
+                                {batch?.batchNumber ?? record.batchId.slice(0, 8)}
+                              </span>
+                            </label>
                           </td>
                           <td className="px-4 py-2.5 text-slate-700">
                             {material?.materialName ?? record.materialId.slice(0, 8)}
@@ -452,6 +528,89 @@ export function InventoryPage() {
           </article>
         </div>
       </section>
+
+      {isAdjustOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/20 px-4">
+          <div className="w-full max-w-lg rounded-[24px] border border-sky-100 bg-white p-6 shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800">Adjust Inventory</h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  {selectedInventory
+                    ? `${selectedMaterial?.materialName ?? "Material"} · ${selectedBatch?.batchNumber ?? "Batch"} · ${selectedPallet?.palletCode ?? "Pallet"}`
+                    : "Select a lot from the table before adjusting inventory."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAdjustOpen(false);
+                  setAdjustError(null);
+                }}
+                className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                {(["DECREASE", "INCREASE"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setAdjustMode(mode)}
+                    className={[
+                      "rounded-xl px-4 py-2.5 text-sm font-semibold transition",
+                      adjustMode === mode
+                        ? "bg-sky-600 text-white"
+                        : "border border-sky-200 bg-white text-sky-700"
+                    ].join(" ")}
+                  >
+                    {mode === "DECREASE" ? "Reduce Stock" : "Increase Stock"}
+                  </button>
+                ))}
+              </div>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-700">Quantity</span>
+                <input
+                  type="number"
+                  min="0.001"
+                  step="0.001"
+                  value={adjustQuantity}
+                  onChange={(event) => setAdjustQuantity(event.target.value)}
+                  className="w-full rounded-2xl border border-sky-100 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-sky-300"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-700">Reason</span>
+                <textarea
+                  value={adjustReason}
+                  onChange={(event) => setAdjustReason(event.target.value)}
+                  className="min-h-24 w-full rounded-2xl border border-sky-100 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-sky-300"
+                  placeholder="Issue to production, count correction, FEFO test, etc."
+                />
+              </label>
+              {selectedInventory && adjustMode === "DECREASE" && selectedInventory.status === "RELEASED" ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                  Released-stock reductions now enforce FEFO. If an earlier expiry released lot exists, this adjustment will be blocked.
+                </div>
+              ) : null}
+              {adjustError ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{adjustError}</div>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void handleAdjustInventory()}
+                disabled={isAdjusting || !selectedInventory}
+                className="w-full rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-sky-300"
+              >
+                {isAdjusting ? "Submitting..." : "Confirm Adjustment"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

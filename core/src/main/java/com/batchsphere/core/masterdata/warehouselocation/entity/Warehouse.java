@@ -32,6 +32,9 @@ public class Warehouse {
     @Column(name = "warehouse_name", nullable = false, length = 150)
     private String warehouseName;
 
+    @Column(name = "business_unit_id")
+    private UUID businessUnitId;
+
     @Column(length = 500)
     private String description;
 

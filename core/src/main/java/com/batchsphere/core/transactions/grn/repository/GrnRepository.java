@@ -15,6 +15,8 @@ public interface GrnRepository extends JpaRepository<Grn, UUID> {
 
     Page<Grn> findByIsActiveTrue(Pageable pageable);
 
+    Page<Grn> findByVendorIdAndIsActiveTrue(UUID vendorId, Pageable pageable);
+
     @Query("select g.status, count(g) from Grn g where g.isActive = true group by g.status")
     List<Object[]> countActiveByStatus();
 }

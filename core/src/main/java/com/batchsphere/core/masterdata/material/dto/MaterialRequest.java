@@ -5,9 +5,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.util.UUID;
+
 @Data
 public class MaterialRequest {
-    @NotBlank(message = "Material code is required")
     private String materialCode;
 
     @NotBlank(message = "Material name is required")
@@ -18,6 +19,9 @@ public class MaterialRequest {
 
     @NotBlank(message = "Unit of measure is required")
     private String uom;
+
+    @NotNull(message = "Specification is required")
+    private UUID specId;
 
     @NotNull(message = "Storage condition is required")
     private StorageCondition storageCondition;
