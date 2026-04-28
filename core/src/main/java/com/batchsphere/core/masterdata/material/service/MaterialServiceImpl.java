@@ -1,11 +1,18 @@
 package com.batchsphere.core.masterdata.material.service;
 
 import com.batchsphere.core.auth.service.AuthenticatedActorService;
+import com.batchsphere.core.exception.BusinessConflictException;
 import com.batchsphere.core.exception.DuplicateResourceException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.masterdata.material.dto.MaterialRequest;
 import com.batchsphere.core.masterdata.material.entity.Material;
+import com.batchsphere.core.masterdata.spec.dto.DelinkMaterialSpecRequest;
+import com.batchsphere.core.masterdata.spec.dto.LinkMaterialSpecRequest;
+import com.batchsphere.core.masterdata.spec.entity.MaterialSpecLink;
+import com.batchsphere.core.masterdata.spec.entity.Spec;
+import com.batchsphere.core.masterdata.spec.entity.SpecStatus;
 import com.batchsphere.core.masterdata.material.repository.MaterialRepository;
+import com.batchsphere.core.masterdata.spec.repository.MaterialSpecLinkRepository;
 import com.batchsphere.core.masterdata.spec.repository.SpecRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +31,7 @@ import java.util.UUID;
 public class MaterialServiceImpl implements  MaterialServiceInterface{
     private final MaterialRepository materialRepository;
     private final SpecRepository specRepository;
+    private final MaterialSpecLinkRepository materialSpecLinkRepository;
     private final AuthenticatedActorService authenticatedActorService;
 
     @Override
@@ -33,8 +41,9 @@ public class MaterialServiceImpl implements  MaterialServiceInterface{
         if(materialRepository.existsByMaterialCode(materialCode)){
             throw new DuplicateResourceException("Matreila code already exists");
         }
-        specRepository.findById(materialRequest.getSpecId())
+        Spec spec = specRepository.findById(materialRequest.getSpecId())
                 .orElseThrow(() -> new ResourceNotFoundException("Spec not found with id: " + materialRequest.getSpecId()));
+        validateMaterialLinkableSpec(spec);
         log.info("Creating material with request: {}", materialRequest.toString());
 
         Material material = Material.builder().id(UUID.randomUUID())
@@ -54,7 +63,9 @@ public class MaterialServiceImpl implements  MaterialServiceInterface{
                 .isActive(true)
                 .createdBy(actor)
                 .createdAt(LocalDateTime.now()).build();
-        return materialRepository.save(material);
+        Material savedMaterial = materialRepository.save(material);
+        createOrReplaceActiveLink(savedMaterial, spec, actor, "Initial material-spec link");
+        return savedMaterial;
     }
 
     /**
@@ -106,8 +117,9 @@ public class MaterialServiceImpl implements  MaterialServiceInterface{
         materialRepository.existsByMaterialCode(materialCode)){
             throw  new DuplicateResourceException("Material code already exists: "+ materialCode);
         }
-        specRepository.findById(request.getSpecId())
+        Spec spec = specRepository.findById(request.getSpecId())
                 .orElseThrow(() -> new ResourceNotFoundException("Spec not found with id: " + request.getSpecId()));
+        validateMaterialLinkableSpec(spec);
         material.setMaterialCode(materialCode);
         material.setMaterialName(request.getMaterialName());
         material.setMaterialType(request.getMaterialType());
@@ -123,8 +135,55 @@ public class MaterialServiceImpl implements  MaterialServiceInterface{
         material.setDescription(request.getDescription());
         material.setUpdatedAt(LocalDateTime.now());
         material.setUpdatedBy(actor);
+        Material savedMaterial = materialRepository.save(material);
+        createOrReplaceActiveLink(savedMaterial, spec, actor, "Material-spec link updated from material master");
+        return savedMaterial;
+    }
 
-        return  materialRepository.save(material);
+    @Override
+    public MaterialSpecLink linkSpec(UUID materialId, LinkMaterialSpecRequest request) {
+        String actor = authenticatedActorService.currentActor();
+        Material material = getMaterialById(materialId);
+        Spec spec = specRepository.findById(request.getSpecId())
+                .orElseThrow(() -> new ResourceNotFoundException("Spec not found with id: " + request.getSpecId()));
+        validateMaterialLinkableSpec(spec);
+        material.setSpecId(spec.getId());
+        material.setUpdatedBy(actor);
+        material.setUpdatedAt(LocalDateTime.now());
+        materialRepository.save(material);
+        return createOrReplaceActiveLink(material, spec, actor, request.getNotes());
+    }
+
+    @Override
+    public void delinkSpec(UUID materialId, DelinkMaterialSpecRequest request) {
+        String actor = authenticatedActorService.currentActor();
+        Material material = getMaterialById(materialId);
+        MaterialSpecLink activeLink = materialSpecLinkRepository.findByMaterialIdAndIsActiveTrue(materialId)
+                .orElseThrow(() -> new ResourceNotFoundException("Active material-spec link not found for material id: " + materialId));
+        activeLink.setIsActive(false);
+        activeLink.setDelinkedBy(actor);
+        activeLink.setDelinkedAt(LocalDateTime.now());
+        if (StringUtils.hasText(request != null ? request.getNotes() : null)) {
+            activeLink.setNotes(request.getNotes().trim());
+        }
+        materialSpecLinkRepository.save(activeLink);
+        material.setSpecId(null);
+        material.setUpdatedBy(actor);
+        material.setUpdatedAt(LocalDateTime.now());
+        materialRepository.save(material);
+    }
+
+    @Override
+    public MaterialSpecLink getActiveSpecLink(UUID materialId) {
+        getMaterialById(materialId);
+        return materialSpecLinkRepository.findByMaterialIdAndIsActiveTrue(materialId)
+                .orElseThrow(() -> new ResourceNotFoundException("Active material-spec link not found for material id: " + materialId));
+    }
+
+    @Override
+    public java.util.List<MaterialSpecLink> getSpecHistory(UUID materialId) {
+        getMaterialById(materialId);
+        return materialSpecLinkRepository.findByMaterialIdOrderByLinkedAtDesc(materialId);
     }
 
     private String resolveMaterialCodeForCreate(MaterialRequest request) {
@@ -153,5 +212,39 @@ public class MaterialServiceImpl implements  MaterialServiceInterface{
             case "IN_PROCESS" -> "IP";
             default -> "MAT";
         };
+    }
+
+    private void validateMaterialLinkableSpec(Spec spec) {
+        if (!Boolean.TRUE.equals(spec.getIsActive())) {
+            throw new BusinessConflictException("Inactive specs cannot be linked to materials");
+        }
+        if (spec.getStatus() != SpecStatus.APPROVED) {
+            throw new BusinessConflictException("Only APPROVED specs can be linked to materials");
+        }
+    }
+
+    private MaterialSpecLink createOrReplaceActiveLink(Material material, Spec spec, String actor, String notes) {
+        MaterialSpecLink activeLink = materialSpecLinkRepository.findByMaterialIdAndIsActiveTrue(material.getId()).orElse(null);
+        if (activeLink != null && activeLink.getSpecId().equals(spec.getId())) {
+            return activeLink;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        if (activeLink != null) {
+            activeLink.setIsActive(false);
+            activeLink.setDelinkedBy(actor);
+            activeLink.setDelinkedAt(now);
+            materialSpecLinkRepository.save(activeLink);
+        }
+        MaterialSpecLink newLink = MaterialSpecLink.builder()
+                .id(UUID.randomUUID())
+                .materialId(material.getId())
+                .specId(spec.getId())
+                .isActive(true)
+                .linkedBy(actor)
+                .linkedAt(now)
+                .notes(StringUtils.hasText(notes) ? notes.trim() : null)
+                .createdAt(now)
+                .build();
+        return materialSpecLinkRepository.save(newLink);
     }
 }

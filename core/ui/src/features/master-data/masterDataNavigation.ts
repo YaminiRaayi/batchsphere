@@ -52,30 +52,5 @@ export const masterDataNavGroups: MasterDataNavGroup[] = [
         section: "material"
       }
     ]
-  },
-  {
-    title: "QC References",
-    description: "Reference records used by sampling, specifications, and future LIMS workflows.",
-    accent: "bg-white text-ink border border-ink/10",
-    items: [
-      {
-        title: "Specs",
-        description: "Sampling strategy and revision-controlled specifications.",
-        to: "/master-data/qc-refs/specs",
-        section: "spec"
-      },
-      {
-        title: "MoA",
-        description: "Method of analysis reference set.",
-        to: "/master-data/qc-refs/moa",
-        section: "moa"
-      },
-      {
-        title: "Sampling Tools",
-        description: "QC tools used in planning and execution.",
-        to: "/master-data/qc-refs/sampling-tools",
-        section: "samplingTool"
-      }
-    ]
   }
 ];

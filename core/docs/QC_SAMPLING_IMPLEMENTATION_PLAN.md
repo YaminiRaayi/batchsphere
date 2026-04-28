@@ -2,6 +2,39 @@
 
 Last updated: 2026-04-25
 
+## Current Delivery Status
+
+As of `2026-04-25`, the first planned slices have been implemented and partially validated live.
+
+Implemented:
+
+- Phase 0 core inventory transition consolidation
+- Phase 1 sampling workflow split
+- initial Phase 2 `Sample` model
+- initial Phase 2 `QcDisposition` model
+- historical data backfill for old approved/rejected sampling records
+
+Validated:
+
+- compile verification passed after each implementation slice
+- live API verification confirmed historical records now return:
+  - `requestStatus = COMPLETED`
+  - populated `sample`
+  - populated `qcDisposition`
+
+Not yet implemented:
+
+- explicit QC receipt step
+- explicit QC review step
+- investigation / OOS / OOT path
+- resample / retest flow
+- retained sample lifecycle
+
+Important note:
+
+- legacy QC mirror fields remain on `sampling_request` for compatibility
+- `QcDisposition` is now the intended QC outcome record going forward
+
 ## Purpose
 
 This document turns the current WMS, Sampling, and QC analysis into a practical implementation plan for BatchSphere.
@@ -43,6 +76,8 @@ This design direction is consistent with official pharma guidance:
   Source: https://health.ec.europa.eu/system/files/2016-11/mallet_gmp_chapter_6_0.pdf
 - WHO good practices for pharmaceutical quality control laboratories emphasize incoming sample control, sample receipt, handling, storage, documentation, and retained samples.
   Source: https://www.who.int/publications/m/item/who-good-practices-for-pharmaceutical-quality-control-laboratories
+- EU GMP Annex 8 adds specific guidance for sampling of starting materials, including the expectation that identity is normally ensured from all containers unless reduced sampling is justified by a validated procedure.
+  Source: https://health.ec.europa.eu/system/files/2016-11/anx08_en_0.pdf
 
 These sources support the same conclusion reached in the internal analysis:
 
@@ -67,43 +102,52 @@ Relevant implementation:
 - [InventoryServiceImpl.java](/Users/induraghav/gitrepo/batchsphere/core/src/main/java/com/batchsphere/core/transactions/inventory/service/InventoryServiceImpl.java:277)
 - [SamplingServiceImpl.java](/Users/induraghav/gitrepo/batchsphere/core/src/main/java/com/batchsphere/core/transactions/sampling/service/SamplingServiceImpl.java:66)
 - [WarehouseLocationServiceImpl.java](/Users/induraghav/gitrepo/batchsphere/core/src/main/java/com/batchsphere/core/masterdata/warehouselocation/service/WarehouseLocationServiceImpl.java:605)
+- Container-rule design note: [QC_CONTAINER_SAMPLING_RULES.md](/Users/induraghav/gitrepo/batchsphere/core/docs/QC_CONTAINER_SAMPLING_RULES.md:1)
 
 ### Important current gaps
 
-1. Inventory state changes driven by Sampling/QC bypass the full WMS status-change path.
+1. QC progression is still too compressed.
 
-Current internal status updates do not validate transitions and do not write inventory history entries:
+Current system now supports:
 
-- [InventoryServiceImpl.java](/Users/induraghav/gitrepo/batchsphere/core/src/main/java/com/batchsphere/core/transactions/inventory/service/InventoryServiceImpl.java:343)
+- sample collected
+- sample handed to QC
+- final QC decision
 
-2. The implemented workflow skips explicit physical sampling stages.
+But it does not yet support:
 
-Current inventory transition rules expect:
-
-- `QUARANTINE -> SAMPLING -> UNDER_TEST`
-
-But sampling completion currently moves directly to:
-
-- `UNDER_TEST`
-
-Relevant implementation:
-
-- [InventoryServiceImpl.java](/Users/induraghav/gitrepo/batchsphere/core/src/main/java/com/batchsphere/core/transactions/inventory/service/InventoryServiceImpl.java:70)
-- [SamplingServiceImpl.java](/Users/induraghav/gitrepo/batchsphere/core/src/main/java/com/batchsphere/core/transactions/sampling/service/SamplingServiceImpl.java:263)
-
-3. Sample custody is not yet a first-class model.
-
-The system tracks selected containers and sampled quantities, but not a real `Sample` lifecycle with warehouse handoff and QC receipt.
-
-4. Sampling status and QC disposition are still collapsed too much.
-
-That makes it difficult to represent:
-
-- handoff to QC
-- QC receipt
-- under investigation
+- QC sample receipt as a separate step
+- QC review start
+- investigation state
 - resample required
-- retest
+- retest required
+
+2. `QcDisposition` is introduced, but not yet fully expanded.
+
+Current statuses are still basic:
+
+- `PENDING`
+- `APPROVED`
+- `REJECTED`
+
+3. Legacy QC mirror fields still remain on `sampling_request`.
+
+This is intentional for compatibility, but it should be reduced later once all consumers use `QcDisposition`.
+
+4. Sample lifecycle is stronger now, but still not complete.
+
+Current system supports:
+
+- sample creation
+- sample-to-container linkage
+- handoff to QC
+- final approve/reject sync
+
+Still missing:
+
+- QC receipt condition
+- sample storage location in QC
+- retained / consumed / destroyed handling
 
 ## Design Decision
 
@@ -389,6 +433,7 @@ Suggested fields:
 - `sampleId`
 - `grnContainerId`
 - `sampledQuantity`
+- `sampleType`
 
 #### `QcDisposition`
 
@@ -471,6 +516,14 @@ Keep existing endpoints where possible and extend behavior:
 - `POST /sampling-requests/{id}/handoff-to-qc`
 - `POST /sampling-requests/{id}/qc-decision`
 
+Phase 1 should still keep container rules moderate:
+
+- selected containers
+- sampled quantity per container
+- sampling location
+- sampler and time
+- basic precaution notes
+
 ### Phase 2 APIs
 
 Add first-class sample and QC actions:
@@ -482,6 +535,12 @@ Add first-class sample and QC actions:
 - `POST /samples/{id}/start-review`
 - `POST /samples/{id}/investigate`
 - `POST /samples/{id}/decision`
+
+Phase 2 should introduce stronger container-aware modeling:
+
+- identity vs composite sample distinction
+- sample-to-container linkage
+- QC receipt condition
 
 ### Phase 3 APIs
 
@@ -559,12 +618,16 @@ Scope:
 - add `handoffToQc` action
 - record sampler, timestamps, and custody fields on sampling request
 - align container updates with new statuses
+- make selected container sampling explicit and auditable
+- store sampling-location and sampled-container details more clearly
+- support basic precaution notes for photosensitive / hygroscopic / hazardous materials
 - update WMS map and detail UI to show `SAMPLING` clearly
 
 Deliverables:
 
 - explicit `REQUESTED -> PLAN_DEFINED -> IN_PROGRESS -> SAMPLED -> HANDED_TO_QC`
 - WMS inventory transitions aligned to physical events
+- container-level sampling traceability improved without full reduced-sampling policy engine
 
 Why second:
 
@@ -581,15 +644,28 @@ Scope:
 - add `sample` table
 - add `sample_container_link` table
 - add `qc_disposition` table
-- add QC receipt and review events
 - stop using `SamplingRequestStatus` as the main QC decision store
 - connect QC disposition to WMS state changes through one inventory transition service
+
+Phase 2 status:
+
+- `sample` implemented
+- `sample_container_link` implemented
+- `qc_disposition` implemented
+- historical backfill implemented
+- `SamplingRequestStatus` no longer carries final QC outcome for new flow
+- explicit QC receipt and QC review events still pending
 
 Deliverables:
 
 - explicit sample custody
+- first-class sample-to-container traceability
+- separated QC outcome model
+
+Deferred within Phase 2:
+
 - explicit QC receipt
-- explicit QC review and final disposition
+- explicit QC review
 
 Why third:
 
@@ -608,12 +684,19 @@ Scope:
 - add `RETEST_REQUIRED`
 - add follow-on sampling cycle linkage
 - add quality event logging
+- add validated reduced-sampling policy support where business-approved
+- add supplier-qualified reduced sampling support later if needed
 - drive WMS `BLOCKED` state from investigation and resample cases
+
+Prerequisite:
+
+- finish the remaining Phase 2 QC receipt/review slice first
 
 Deliverables:
 
 - investigation-aware workflow
 - repeatable sampling and QC cycles on the same batch
+- advanced container-rule behavior for reduced sampling and exception cases
 
 ### Phase 4: Audit and compliance hardening
 
@@ -628,6 +711,7 @@ Scope:
 - e-sign or approval hook points
 - retained sample handling
 - deviation / CAPA reference hooks
+- exception approval for sampling deviations where required
 
 Deliverables:
 
@@ -657,6 +741,7 @@ If the status transition path remains split, later sample and QC design will kee
 ### Phase 1 migrations
 
 - add operational timing and custody columns to `sampling_request`
+- add basic container-sampling traceability columns if needed without creating full sample tables yet
 
 ### Phase 2 migrations
 
@@ -668,6 +753,7 @@ If the status transition path remains split, later sample and QC design will kee
 
 - create `quality_event`
 - add optional back-reference columns as needed
+- add reduced-sampling policy tables only when policy rules are approved
 
 Migration rule:
 
@@ -688,28 +774,29 @@ Migration rule:
 - sampling lifecycle tests from `REQUESTED` to `HANDED_TO_QC`
 - WMS map and status visibility checks
 - container reconciliation tests
+- selected-container traceability tests
 
 ### Phase 2
 
 - sample creation and custody tests
 - QC receipt and decision tests
 - inventory disposition sync tests
+- identity-vs-composite sample tests
 
 ### Phase 3
 
 - investigation to blocked-stock tests
 - resample and retest cycle tests
+- reduced-sampling policy tests
 
 ## Immediate Next Build Recommendation
 
-Start with `Phase 0`.
+Immediate next work should be validation and documentation, not more model expansion.
 
-The first code change should be to consolidate inventory status transitions so that:
+Do next:
 
-- Sampling cannot bypass WMS audit logic
-- every status change writes inventory history
-- `SAMPLING` becomes a real operational state instead of a mostly theoretical one
+- validate one fresh live record through the new flow
+- confirm inventory, sample, and qcDisposition stay aligned
+- keep Phase 2 receipt/review design as the next coding slice
 
-After Phase 0 is merged, move directly into `Phase 1`.
-
-That will let BatchSphere continue WMS implementation without building on top of a weak Sampling/QC transition model.
+Do not jump into investigation/resample flow yet.

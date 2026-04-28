@@ -1,5 +1,7 @@
 package com.batchsphere.core.masterdata.moa.controller;
 
+import com.batchsphere.core.masterdata.quality.dto.RejectRequest;
+import com.batchsphere.core.masterdata.quality.dto.ReviewSubmissionRequest;
 import com.batchsphere.core.masterdata.moa.dto.MoaRequest;
 import com.batchsphere.core.masterdata.moa.entity.Moa;
 import com.batchsphere.core.masterdata.moa.service.MoaService;
@@ -43,6 +45,31 @@ public class MoaController {
     @PutMapping("/{id}")
     public ResponseEntity<Moa> updateMoa(@PathVariable UUID id, @Valid @RequestBody MoaRequest request) {
         return ResponseEntity.ok(moaService.updateMoa(id, request));
+    }
+
+    @PostMapping("/{id}/submit")
+    public ResponseEntity<Moa> submitMoa(@PathVariable UUID id, @RequestBody(required = false) ReviewSubmissionRequest request) {
+        return ResponseEntity.ok(moaService.submitMoa(id, request));
+    }
+
+    @PostMapping("/{id}/approve")
+    public ResponseEntity<Moa> approveMoa(@PathVariable UUID id) {
+        return ResponseEntity.ok(moaService.approveMoa(id));
+    }
+
+    @PostMapping("/{id}/reject")
+    public ResponseEntity<Moa> rejectMoa(@PathVariable UUID id, @Valid @RequestBody RejectRequest request) {
+        return ResponseEntity.ok(moaService.rejectMoa(id, request));
+    }
+
+    @PostMapping("/{id}/obsolete")
+    public ResponseEntity<Moa> obsoleteMoa(@PathVariable UUID id) {
+        return ResponseEntity.ok(moaService.obsoleteMoa(id));
+    }
+
+    @GetMapping("/review-queue")
+    public ResponseEntity<List<Moa>> getReviewQueue() {
+        return ResponseEntity.ok(moaService.getReviewQueue());
     }
 
     @DeleteMapping("/{id}")

@@ -315,7 +315,11 @@ function createInitialSpecForm(currentUserName: string): CreateSpecRequest {
     specCode: "",
     specName: "",
     revision: "",
+    specType: "MATERIAL",
     samplingMethod: "SQRT_N_PLUS_1",
+    targetMarket: "GLOBAL",
+    compendialRef: "IN_HOUSE",
+    reviewRoute: "QC_ONLY",
     referenceAttachment: "",
     createdBy: currentUserName
   };
@@ -326,6 +330,10 @@ function createInitialMoaForm(currentUserName: string): CreateMoaRequest {
     moaCode: "",
     moaName: "",
     revision: "",
+    moaType: "HPLC",
+    compendialRef: "IN_HOUSE",
+    validationStatus: "NOT_VALIDATED",
+    reviewRoute: "QC_ONLY",
     referenceAttachment: "",
     createdBy: currentUserName
   };
@@ -1797,7 +1805,11 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       specCode: spec.specCode,
       specName: spec.specName,
       revision: spec.revision ?? "",
+      specType: spec.specType,
       samplingMethod: spec.samplingMethod,
+      targetMarket: spec.targetMarket ?? "GLOBAL",
+      compendialRef: spec.compendialRef ?? "IN_HOUSE",
+      reviewRoute: spec.reviewRoute,
       referenceAttachment: spec.referenceAttachment ?? "",
       createdBy: spec.updatedBy ?? spec.createdBy ?? currentUserName
     });
@@ -1828,6 +1840,10 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       moaCode: moa.moaCode,
       moaName: moa.moaName,
       revision: moa.revision ?? "",
+      moaType: moa.moaType ?? "HPLC",
+      compendialRef: moa.compendialRef ?? "IN_HOUSE",
+      validationStatus: moa.validationStatus,
+      reviewRoute: moa.reviewRoute,
       referenceAttachment: moa.referenceAttachment ?? "",
       createdBy: moa.updatedBy ?? moa.createdBy ?? currentUserName
     });

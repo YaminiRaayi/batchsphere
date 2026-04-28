@@ -98,7 +98,7 @@
         <p class="text-sm text-slate-500 mt-0.5">Sampling queue · Inbound material inspection decisions</p>
       </div>
       <div class="flex items-center gap-2">
-        <button class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl text-xs font-semibold hover:bg-green-700">
+        <button onclick="openCreateModal()" class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl text-xs font-semibold hover:bg-green-700">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
           New Sample Request
         </button>
@@ -458,5 +458,575 @@
     </div>
   </div>
 </main>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     CREATE SAMPLING REQUEST — Slide-over modal
+     Phase 1 scope: source ref, sampling plan, container selection,
+     assignment, special precautions. Aligns with QC_SAMPLING_IMPLEMENTATION_PLAN.md
+     ══════════════════════════════════════════════════════════════════════ -->
+<div id="createSamplingModal" class="fixed inset-0 z-50 hidden">
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onclick="closeCreateModal()"></div>
+
+  <!-- Slide-over panel -->
+  <div class="absolute right-0 top-0 bottom-0 w-[800px] bg-white shadow-2xl flex flex-col overflow-hidden">
+
+    <!-- Sticky header -->
+    <div class="flex-shrink-0 bg-white border-b border-green-100 px-6 py-4">
+      <div class="flex items-start justify-between">
+        <div>
+          <div class="flex items-center gap-2 mb-0.5">
+            <div class="w-7 h-7 rounded-lg bg-green-100 flex items-center justify-center">
+              <svg class="w-4 h-4 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.78 0-2.674-2.155-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+            </div>
+            <h2 class="text-base font-bold text-slate-800">Create Sampling Request</h2>
+            <span class="status-pill bg-blue-100 text-blue-700 text-[10px]"><span class="dot bg-blue-500"></span>Draft</span>
+          </div>
+          <p class="text-xs text-slate-400 pl-9">Define plan, select containers, assign sampler · Status will be set to <strong>PLAN_DEFINED</strong> on submit</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="px-3 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+            Save Draft
+          </button>
+          <button onclick="submitSamplingPlan()" class="px-4 py-1.5 text-xs font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Submit Plan
+          </button>
+          <button onclick="closeCreateModal()" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Sampling lifecycle mini-timeline -->
+      <div class="mt-4 flex items-center gap-0">
+        <div class="flex flex-col items-center">
+          <div class="w-7 h-7 rounded-full bg-green-600 text-white text-[10px] font-bold flex items-center justify-center">✓</div>
+          <div class="text-[9px] text-green-600 font-semibold mt-1">Requested</div>
+        </div>
+        <div class="h-0.5 w-10 bg-green-400 mt-[-10px]"></div>
+        <div class="flex flex-col items-center">
+          <div class="w-7 h-7 rounded-full bg-green-600 text-white ring-2 ring-green-300 text-[10px] font-bold flex items-center justify-center">2</div>
+          <div class="text-[9px] text-green-700 font-bold mt-1 whitespace-nowrap">Plan Defined</div>
+        </div>
+        <div class="h-0.5 w-10 bg-slate-200 mt-[-10px]"></div>
+        <div class="flex flex-col items-center">
+          <div class="w-7 h-7 rounded-full bg-slate-200 text-slate-500 text-[10px] font-bold flex items-center justify-center">3</div>
+          <div class="text-[9px] text-slate-400 mt-1 whitespace-nowrap">In Progress</div>
+        </div>
+        <div class="h-0.5 w-10 bg-slate-200 mt-[-10px]"></div>
+        <div class="flex flex-col items-center">
+          <div class="w-7 h-7 rounded-full bg-slate-200 text-slate-500 text-[10px] font-bold flex items-center justify-center">4</div>
+          <div class="text-[9px] text-slate-400 mt-1">Sampled</div>
+        </div>
+        <div class="h-0.5 w-10 bg-slate-200 mt-[-10px]"></div>
+        <div class="flex flex-col items-center">
+          <div class="w-7 h-7 rounded-full bg-slate-200 text-slate-500 text-[10px] font-bold flex items-center justify-center">5</div>
+          <div class="text-[9px] text-slate-400 mt-1 whitespace-nowrap">Handed to QC</div>
+        </div>
+        <div class="h-0.5 w-10 bg-slate-200 mt-[-10px]"></div>
+        <div class="flex flex-col items-center">
+          <div class="w-7 h-7 rounded-full bg-slate-200 text-slate-500 text-[10px] font-bold flex items-center justify-center">6</div>
+          <div class="text-[9px] text-slate-400 mt-1">Completed</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scrollable body -->
+    <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50">
+
+      <!-- ── Section 1: Source Reference ── -->
+      <div class="bg-white rounded-2xl border border-green-100 shadow-sm overflow-hidden">
+        <div class="flex items-center gap-2 px-5 py-3.5 border-b border-green-50 bg-gradient-to-r from-green-50 to-white">
+          <div class="w-6 h-6 rounded-full bg-green-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">1</div>
+          <span class="text-sm font-semibold text-slate-700">Source Reference</span>
+          <span class="ml-auto text-[10px] text-slate-400">Auto-generated on GRN receive · select to link</span>
+        </div>
+        <div class="p-5">
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="text-[11px] font-semibold text-slate-600 mb-1.5 block">GRN Number <span class="text-red-500">*</span></label>
+              <select onchange="populateGRNInfo()" id="grnSelect" class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent">
+                <option value="">— Select GRN —</option>
+                <option value="GRN-2026-0118">GRN-2026-0118 · Paracetamol API · Granules India</option>
+                <option value="GRN-2026-0117">GRN-2026-0117 · Lactose Monohydrate · Molbase Ltd</option>
+                <option value="GRN-2026-0116">GRN-2026-0116 · MCC PH-102 · Sigachi Industries</option>
+                <option value="GRN-2026-0115">GRN-2026-0115 · Talc · Minerals India</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[11px] font-semibold text-slate-600 mb-1.5 block">Line Item / Material</label>
+              <select class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent">
+                <option>— Select line item —</option>
+                <option selected>Line 1 · Paracetamol API · 300 kg</option>
+              </select>
+            </div>
+          </div>
+          <!-- Auto-populated info strip -->
+          <div class="grid grid-cols-5 gap-2" id="grnInfoStrip">
+            <div class="bg-green-50 rounded-xl p-2.5 border border-green-100">
+              <div class="text-[9px] text-slate-400 uppercase tracking-wide">Material Code</div>
+              <div class="text-xs font-bold text-slate-700 mt-0.5">RM-PARA-001</div>
+            </div>
+            <div class="bg-green-50 rounded-xl p-2.5 border border-green-100">
+              <div class="text-[9px] text-slate-400 uppercase tracking-wide">Batch / Lot</div>
+              <div class="text-xs font-bold text-slate-700 mt-0.5">L-2026-0050</div>
+            </div>
+            <div class="bg-green-50 rounded-xl p-2.5 border border-green-100">
+              <div class="text-[9px] text-slate-400 uppercase tracking-wide">Received Qty</div>
+              <div class="text-xs font-bold text-slate-700 mt-0.5">300 kg</div>
+            </div>
+            <div class="bg-green-50 rounded-xl p-2.5 border border-green-100">
+              <div class="text-[9px] text-slate-400 uppercase tracking-wide">Containers</div>
+              <div class="text-xs font-bold text-slate-700 mt-0.5">12 HDPE Drums</div>
+            </div>
+            <div class="bg-amber-50 rounded-xl p-2.5 border border-amber-100">
+              <div class="text-[9px] text-amber-600 uppercase tracking-wide font-semibold">WMS Status</div>
+              <div class="text-xs font-bold text-amber-700 mt-0.5">QUARANTINE</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Section 2: Sampling Method & Plan ── -->
+      <div class="bg-white rounded-2xl border border-green-100 shadow-sm overflow-hidden">
+        <div class="flex items-center gap-2 px-5 py-3.5 border-b border-green-50 bg-gradient-to-r from-green-50 to-white">
+          <div class="w-6 h-6 rounded-full bg-green-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">2</div>
+          <span class="text-sm font-semibold text-slate-700">Sampling Method &amp; Plan</span>
+        </div>
+        <div class="p-5">
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="text-[11px] font-semibold text-slate-600 mb-1.5 block">Container Selection Rule <span class="text-red-500">*</span></label>
+              <select onchange="updateContainerRule(this.value)" class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-400">
+                <option value="ALL_CONTAINERS">All Containers — Identity Testing (GMP default)</option>
+                <option value="SQRT_N_PLUS_1">√N+1 — Representative Sampling</option>
+                <option value="RISK_BASED_REDUCED">Risk-Based Reduced — Validated SOP required</option>
+                <option value="COA_BASED">CoA-Based — No Physical Sampling</option>
+              </select>
+              <div id="ruleHint" class="mt-1.5 text-[10px] text-slate-400 flex items-center gap-1">
+                <svg class="w-3 h-3 text-blue-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+                EU GMP Annex 8: identity from all containers unless reduced sampling is validated
+              </div>
+            </div>
+            <div>
+              <label class="text-[11px] font-semibold text-slate-600 mb-1.5 block">Sample Type <span class="text-red-500">*</span></label>
+              <select class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-400">
+                <option value="IDENTITY_SAMPLE">Identity Sample</option>
+                <option value="COMPOSITE_QC_SAMPLE">Composite QC Sample</option>
+                <option value="RETENTION_SAMPLE">Retention Sample</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[11px] font-semibold text-slate-600 mb-1.5 block">Reference Sampling Plan / SOP</label>
+              <select class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-400">
+                <option>SP-2024-PARA — Paracetamol API Standard SOP</option>
+                <option>SP-2024-EXC — Excipient Generic Plan</option>
+                <option>SP-2024-API — Active Ingredient Plan</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[11px] font-semibold text-slate-600 mb-1.5 block">Sampling Area <span class="text-red-500">*</span></label>
+              <select class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-400">
+                <option>QC Sampling Room — R101</option>
+                <option>Dedicated Sampling Booth — SB-02</option>
+                <option>Quarantine Area — QA-01</option>
+                <option>Dispensary — D01</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Compositing rule -->
+          <div class="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+            <input type="checkbox" id="compositingAllowed" class="rounded border-slate-300 text-green-600 w-4 h-4" />
+            <label for="compositingAllowed" class="text-xs text-slate-700 font-medium">Compositing allowed for this sampling event</label>
+            <div class="ml-auto flex items-center gap-2 text-xs text-slate-500">
+              Max containers per composite:
+              <input type="number" value="5" min="2" max="20" class="w-14 text-xs border border-slate-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-green-400" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Section 3: Container Selection ── -->
+      <div class="bg-white rounded-2xl border border-green-100 shadow-sm overflow-hidden">
+        <div class="flex items-center gap-2 px-5 py-3.5 border-b border-green-50 bg-gradient-to-r from-green-50 to-white">
+          <div class="w-6 h-6 rounded-full bg-green-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">3</div>
+          <span class="text-sm font-semibold text-slate-700">Container Selection &amp; Sample Quantity</span>
+          <span class="ml-2 bg-green-100 text-green-700 text-[10px] font-semibold px-2 py-0.5 rounded-full" id="selectionCount">12 / 12 selected</span>
+          <button onclick="autoSelectContainers()" class="ml-auto text-[11px] text-green-600 font-semibold border border-green-200 rounded-lg px-2.5 py-1 hover:bg-green-50 flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.347.347a3.5 3.5 0 01-4.95 0l-.347-.347z"/></svg>
+            Auto-select (√N+1 = 5)
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200">
+                <th class="px-4 py-2.5 text-left w-10">
+                  <input type="checkbox" checked id="selectAllContainers" onchange="toggleAllContainers(this.checked)" class="rounded border-slate-300 text-green-600 w-3.5 h-3.5" />
+                </th>
+                <th class="px-3 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Container No.</th>
+                <th class="px-3 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Type</th>
+                <th class="px-3 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Gross Qty</th>
+                <th class="px-3 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Condition</th>
+                <th class="px-3 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Sample Qty (g)</th>
+                <th class="px-3 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Remarks</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100" id="containerTableBody">
+              <!-- Row template: 12 containers -->
+              <tr class="hover:bg-slate-50 transition-colors container-row selected-container">
+                <td class="px-4 py-2.5"><input type="checkbox" checked class="container-check rounded border-slate-300 text-green-600 w-3.5 h-3.5" /></td>
+                <td class="px-3 py-2.5 font-semibold text-slate-800">CNT-001</td>
+                <td class="px-3 py-2.5 text-slate-500">HDPE Drum</td>
+                <td class="px-3 py-2.5 text-slate-700">25 kg</td>
+                <td class="px-3 py-2.5"><span class="status-pill bg-green-100 text-green-700 text-[10px]">Good</span></td>
+                <td class="px-3 py-2.5"><input type="number" value="50" min="1" class="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+                <td class="px-3 py-2.5"><input type="text" placeholder="Optional..." class="w-full text-xs border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+              </tr>
+              <tr class="hover:bg-slate-50 transition-colors container-row selected-container">
+                <td class="px-4 py-2.5"><input type="checkbox" checked class="container-check rounded border-slate-300 text-green-600 w-3.5 h-3.5" /></td>
+                <td class="px-3 py-2.5 font-semibold text-slate-800">CNT-002</td>
+                <td class="px-3 py-2.5 text-slate-500">HDPE Drum</td>
+                <td class="px-3 py-2.5 text-slate-700">25 kg</td>
+                <td class="px-3 py-2.5"><span class="status-pill bg-green-100 text-green-700 text-[10px]">Good</span></td>
+                <td class="px-3 py-2.5"><input type="number" value="50" min="1" class="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+                <td class="px-3 py-2.5"><input type="text" placeholder="Optional..." class="w-full text-xs border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+              </tr>
+              <tr class="hover:bg-slate-50 transition-colors container-row selected-container">
+                <td class="px-4 py-2.5"><input type="checkbox" checked class="container-check rounded border-slate-300 text-green-600 w-3.5 h-3.5" /></td>
+                <td class="px-3 py-2.5 font-semibold text-slate-800">CNT-003</td>
+                <td class="px-3 py-2.5 text-slate-500">HDPE Drum</td>
+                <td class="px-3 py-2.5 text-slate-700">25 kg</td>
+                <td class="px-3 py-2.5"><span class="status-pill bg-amber-100 text-amber-700 text-[10px]">Minor dent</span></td>
+                <td class="px-3 py-2.5"><input type="number" value="50" min="1" class="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+                <td class="px-3 py-2.5"><input type="text" value="Minor external dent, seal intact" class="w-full text-xs border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+              </tr>
+              <tr class="hover:bg-slate-50 transition-colors container-row selected-container">
+                <td class="px-4 py-2.5"><input type="checkbox" checked class="container-check rounded border-slate-300 text-green-600 w-3.5 h-3.5" /></td>
+                <td class="px-3 py-2.5 font-semibold text-slate-800">CNT-004</td>
+                <td class="px-3 py-2.5 text-slate-500">HDPE Drum</td>
+                <td class="px-3 py-2.5 text-slate-700">25 kg</td>
+                <td class="px-3 py-2.5"><span class="status-pill bg-green-100 text-green-700 text-[10px]">Good</span></td>
+                <td class="px-3 py-2.5"><input type="number" value="50" min="1" class="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+                <td class="px-3 py-2.5"><input type="text" placeholder="Optional..." class="w-full text-xs border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+              </tr>
+              <tr class="hover:bg-slate-50 transition-colors container-row selected-container">
+                <td class="px-4 py-2.5"><input type="checkbox" checked class="container-check rounded border-slate-300 text-green-600 w-3.5 h-3.5" /></td>
+                <td class="px-3 py-2.5 font-semibold text-slate-800">CNT-005</td>
+                <td class="px-3 py-2.5 text-slate-500">HDPE Drum</td>
+                <td class="px-3 py-2.5 text-slate-700">25 kg</td>
+                <td class="px-3 py-2.5"><span class="status-pill bg-green-100 text-green-700 text-[10px]">Good</span></td>
+                <td class="px-3 py-2.5"><input type="number" value="50" min="1" class="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+                <td class="px-3 py-2.5"><input type="text" placeholder="Optional..." class="w-full text-xs border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+              </tr>
+              <tr class="hover:bg-slate-50 transition-colors container-row selected-container">
+                <td class="px-4 py-2.5"><input type="checkbox" checked class="container-check rounded border-slate-300 text-green-600 w-3.5 h-3.5" /></td>
+                <td class="px-3 py-2.5 font-semibold text-slate-800">CNT-006</td>
+                <td class="px-3 py-2.5 text-slate-500">HDPE Drum</td>
+                <td class="px-3 py-2.5 text-slate-700">25 kg</td>
+                <td class="px-3 py-2.5"><span class="status-pill bg-green-100 text-green-700 text-[10px]">Good</span></td>
+                <td class="px-3 py-2.5"><input type="number" value="50" min="1" class="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+                <td class="px-3 py-2.5"><input type="text" placeholder="Optional..." class="w-full text-xs border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+              </tr>
+              <tr class="hover:bg-slate-50 transition-colors container-row selected-container">
+                <td class="px-4 py-2.5"><input type="checkbox" checked class="container-check rounded border-slate-300 text-green-600 w-3.5 h-3.5" /></td>
+                <td class="px-3 py-2.5 font-semibold text-slate-800">CNT-007</td>
+                <td class="px-3 py-2.5 text-slate-500">HDPE Drum</td>
+                <td class="px-3 py-2.5 text-slate-700">25 kg</td>
+                <td class="px-3 py-2.5"><span class="status-pill bg-red-100 text-red-700 text-[10px]">Damaged seal</span></td>
+                <td class="px-3 py-2.5"><input type="number" value="50" min="1" class="w-16 text-xs border border-red-200 rounded-lg px-2 py-1 text-center bg-red-50 focus:outline-none focus:ring-1 focus:ring-red-400" /></td>
+                <td class="px-3 py-2.5"><input type="text" value="Seal broken — flag for QC review" class="w-full text-xs border border-red-200 rounded-lg px-2 py-1 bg-red-50 focus:outline-none focus:ring-1 focus:ring-red-400" /></td>
+              </tr>
+              <tr class="hover:bg-slate-50 transition-colors container-row selected-container">
+                <td class="px-4 py-2.5"><input type="checkbox" checked class="container-check rounded border-slate-300 text-green-600 w-3.5 h-3.5" /></td>
+                <td class="px-3 py-2.5 font-semibold text-slate-800">CNT-008</td>
+                <td class="px-3 py-2.5 text-slate-500">HDPE Drum</td>
+                <td class="px-3 py-2.5 text-slate-700">25 kg</td>
+                <td class="px-3 py-2.5"><span class="status-pill bg-green-100 text-green-700 text-[10px]">Good</span></td>
+                <td class="px-3 py-2.5"><input type="number" value="50" min="1" class="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+                <td class="px-3 py-2.5"><input type="text" placeholder="Optional..." class="w-full text-xs border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+              </tr>
+              <tr class="hover:bg-slate-50 transition-colors container-row selected-container">
+                <td class="px-4 py-2.5"><input type="checkbox" checked class="container-check rounded border-slate-300 text-green-600 w-3.5 h-3.5" /></td>
+                <td class="px-3 py-2.5 font-semibold text-slate-800">CNT-009</td>
+                <td class="px-3 py-2.5 text-slate-500">HDPE Drum</td>
+                <td class="px-3 py-2.5 text-slate-700">25 kg</td>
+                <td class="px-3 py-2.5"><span class="status-pill bg-green-100 text-green-700 text-[10px]">Good</span></td>
+                <td class="px-3 py-2.5"><input type="number" value="50" min="1" class="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+                <td class="px-3 py-2.5"><input type="text" placeholder="Optional..." class="w-full text-xs border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+              </tr>
+              <tr class="hover:bg-slate-50 transition-colors container-row selected-container">
+                <td class="px-4 py-2.5"><input type="checkbox" checked class="container-check rounded border-slate-300 text-green-600 w-3.5 h-3.5" /></td>
+                <td class="px-3 py-2.5 font-semibold text-slate-800">CNT-010</td>
+                <td class="px-3 py-2.5 text-slate-500">HDPE Drum</td>
+                <td class="px-3 py-2.5 text-slate-700">25 kg</td>
+                <td class="px-3 py-2.5"><span class="status-pill bg-green-100 text-green-700 text-[10px]">Good</span></td>
+                <td class="px-3 py-2.5"><input type="number" value="50" min="1" class="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+                <td class="px-3 py-2.5"><input type="text" placeholder="Optional..." class="w-full text-xs border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+              </tr>
+              <tr class="hover:bg-slate-50 transition-colors container-row selected-container">
+                <td class="px-4 py-2.5"><input type="checkbox" checked class="container-check rounded border-slate-300 text-green-600 w-3.5 h-3.5" /></td>
+                <td class="px-3 py-2.5 font-semibold text-slate-800">CNT-011</td>
+                <td class="px-3 py-2.5 text-slate-500">HDPE Drum</td>
+                <td class="px-3 py-2.5 text-slate-700">25 kg</td>
+                <td class="px-3 py-2.5"><span class="status-pill bg-green-100 text-green-700 text-[10px]">Good</span></td>
+                <td class="px-3 py-2.5"><input type="number" value="50" min="1" class="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+                <td class="px-3 py-2.5"><input type="text" placeholder="Optional..." class="w-full text-xs border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+              </tr>
+              <tr class="hover:bg-slate-50 transition-colors container-row selected-container">
+                <td class="px-4 py-2.5"><input type="checkbox" checked class="container-check rounded border-slate-300 text-green-600 w-3.5 h-3.5" /></td>
+                <td class="px-3 py-2.5 font-semibold text-slate-800">CNT-012</td>
+                <td class="px-3 py-2.5 text-slate-500">HDPE Drum</td>
+                <td class="px-3 py-2.5 text-slate-700">25 kg</td>
+                <td class="px-3 py-2.5"><span class="status-pill bg-green-100 text-green-700 text-[10px]">Good</span></td>
+                <td class="px-3 py-2.5"><input type="number" value="50" min="1" class="w-16 text-xs border border-slate-200 rounded-lg px-2 py-1 text-center focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+                <td class="px-3 py-2.5"><input type="text" placeholder="Optional..." class="w-full text-xs border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-green-400" /></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Sample quantity summary -->
+        <div class="px-5 py-3 bg-green-50 border-t border-green-100 flex items-center gap-6 text-xs">
+          <div class="flex items-center gap-2 text-slate-600">
+            <span class="font-medium">Total containers selected:</span>
+            <span class="font-bold text-green-700" id="totalContainersSelected">12</span>
+          </div>
+          <div class="flex items-center gap-2 text-slate-600">
+            <span class="font-medium">Total planned sample qty:</span>
+            <span class="font-bold text-green-700" id="totalSampleQty">600 g</span>
+          </div>
+          <div class="flex items-center gap-2 text-slate-600">
+            <span class="font-medium">% of received batch:</span>
+            <span class="font-bold text-amber-600">0.20%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Section 4: Assignment & Timing ── -->
+      <div class="bg-white rounded-2xl border border-green-100 shadow-sm overflow-hidden">
+        <div class="flex items-center gap-2 px-5 py-3.5 border-b border-green-50 bg-gradient-to-r from-green-50 to-white">
+          <div class="w-6 h-6 rounded-full bg-green-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">4</div>
+          <span class="text-sm font-semibold text-slate-700">Assignment &amp; Timing</span>
+        </div>
+        <div class="p-5 grid grid-cols-3 gap-4">
+          <div>
+            <label class="text-[11px] font-semibold text-slate-600 mb-1.5 block">Assigned Sampler <span class="text-red-500">*</span></label>
+            <select class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-400">
+              <option>— Assign analyst —</option>
+              <option selected>Priya Menon (QC Analyst)</option>
+              <option>Ravi Kumar (Senior Analyst)</option>
+              <option>Meena Sharma (QC Analyst)</option>
+              <option>Arun Das (Trainee Analyst)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold text-slate-600 mb-1.5 block">Planned Sampling Date <span class="text-red-500">*</span></label>
+            <input type="date" value="2026-04-26" class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-400" />
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold text-slate-600 mb-1.5 block">Due Date for QC Decision</label>
+            <input type="date" value="2026-04-28" class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-400" />
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold text-slate-600 mb-1.5 block">Priority</label>
+            <select class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-400">
+              <option>Normal</option>
+              <option>High — Urgent batch</option>
+              <option>Critical — Production hold</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold text-slate-600 mb-1.5 block">Sampling Tools Required</label>
+            <input type="text" placeholder="e.g. Thief probe, Amber bottles..." class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-400" />
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold text-slate-600 mb-1.5 block">Storage Condition for Sample</label>
+            <select class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-400">
+              <option>Ambient (15–25°C)</option>
+              <option>Refrigerated (2–8°C)</option>
+              <option>Frozen (≤ −20°C)</option>
+              <option>Protected from light</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Section 5: Special Precautions ── -->
+      <div class="bg-white rounded-2xl border border-green-100 shadow-sm overflow-hidden">
+        <div class="flex items-center gap-2 px-5 py-3.5 border-b border-green-50 bg-gradient-to-r from-green-50 to-white">
+          <div class="w-6 h-6 rounded-full bg-green-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">5</div>
+          <span class="text-sm font-semibold text-slate-700">Special Precautions</span>
+          <span class="ml-2 text-[10px] text-slate-400">Check all that apply to this material</span>
+        </div>
+        <div class="p-5">
+          <div class="grid grid-cols-3 gap-3 mb-4">
+            <label class="flex items-center gap-3 border border-slate-200 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-amber-50 hover:border-amber-300 transition-colors">
+              <input type="checkbox" class="rounded border-slate-300 text-amber-500 w-4 h-4" />
+              <div>
+                <div class="text-xs font-semibold text-slate-700">Photosensitive</div>
+                <div class="text-[10px] text-slate-400">Sample in amber container, avoid direct light</div>
+              </div>
+            </label>
+            <label class="flex items-center gap-3 border border-slate-200 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-blue-50 hover:border-blue-300 transition-colors">
+              <input type="checkbox" class="rounded border-slate-300 text-blue-500 w-4 h-4" />
+              <div>
+                <div class="text-xs font-semibold text-slate-700">Hygroscopic</div>
+                <div class="text-[10px] text-slate-400">Reseal immediately, control humidity</div>
+              </div>
+            </label>
+            <label class="flex items-center gap-3 border border-slate-200 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-red-50 hover:border-red-300 transition-colors">
+              <input type="checkbox" class="rounded border-slate-300 text-red-500 w-4 h-4" />
+              <div>
+                <div class="text-xs font-semibold text-slate-700">Hazardous / OEB3+</div>
+                <div class="text-[10px] text-slate-400">Use PPE, dedicated sampling suite required</div>
+              </div>
+            </label>
+            <label class="flex items-center gap-3 border border-slate-200 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-cyan-50 hover:border-cyan-300 transition-colors">
+              <input type="checkbox" class="rounded border-slate-300 text-cyan-500 w-4 h-4" />
+              <div>
+                <div class="text-xs font-semibold text-slate-700">Cold Chain</div>
+                <div class="text-[10px] text-slate-400">Maintain 2–8°C during sampling and transfer</div>
+              </div>
+            </label>
+            <label class="flex items-center gap-3 border border-slate-200 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-purple-50 hover:border-purple-300 transition-colors">
+              <input type="checkbox" class="rounded border-slate-300 text-purple-500 w-4 h-4" />
+              <div>
+                <div class="text-xs font-semibold text-slate-700">Sterile Material</div>
+                <div class="text-[10px] text-slate-400">Aseptic technique mandatory</div>
+              </div>
+            </label>
+            <label class="flex items-center gap-3 border border-slate-200 rounded-xl px-3 py-2.5 cursor-pointer hover:bg-orange-50 hover:border-orange-300 transition-colors">
+              <input type="checkbox" class="rounded border-slate-300 text-orange-500 w-4 h-4" />
+              <div>
+                <div class="text-xs font-semibold text-slate-700">Dedicated Sampling Area</div>
+                <div class="text-[10px] text-slate-400">Must use restricted zone only</div>
+              </div>
+            </label>
+          </div>
+          <div>
+            <label class="text-[11px] font-semibold text-slate-600 mb-1.5 block">Precaution Notes / Additional Instructions</label>
+            <textarea rows="3" placeholder="Describe any additional handling requirements, cross-contamination risks, or special conditions for this sampling event..." class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-400 resize-none placeholder-slate-300"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Section 6: Confirmation Summary ── -->
+      <div class="bg-green-50 border border-green-200 rounded-2xl p-5">
+        <div class="flex items-start gap-3 mb-4">
+          <svg class="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <div>
+            <div class="text-sm font-semibold text-green-800 mb-1">Ready to Submit Plan</div>
+            <div class="text-xs text-green-700">Submitting will set status to <strong>PLAN_DEFINED</strong>. Inventory remains in <strong>QUARANTINE</strong> until physical sampling begins.</div>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-3 text-xs">
+          <div class="bg-white rounded-xl p-3 border border-green-200">
+            <div class="text-[10px] text-slate-400 uppercase mb-0.5">Sampling Request ID</div>
+            <div class="font-bold text-slate-700">SR-2026-0051 <span class="text-slate-400 font-normal">(auto)</span></div>
+          </div>
+          <div class="bg-white rounded-xl p-3 border border-green-200">
+            <div class="text-[10px] text-slate-400 uppercase mb-0.5">Next Status</div>
+            <div class="font-bold text-blue-700">PLAN_DEFINED</div>
+          </div>
+          <div class="bg-white rounded-xl p-3 border border-green-200">
+            <div class="text-[10px] text-slate-400 uppercase mb-0.5">Inventory will move to</div>
+            <div class="font-bold text-amber-700">SAMPLING (on start)</div>
+          </div>
+        </div>
+        <div class="mt-4 flex items-center gap-3">
+          <button onclick="submitSamplingPlan()" class="flex-1 py-3 rounded-xl font-semibold text-sm bg-green-600 text-white hover:bg-green-700 flex items-center justify-center gap-2 shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Submit Sampling Plan
+          </button>
+          <button class="px-5 py-3 rounded-xl font-semibold text-sm border border-slate-200 text-slate-600 hover:bg-slate-50 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+            Save Draft
+          </button>
+          <button onclick="closeCreateModal()" class="px-5 py-3 rounded-xl font-semibold text-sm border border-slate-200 text-slate-600 hover:bg-slate-50">
+            Cancel
+          </button>
+        </div>
+      </div>
+
+    </div><!-- end scrollable body -->
+  </div><!-- end slide-over panel -->
+</div><!-- end modal -->
+
+<!-- Success Toast -->
+<div id="successToast" class="fixed bottom-6 right-6 z-[60] hidden">
+  <div class="bg-green-700 text-white rounded-2xl px-5 py-3.5 shadow-2xl flex items-center gap-3 text-sm font-medium">
+    <svg class="w-5 h-5 text-green-300 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+    <div>
+      <div>Sampling Plan Submitted — SR-2026-0051</div>
+      <div class="text-xs text-green-300 font-normal mt-0.5">Status: PLAN_DEFINED · Assigned: Priya Menon · Due: 26 Apr 2026</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openCreateModal() {
+    document.getElementById('createSamplingModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeCreateModal() {
+    document.getElementById('createSamplingModal').classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  function updateContainerRule(val) {
+    const hint = document.getElementById('ruleHint');
+    const hints = {
+      'ALL_CONTAINERS': 'EU GMP Annex 8: identity from all containers unless reduced sampling is validated',
+      'SQRT_N_PLUS_1': 'Representative sampling — √12+1 = 5 containers will be auto-suggested',
+      'RISK_BASED_REDUCED': 'Requires validated SOP and approved supplier qualification',
+      'COA_BASED': 'No physical sampling — only applicable with approved supplier CoA policy'
+    };
+    hint.lastChild.textContent = hints[val] || '';
+    if (val === 'SQRT_N_PLUS_1') {
+      document.getElementById('selectionCount').textContent = '5 / 12 selected';
+    } else if (val === 'ALL_CONTAINERS') {
+      document.getElementById('selectionCount').textContent = '12 / 12 selected';
+    }
+  }
+
+  function toggleAllContainers(checked) {
+    document.querySelectorAll('.container-check').forEach(cb => cb.checked = checked);
+    updateSelectionCount();
+  }
+
+  function autoSelectContainers() {
+    const checks = document.querySelectorAll('.container-check');
+    checks.forEach((cb, i) => cb.checked = i < 5);
+    document.getElementById('selectAllContainers').checked = false;
+    updateSelectionCount();
+  }
+
+  function updateSelectionCount() {
+    const total = document.querySelectorAll('.container-check').length;
+    const selected = document.querySelectorAll('.container-check:checked').length;
+    document.getElementById('selectionCount').textContent = selected + ' / ' + total + ' selected';
+    document.getElementById('totalContainersSelected').textContent = selected;
+    document.getElementById('totalSampleQty').textContent = (selected * 50) + ' g';
+  }
+
+  document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('container-check')) updateSelectionCount();
+  });
+
+  function submitSamplingPlan() {
+    closeCreateModal();
+    const toast = document.getElementById('successToast');
+    toast.classList.remove('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 5000);
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeCreateModal();
+  });
+</script>
 </body>
 </html>

@@ -24,7 +24,17 @@ import type {
 } from "../types/location";
 import type { CreateMaterialRequest, Material } from "../types/material";
 import type { CreateSamplingToolRequest, SamplingTool } from "../types/sampling-tool";
-import type { CreateSpecRequest, Spec } from "../types/spec";
+import type {
+  CreateSpecRequest,
+  DelinkMaterialSpecRequest,
+  LinkMaterialSpecRequest,
+  MaterialSpecLink,
+  RejectRequest,
+  ReviewSubmissionRequest,
+  Spec,
+  SpecParameter,
+  SpecParameterRequest
+} from "../types/spec";
 import type { CreateSupplierRequest, Supplier } from "../types/supplier";
 import type {
   CreateGrnRequest,
@@ -36,7 +46,15 @@ import type {
   MaterialLabel,
   PageResponse
 } from "../types/grn";
-import type { SamplingPlanRequest, SamplingRequest, SamplingSummary } from "../types/sampling";
+import type {
+  QcReceiptRequest,
+  QcWorksheetRow,
+  RecordQcWorksheetResultRequest,
+  SamplingPlanRequest,
+  SamplingRequest,
+  SamplingSummary,
+  StartQcReviewRequest
+} from "../types/sampling";
 import type {
   CreateVendorBusinessUnitRequest,
   CreateVendorBusinessUnitAuditRequest,
@@ -582,6 +600,24 @@ export async function deleteMaterial(id: string) {
   });
 }
 
+export async function linkMaterialSpec(id: string, payload: LinkMaterialSpecRequest) {
+  return requestMutation<MaterialSpecLink>(`/api/materials/${id}/spec`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function delinkMaterialSpec(id: string, payload?: DelinkMaterialSpecRequest) {
+  return requestVoid(`/api/materials/${id}/spec`, {
+    method: "DELETE",
+    body: JSON.stringify(payload ?? {})
+  });
+}
+
+export async function fetchMaterialSpecHistory(id: string) {
+  return requestJson<MaterialSpecLink[]>(`/api/materials/${id}/spec/history`);
+}
+
 export async function fetchSpecs() {
   return requestJson<Spec[]>("/api/specs");
 }
@@ -602,6 +638,73 @@ export async function updateSpec(id: string, payload: CreateSpecRequest) {
 
 export async function deleteSpec(id: string) {
   return requestVoid(`/api/specs/${id}`, {
+    method: "DELETE"
+  });
+}
+
+export async function submitSpec(id: string, payload?: ReviewSubmissionRequest) {
+  return requestMutation<Spec>(`/api/specs/${id}/submit`, {
+    method: "POST",
+    body: JSON.stringify(payload ?? {})
+  });
+}
+
+export async function approveSpec(id: string) {
+  return requestMutation<Spec>(`/api/specs/${id}/approve`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}
+
+export async function rejectSpec(id: string, payload: RejectRequest) {
+  return requestMutation<Spec>(`/api/specs/${id}/reject`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function reviseSpec(id: string) {
+  return requestMutation<Spec>(`/api/specs/${id}/revise`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}
+
+export async function obsoleteSpec(id: string) {
+  return requestMutation<Spec>(`/api/specs/${id}/obsolete`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}
+
+export async function fetchSpecReviewQueue() {
+  return requestJson<Spec[]>("/api/specs/review-queue");
+}
+
+export async function fetchSpecParameters(id: string) {
+  return requestJson<SpecParameter[]>(`/api/specs/${id}/parameters`);
+}
+
+export async function fetchSpecMaterialLinks(id: string) {
+  return requestJson<MaterialSpecLink[]>(`/api/specs/${id}/material-links`);
+}
+
+export async function createSpecParameter(id: string, payload: SpecParameterRequest) {
+  return requestMutation<SpecParameter>(`/api/specs/${id}/parameters`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateSpecParameter(specId: string, parameterId: string, payload: SpecParameterRequest) {
+  return requestMutation<SpecParameter>(`/api/specs/${specId}/parameters/${parameterId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteSpecParameter(specId: string, parameterId: string) {
+  return requestVoid(`/api/specs/${specId}/parameters/${parameterId}`, {
     method: "DELETE"
   });
 }
@@ -628,6 +731,38 @@ export async function deleteMoa(id: string) {
   return requestVoid(`/api/moas/${id}`, {
     method: "DELETE"
   });
+}
+
+export async function submitMoa(id: string, payload?: ReviewSubmissionRequest) {
+  return requestMutation<Moa>(`/api/moas/${id}/submit`, {
+    method: "POST",
+    body: JSON.stringify(payload ?? {})
+  });
+}
+
+export async function approveMoa(id: string) {
+  return requestMutation<Moa>(`/api/moas/${id}/approve`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}
+
+export async function rejectMoa(id: string, payload: RejectRequest) {
+  return requestMutation<Moa>(`/api/moas/${id}/reject`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function obsoleteMoa(id: string) {
+  return requestMutation<Moa>(`/api/moas/${id}/obsolete`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}
+
+export async function fetchMoaReviewQueue() {
+  return requestJson<Moa[]>("/api/moas/review-queue");
 }
 
 export async function fetchSamplingTools() {
@@ -1039,10 +1174,53 @@ export async function updateSamplingPlan(
   );
 }
 
+export async function startSampling(samplingRequestId: string, updatedBy: string) {
+  return requestMutation<SamplingRequest>(`/api/sampling-requests/${samplingRequestId}/start`, {
+    method: "POST",
+    body: JSON.stringify({ updatedBy })
+  });
+}
+
 export async function completeSampling(samplingRequestId: string, updatedBy: string) {
   return requestMutation<SamplingRequest>(`/api/sampling-requests/${samplingRequestId}/complete`, {
     method: "POST",
     body: JSON.stringify({ updatedBy })
+  });
+}
+
+export async function handoffSamplingToQc(samplingRequestId: string, updatedBy: string) {
+  return requestMutation<SamplingRequest>(`/api/sampling-requests/${samplingRequestId}/handoff-to-qc`, {
+    method: "POST",
+    body: JSON.stringify({ updatedBy })
+  });
+}
+
+export async function receiveSamplingInQc(samplingRequestId: string, payload: QcReceiptRequest) {
+  return requestMutation<SamplingRequest>(`/api/sampling-requests/${samplingRequestId}/qc-receipt`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function startSamplingQcReview(samplingRequestId: string, payload: StartQcReviewRequest) {
+  return requestMutation<SamplingRequest>(`/api/sampling-requests/${samplingRequestId}/start-review`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchSamplingWorksheet(samplingRequestId: string) {
+  return requestJson<QcWorksheetRow[]>(`/api/sampling-requests/${samplingRequestId}/worksheet`);
+}
+
+export async function recordSamplingWorksheetResult(
+  samplingRequestId: string,
+  testResultId: string,
+  payload: RecordQcWorksheetResultRequest
+) {
+  return requestMutation<QcWorksheetRow>(`/api/sampling-requests/${samplingRequestId}/worksheet/${testResultId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
   });
 }
 

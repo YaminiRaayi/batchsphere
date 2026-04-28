@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BatchSphere – Specifications & Methods of Analysis</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #f8fafc; color: #1e293b; }
+  .sidebar { background: #1e3a8a; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; color: #bfdbfe; transition: all 0.15s; }
+  .nav-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .nav-item.active { background: rgba(255,255,255,0.15); color: #fff; font-weight: 600; }
+  .nav-section { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: #60a5fa; text-transform: uppercase; padding: 14px 14px 4px; }
+  .status-pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .tab-btn { padding: 7px 18px; border-radius: 10px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .tab-btn.active { background: #7c3aed; color: #fff; }
+  .tab-btn:not(.active) { background: #ede9fe; color: #6d28d9; }
+  .tab-btn:not(.active):hover { background: #ddd6fe; }
+  .list-row { border-bottom: 1px solid #f8fafc; padding: 9px 14px; cursor: pointer; transition: all 0.12s; display: flex; align-items: center; gap: 10px; }
+  .list-row:hover { background: #faf5ff; }
+  .list-row.selected { background: #ede9fe; border-left: 3px solid #7c3aed; }
+  .param-row { border-bottom: 1px solid #f1f5f9; }
+  .param-row:hover { background: #faf5ff; }
+  .type-badge { display: inline-flex; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; }
+  .slide-over { transition: transform 0.3s ease; }
+  .criteria-text { font-family: 'Courier New', monospace; font-size: 11px; }
+  input[type=number], input[type=text], select, textarea {
+    border: 1px solid #e2e8f0; border-radius: 8px; padding: 7px 10px; font-size: 12px;
+    background: #fff; color: #1e293b; outline: none; transition: border-color 0.15s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.08); }
+  .form-label { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; display: block; }
+  .section-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #7c3aed; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #ede9fe; }
+  .moa-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; background: #ede9fe; color: #6d28d9; cursor: pointer; }
+  .moa-pill:hover { background: #ddd6fe; }
+  .btn-primary { background: #7c3aed; color: #fff; padding: 8px 18px; border-radius: 10px; font-size: 12px; font-weight: 600; border: none; cursor: pointer; transition: background 0.15s; }
+  .btn-primary:hover { background: #6d28d9; }
+  .btn-secondary { background: #f1f5f9; color: #475569; padding: 8px 14px; border-radius: 10px; font-size: 12px; font-weight: 600; border: 1px solid #e2e8f0; cursor: pointer; }
+  .btn-secondary:hover { background: #e2e8f0; }
+  .btn-outline { background: transparent; color: #7c3aed; padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 600; border: 1.5px solid #c4b5fd; cursor: pointer; }
+  .btn-outline:hover { background: #ede9fe; }
+  .btn-green { background: #16a34a; color: #fff; padding: 7px 14px; border-radius: 8px; font-size: 11px; font-weight: 600; border: none; cursor: pointer; }
+  .btn-green:hover { background: #15803d; }
+  .btn-danger { background: #fee2e2; color: #dc2626; padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 600; border: none; cursor: pointer; }
+  .btn-danger:hover { background: #fecaca; }
+</style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+<!-- Sidebar -->
+<aside class="sidebar w-60 flex-shrink-0 flex flex-col overflow-y-auto">
+  <div class="p-4 border-b border-blue-700">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-white flex items-center justify-center font-bold text-blue-700 text-sm shadow">BS</div>
+      <div><div class="font-bold text-white text-sm">BatchSphere</div><div class="text-[10px] text-blue-300">Pharma ERP v2.1</div></div>
+    </div>
+  </div>
+  <nav class="flex-1 p-3 space-y-0.5">
+    <div class="nav-section">Quality</div>
+    <a href="06-sampling.html" class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      QC Sampling
+    </a>
+    <div class="nav-item active">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      Specs &amp; MoA
+    </div>
+    <div class="nav-section">Master Data</div>
+    <a href="08-materials.html" class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
+      Materials
+    </a>
+    <a href="07-vms.html" class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16"/></svg>
+      Vendors
+    </a>
+    <a href="10-masterdata.html" class="nav-item">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1" stroke-width="2"/><rect x="14" y="14" width="7" height="7" rx="1" stroke-width="2"/></svg>
+      Master Data Hub
+    </a>
+    <div class="nav-section">Navigate</div>
+    <a href="01-dashboard.html" class="nav-item">← Dashboard</a>
+  </nav>
+  <div class="p-3 border-t border-blue-800 text-[10px] text-blue-400 text-center">BatchSphere © 2026</div>
+</aside>
+
+<!-- Main -->
+<main class="flex-1 flex flex-col overflow-hidden">
+
+  <!-- Header -->
+  <header class="h-14 bg-white border-b border-slate-100 flex items-center px-6 gap-4 flex-shrink-0 shadow-sm">
+    <div class="text-xs text-slate-400">Quality / <span class="text-slate-700 font-medium">Specifications &amp; Methods of Analysis</span></div>
+    <div class="ml-auto flex items-center gap-3">
+      <div class="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-1.5 text-xs text-slate-400 border border-slate-100">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-width="2" d="m21 21-4.35-4.35"/></svg>
+        Search specs, MOAs... ⌘K
+      </div>
+      <div class="text-xs text-slate-400 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">Sat, 25 Apr 2026</div>
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-full bg-violet-700 flex items-center justify-center text-[10px] font-bold text-white">YR</div>
+        <span class="text-xs text-slate-600 font-medium">Yamini R.</span>
+        <span class="status-pill bg-violet-100 text-violet-700 text-[10px]">QC Manager</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Page tabs + controls -->
+  <div class="bg-white border-b border-slate-100 px-6 py-3 flex items-center gap-3 flex-shrink-0">
+    <button class="tab-btn active" id="tabSpec" onclick="switchTab('spec')">Specifications</button>
+    <button class="tab-btn" id="tabMoa" onclick="switchTab('moa')">Methods of Analysis</button>
+    <div class="ml-auto flex items-center gap-2">
+      <div id="specActions" class="flex items-center gap-2">
+        <select class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white">
+          <option>All Types</option>
+          <option>Material</option>
+          <option>In-Process</option>
+          <option>Finished Product</option>
+          <option>Packaging</option>
+        </select>
+        <select class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white">
+          <option>All Status</option>
+          <option>Draft</option>
+          <option>Under Review</option>
+          <option>Approved</option>
+          <option>Obsolete</option>
+        </select>
+        <button onclick="openSpecModal()" class="btn-primary flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+          New Specification
+        </button>
+      </div>
+      <div id="moaActions" class="flex items-center gap-2 hidden">
+        <select class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white">
+          <option>All Types</option>
+          <option>HPLC</option>
+          <option>GC</option>
+          <option>UV-Vis</option>
+          <option>IR</option>
+          <option>Titration</option>
+          <option>Karl Fischer</option>
+          <option>LOD (Oven)</option>
+          <option>Physical</option>
+          <option>Microbiological</option>
+          <option>Visual</option>
+        </select>
+        <select class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white">
+          <option>All Validation</option>
+          <option>Validated</option>
+          <option>Validated (Compendial)</option>
+          <option>In Validation</option>
+          <option>Not Validated</option>
+        </select>
+        <button onclick="openMoaModal()" class="btn-primary flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+          New Method (MOA)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Body: list + detail split -->
+  <div class="flex-1 flex overflow-hidden">
+
+    <!-- ============================================================ -->
+    <!-- SPEC TAB -->
+    <!-- ============================================================ -->
+    <div id="specTab" class="flex flex-1 overflow-hidden">
+
+      <!-- Spec list -->
+      <div class="w-96 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+          <input type="text" placeholder="Search spec code or name…" class="flex-1 text-xs" />
+          <span class="text-[10px] text-slate-400 font-medium">21 specs</span>
+        </div>
+        <div class="flex-1 overflow-y-auto">
+
+          <!-- Approved specs -->
+          <div class="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Approved · 16</div>
+
+          <div class="list-row selected" onclick="selectSpec(this)">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-0.5">
+                <span class="text-xs font-bold text-slate-800">SP-2024-PARA-v4</span>
+                <span class="status-pill bg-green-100 text-green-700 text-[10px]"><span class="dot bg-green-500"></span>Approved</span>
+                <span class="text-[9px] font-bold bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded">EU</span>
+              </div>
+              <div class="text-[11px] text-slate-500 truncate">Paracetamol API · Ph.Eur. 10th Ed.</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">Material · Effective: 01 Jan 2024 · 10 parameters</div>
+            </div>
+            <span class="type-badge bg-blue-100 text-blue-700">API</span>
+          </div>
+
+          <div class="list-row" onclick="selectSpec(this)">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-0.5">
+                <span class="text-xs font-bold text-slate-800">SP-2024-CROS-v2</span>
+                <span class="status-pill bg-green-100 text-green-700 text-[10px]"><span class="dot bg-green-500"></span>Approved</span>
+                <span class="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">Internal</span>
+              </div>
+              <div class="text-[11px] text-slate-500 truncate">Crospovidone XL10 · In-house SOP-QC-018</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">Material · Effective: 15 Mar 2024 · 8 parameters</div>
+            </div>
+            <span class="type-badge bg-teal-100 text-teal-700">Excipient</span>
+          </div>
+
+          <div class="list-row" onclick="selectSpec(this)">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-0.5">
+                <span class="text-xs font-bold text-slate-800">SP-2023-MCC-v3</span>
+                <span class="status-pill bg-green-100 text-green-700 text-[10px]"><span class="dot bg-green-500"></span>Approved</span>
+                <span class="text-[9px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded">US FDA</span>
+              </div>
+              <div class="text-[11px] text-slate-500 truncate">Microcrystalline Cellulose PH-102 · USP 47</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">Material · Effective: 01 Aug 2023 · 7 parameters</div>
+            </div>
+            <span class="type-badge bg-teal-100 text-teal-700">Excipient</span>
+          </div>
+
+          <div class="list-row" onclick="selectSpec(this)">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-0.5">
+                <span class="text-xs font-bold text-slate-800">SP-2025-ATOR-v1</span>
+                <span class="status-pill bg-green-100 text-green-700 text-[10px]"><span class="dot bg-green-500"></span>Approved</span>
+                <span class="text-[9px] font-bold bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded">India</span>
+              </div>
+              <div class="text-[11px] text-slate-500 truncate">Atorvastatin Calcium API · IP 2022</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">Material · Effective: 10 Feb 2025 · 11 parameters</div>
+            </div>
+            <span class="type-badge bg-blue-100 text-blue-700">API</span>
+          </div>
+
+          <div class="list-row" onclick="selectSpec(this)">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-0.5">
+                <span class="text-xs font-bold text-slate-800">SP-2024-HDPE-v1</span>
+                <span class="status-pill bg-green-100 text-green-700 text-[10px]"><span class="dot bg-green-500"></span>Approved</span>
+                <span class="text-[9px] font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">Internal</span>
+              </div>
+              <div class="text-[11px] text-slate-500 truncate">HDPE Drum 25L · In-house SOP-PKG-003</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">Packaging · Effective: 01 Jun 2024 · 5 parameters</div>
+            </div>
+            <span class="type-badge bg-orange-100 text-orange-700">Packaging</span>
+          </div>
+
+          <!-- Under review -->
+          <div class="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Under Review · 3</div>
+
+          <div class="list-row" onclick="selectSpec(this)">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-0.5">
+                <span class="text-xs font-bold text-slate-800">SP-2026-MAGST-v1</span>
+                <span class="status-pill bg-blue-100 text-blue-700 text-[10px]"><span class="dot bg-blue-500"></span>Under Review</span>
+                <span class="text-[9px] font-bold bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded">Global</span>
+              </div>
+              <div class="text-[11px] text-slate-500 truncate">Magnesium Stearate · Ph.Eur. + USP Multi-Compendial</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">Material · Submitted: 22 Apr 2026 · 6 parameters</div>
+            </div>
+            <span class="type-badge bg-teal-100 text-teal-700">Excipient</span>
+          </div>
+
+          <!-- Draft -->
+          <div class="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Draft · 2</div>
+
+          <div class="list-row" onclick="selectSpec(this)">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-0.5">
+                <span class="text-xs font-bold text-slate-800">SP-2026-LACT-v1</span>
+                <span class="status-pill bg-amber-100 text-amber-700 text-[10px]"><span class="dot bg-amber-500"></span>Draft</span>
+              </div>
+              <div class="text-[11px] text-slate-500 truncate">Lactose Monohydrate · In-house (pending)</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">Material · Created: 24 Apr 2026 · 4 parameters</div>
+            </div>
+            <span class="type-badge bg-teal-100 text-teal-700">Excipient</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Spec detail -->
+      <div class="flex-1 overflow-y-auto bg-slate-50 p-6">
+
+        <!-- Header strip -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 mb-5 shadow-sm">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <div class="flex items-center gap-3 mb-1">
+                <h2 class="text-lg font-bold text-slate-800">Paracetamol API Specification</h2>
+                <span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Approved</span>
+                <span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs font-mono">v4</span>
+              </div>
+              <div class="text-sm text-slate-500 font-medium">SP-2024-PARA-v4</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="btn-outline">Edit</button>
+              <button class="btn-outline" style="color:#0ea5e9; border-color:#bae6fd;">Create New Revision</button>
+              <button class="btn-danger text-[10px]">Obsolete</button>
+            </div>
+          </div>
+
+          <!-- Spec metadata grid -->
+          <div class="grid grid-cols-4 gap-4">
+            <div>
+              <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Spec Type</div>
+              <span class="type-badge bg-blue-100 text-blue-700 text-xs px-3 py-1">Material</span>
+            </div>
+            <div>
+              <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Target Market</div>
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-100 text-indigo-700">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M2 12h20M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
+                EU (EMA · Ph. Eur.)
+              </span>
+            </div>
+            <div>
+              <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Compendial Ref</div>
+              <div class="text-sm font-semibold text-slate-700">Ph. Eur. <span class="text-xs text-slate-400 font-normal">10th Ed.</span></div>
+            </div>
+            <div>
+              <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Sampling Method</div>
+              <span class="status-pill bg-violet-100 text-violet-700 text-[10px]">√N+1 Containers</span>
+            </div>
+            <div>
+              <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Effective Date</div>
+              <div class="text-sm font-semibold text-slate-700">01 Jan 2024</div>
+            </div>
+            <div>
+              <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Approved By</div>
+              <div class="text-sm font-semibold text-slate-700">Yamini Raayi</div>
+            </div>
+            <div>
+              <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Approved At</div>
+              <div class="text-sm font-semibold text-slate-700">28 Dec 2023</div>
+            </div>
+            <div>
+              <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Previous Version</div>
+              <a class="text-sm font-semibold text-violet-600 hover:underline cursor-pointer">SP-2024-PARA-v3</a>
+            </div>
+            <div>
+              <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Reference SOP</div>
+              <a class="text-sm font-semibold text-violet-600 hover:underline cursor-pointer">SOP-QC-PARA-004.pdf</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Material linkage -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 mb-5 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div class="section-head mb-0">Linked Materials</div>
+            <button class="btn-outline text-[11px]">+ Link Material</button>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5">
+              <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
+              </div>
+              <div>
+                <div class="text-xs font-bold text-slate-800">RM-PARA-001</div>
+                <div class="text-[10px] text-slate-500">Paracetamol API · Active spec</div>
+              </div>
+              <span class="status-pill bg-green-100 text-green-700 text-[10px]">Active</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Test Parameters -->
+        <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm mb-5">
+          <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50">
+            <div class="font-bold text-sm text-slate-700">Test Parameters</div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-slate-400">10 parameters · all mandatory</span>
+              <button onclick="openAddParamModal()" class="btn-outline text-[11px]">+ Add Parameter</button>
+            </div>
+          </div>
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-100">
+                <th class="text-left px-4 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wide w-8">#</th>
+                <th class="text-left px-3 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wide">Test Name</th>
+                <th class="text-left px-3 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wide">Type</th>
+                <th class="text-left px-3 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wide">Method (MOA)</th>
+                <th class="text-left px-3 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wide">Acceptance Criteria</th>
+                <th class="text-left px-3 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wide w-12">Unit</th>
+                <th class="text-center px-3 py-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wide w-16">Mandatory</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="param-row">
+                <td class="px-4 py-3 text-slate-400 font-mono">1</td>
+                <td class="px-3 py-3 font-semibold text-slate-800">Description</td>
+                <td class="px-3 py-3"><span class="type-badge bg-slate-100 text-slate-600">Physical</span></td>
+                <td class="px-3 py-3"><span class="moa-pill" onclick="selectMoa('MOA-VIS-001')">MOA-VIS-001 · Visual</span></td>
+                <td class="px-3 py-3 criteria-text text-slate-600">White or off-white crystalline powder</td>
+                <td class="px-3 py-3 text-slate-400">—</td>
+                <td class="px-3 py-3 text-center"><svg class="w-4 h-4 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></td>
+              </tr>
+              <tr class="param-row">
+                <td class="px-4 py-3 text-slate-400 font-mono">2</td>
+                <td class="px-3 py-3 font-semibold text-slate-800">Identification (IR)</td>
+                <td class="px-3 py-3"><span class="type-badge bg-violet-100 text-violet-700">Identity</span></td>
+                <td class="px-3 py-3"><span class="moa-pill" onclick="selectMoa('MOA-IR-001')">MOA-IR-001 · IR</span></td>
+                <td class="px-3 py-3 criteria-text text-slate-600">Concordant with reference spectrum</td>
+                <td class="px-3 py-3 text-slate-400">—</td>
+                <td class="px-3 py-3 text-center"><svg class="w-4 h-4 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></td>
+              </tr>
+              <tr class="param-row">
+                <td class="px-4 py-3 text-slate-400 font-mono">3</td>
+                <td class="px-3 py-3 font-semibold text-slate-800">Identification (HPLC RT)</td>
+                <td class="px-3 py-3"><span class="type-badge bg-violet-100 text-violet-700">Identity</span></td>
+                <td class="px-3 py-3"><span class="moa-pill" onclick="selectMoa('MOA-HPLC-003')">MOA-HPLC-003 · HPLC</span></td>
+                <td class="px-3 py-3 criteria-text text-slate-600">RT matches reference ± 2% RRT</td>
+                <td class="px-3 py-3 text-slate-400">—</td>
+                <td class="px-3 py-3 text-center"><svg class="w-4 h-4 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></td>
+              </tr>
+              <tr class="param-row bg-blue-50/30">
+                <td class="px-4 py-3 text-slate-400 font-mono">4</td>
+                <td class="px-3 py-3 font-semibold text-slate-800">Assay</td>
+                <td class="px-3 py-3"><span class="type-badge bg-blue-100 text-blue-700">Assay</span></td>
+                <td class="px-3 py-3"><span class="moa-pill" onclick="selectMoa('MOA-HPLC-003')">MOA-HPLC-003 · HPLC</span></td>
+                <td class="px-3 py-3 criteria-text text-blue-700 font-bold">98.0 – 102.0 % (anhydrous)</td>
+                <td class="px-3 py-3 text-slate-600 font-semibold">%</td>
+                <td class="px-3 py-3 text-center"><svg class="w-4 h-4 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></td>
+              </tr>
+              <tr class="param-row">
+                <td class="px-4 py-3 text-slate-400 font-mono">5</td>
+                <td class="px-3 py-3 font-semibold text-slate-800">Related Substances (HPLC)</td>
+                <td class="px-3 py-3"><span class="type-badge bg-amber-100 text-amber-700">Purity</span></td>
+                <td class="px-3 py-3"><span class="moa-pill" onclick="selectMoa('MOA-HPLC-004')">MOA-HPLC-004 · HPLC</span></td>
+                <td class="px-3 py-3 criteria-text text-slate-600">NMT 0.1% each; NMT 0.5% total</td>
+                <td class="px-3 py-3 text-slate-600 font-semibold">%</td>
+                <td class="px-3 py-3 text-center"><svg class="w-4 h-4 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></td>
+              </tr>
+              <tr class="param-row">
+                <td class="px-4 py-3 text-slate-400 font-mono">6</td>
+                <td class="px-3 py-3 font-semibold text-slate-800">Loss on Drying</td>
+                <td class="px-3 py-3"><span class="type-badge bg-slate-100 text-slate-600">Physical</span></td>
+                <td class="px-3 py-3"><span class="moa-pill" onclick="selectMoa('MOA-LOD-001')">MOA-LOD-001 · LOD Oven</span></td>
+                <td class="px-3 py-3 criteria-text text-slate-600">NMT 0.5 %</td>
+                <td class="px-3 py-3 text-slate-600 font-semibold">%</td>
+                <td class="px-3 py-3 text-center"><svg class="w-4 h-4 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></td>
+              </tr>
+              <tr class="param-row">
+                <td class="px-4 py-3 text-slate-400 font-mono">7</td>
+                <td class="px-3 py-3 font-semibold text-slate-800">Residue on Ignition</td>
+                <td class="px-3 py-3"><span class="type-badge bg-teal-100 text-teal-700">Chemical</span></td>
+                <td class="px-3 py-3"><span class="moa-pill" onclick="selectMoa('MOA-ROI-001')">MOA-ROI-001 · Gravimetric</span></td>
+                <td class="px-3 py-3 criteria-text text-slate-600">NMT 0.1 %</td>
+                <td class="px-3 py-3 text-slate-600 font-semibold">%</td>
+                <td class="px-3 py-3 text-center"><svg class="w-4 h-4 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></td>
+              </tr>
+              <tr class="param-row">
+                <td class="px-4 py-3 text-slate-400 font-mono">8</td>
+                <td class="px-3 py-3 font-semibold text-slate-800">Heavy Metals</td>
+                <td class="px-3 py-3"><span class="type-badge bg-teal-100 text-teal-700">Chemical</span></td>
+                <td class="px-3 py-3"><span class="moa-pill" onclick="selectMoa('MOA-HM-001')">MOA-HM-001 · ICP-OES</span></td>
+                <td class="px-3 py-3 criteria-text text-slate-600">NMT 20 ppm</td>
+                <td class="px-3 py-3 text-slate-600 font-semibold">ppm</td>
+                <td class="px-3 py-3 text-center"><svg class="w-4 h-4 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></td>
+              </tr>
+              <tr class="param-row">
+                <td class="px-4 py-3 text-slate-400 font-mono">9</td>
+                <td class="px-3 py-3 font-semibold text-slate-800">Microbial Limits (TAMC)</td>
+                <td class="px-3 py-3"><span class="type-badge bg-red-100 text-red-700">Microbio.</span></td>
+                <td class="px-3 py-3"><span class="moa-pill" onclick="selectMoa('MOA-MIC-001')">MOA-MIC-001 · Membrane</span></td>
+                <td class="px-3 py-3 criteria-text text-slate-600">Complies Ph.Eur. 2.6.12 Cat. 3A</td>
+                <td class="px-3 py-3 text-slate-400">—</td>
+                <td class="px-3 py-3 text-center"><svg class="w-4 h-4 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg></td>
+              </tr>
+              <tr class="param-row">
+                <td class="px-4 py-3 text-slate-400 font-mono">10</td>
+                <td class="px-3 py-3 font-semibold text-slate-800">Particle Size D90</td>
+                <td class="px-3 py-3"><span class="type-badge bg-slate-100 text-slate-600">Physical</span></td>
+                <td class="px-3 py-3"><span class="moa-pill" onclick="selectMoa('MOA-PSD-001')">MOA-PSD-001 · Laser Diff.</span></td>
+                <td class="px-3 py-3 criteria-text text-slate-600">NMT 180 µm</td>
+                <td class="px-3 py-3 text-slate-600 font-semibold">µm</td>
+                <td class="px-3 py-3 text-center"><span class="text-slate-400 text-[10px] font-medium">Conditional</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Version history -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+          <div class="section-head">Revision History</div>
+          <div class="space-y-2">
+            <div class="flex items-center gap-3 text-xs">
+              <span class="font-mono font-bold text-violet-700 w-32">v4 (current)</span>
+              <span class="text-slate-600">Assay HPLC method updated to MOA-HPLC-003 Rev.2</span>
+              <span class="text-slate-400 ml-auto">28 Dec 2023</span>
+              <span class="status-pill bg-green-100 text-green-700 text-[10px]">Active</span>
+            </div>
+            <div class="flex items-center gap-3 text-xs">
+              <span class="font-mono font-bold text-slate-400 w-32">v3</span>
+              <span class="text-slate-500">Added particle size parameter, updated microbial category</span>
+              <span class="text-slate-400 ml-auto">15 Mar 2023</span>
+              <span class="status-pill bg-slate-100 text-slate-500 text-[10px]">Obsolete</span>
+            </div>
+            <div class="flex items-center gap-3 text-xs">
+              <span class="font-mono font-bold text-slate-400 w-32">v2</span>
+              <span class="text-slate-500">Heavy metals limit tightened to NMT 20 ppm (ICH Q3D)</span>
+              <span class="text-slate-400 ml-auto">01 Jun 2022</span>
+              <span class="status-pill bg-slate-100 text-slate-500 text-[10px]">Obsolete</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /specTab -->
+
+    <!-- ============================================================ -->
+    <!-- MOA TAB (hidden by default) -->
+    <!-- ============================================================ -->
+    <div id="moaTab" class="flex flex-1 overflow-hidden hidden">
+
+      <!-- MOA list -->
+      <div class="w-96 flex-shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+          <input type="text" placeholder="Search MOA code or name…" class="flex-1 text-xs" />
+          <span class="text-[10px] text-slate-400 font-medium">18 methods</span>
+        </div>
+        <div class="flex-1 overflow-y-auto">
+
+          <div class="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Validated · 14</div>
+
+          <div class="list-row selected" onclick="selectMoa(this)">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-0.5">
+                <span class="text-xs font-bold text-slate-800">MOA-HPLC-003</span>
+                <span class="status-pill bg-green-100 text-green-700 text-[10px]"><span class="dot bg-green-500"></span>Validated</span>
+              </div>
+              <div class="text-[11px] text-slate-500 truncate">HPLC Assay &amp; Identity — Reversed Phase C18</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">HPLC · Ph.Eur. 2.2.29 · Rev.2 · 3 specs linked</div>
+            </div>
+            <span class="type-badge bg-purple-100 text-purple-700">HPLC</span>
+          </div>
+
+          <div class="list-row" onclick="selectMoa(this)">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-0.5">
+                <span class="text-xs font-bold text-slate-800">MOA-LOD-001</span>
+                <span class="status-pill bg-indigo-100 text-indigo-700 text-[10px]"><span class="dot bg-indigo-500"></span>Compendial</span>
+              </div>
+              <div class="text-[11px] text-slate-500 truncate">Loss on Drying — Oven Method 105°C/2h</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">LOD Oven · Ph.Eur. 2.2.32 · Rev.1 · 7 specs linked</div>
+            </div>
+            <span class="type-badge bg-orange-100 text-orange-700">LOD</span>
+          </div>
+
+          <div class="list-row" onclick="selectMoa(this)">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-0.5">
+                <span class="text-xs font-bold text-slate-800">MOA-IR-001</span>
+                <span class="status-pill bg-indigo-100 text-indigo-700 text-[10px]"><span class="dot bg-indigo-500"></span>Compendial</span>
+              </div>
+              <div class="text-[11px] text-slate-500 truncate">Infrared Spectroscopy Identity Test</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">IR · Ph.Eur. 2.2.24 · Rev.1 · 5 specs linked</div>
+            </div>
+            <span class="type-badge bg-rose-100 text-rose-700">IR</span>
+          </div>
+
+          <div class="list-row" onclick="selectMoa(this)">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-0.5">
+                <span class="text-xs font-bold text-slate-800">MOA-MIC-001</span>
+                <span class="status-pill bg-indigo-100 text-indigo-700 text-[10px]"><span class="dot bg-indigo-500"></span>Compendial</span>
+              </div>
+              <div class="text-[11px] text-slate-500 truncate">Microbial Enumeration — Membrane Filtration</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">Microbiological · Ph.Eur. 2.6.12 · Rev.1 · 4 specs</div>
+            </div>
+            <span class="type-badge bg-red-100 text-red-700">Micro</span>
+          </div>
+
+          <div class="list-row" onclick="selectMoa(this)">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-0.5">
+                <span class="text-xs font-bold text-slate-800">MOA-KF-001</span>
+                <span class="status-pill bg-green-100 text-green-700 text-[10px]"><span class="dot bg-green-500"></span>Validated</span>
+              </div>
+              <div class="text-[11px] text-slate-500 truncate">Water Content — Karl Fischer Titration</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">Karl Fischer · In-house SOP-QC-KF-002 · Rev.3 · 6 specs</div>
+            </div>
+            <span class="type-badge bg-cyan-100 text-cyan-700">KF</span>
+          </div>
+
+          <div class="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">In Validation · 4</div>
+
+          <div class="list-row" onclick="selectMoa(this)">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-0.5">
+                <span class="text-xs font-bold text-slate-800">MOA-HPLC-009</span>
+                <span class="status-pill bg-amber-100 text-amber-700 text-[10px]"><span class="dot bg-amber-500"></span>In Validation</span>
+              </div>
+              <div class="text-[11px] text-slate-500 truncate">HPLC Related Substances — Gradient Method</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">HPLC · In-house · Rev.1 draft · 0 specs linked</div>
+            </div>
+            <span class="type-badge bg-purple-100 text-purple-700">HPLC</span>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- MOA Detail -->
+      <div class="flex-1 overflow-y-auto bg-slate-50 p-6">
+
+        <!-- Header -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 mb-5 shadow-sm">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <div class="flex items-center gap-3 mb-1">
+                <h2 class="text-lg font-bold text-slate-800">HPLC Assay & Identity — Reversed Phase C18</h2>
+                <span class="status-pill bg-green-100 text-green-700"><span class="dot bg-green-500"></span>Validated</span>
+                <span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs font-mono">Rev.2</span>
+              </div>
+              <div class="text-sm text-slate-500 font-medium">MOA-HPLC-003</div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="btn-outline">Edit</button>
+              <button class="btn-outline" style="color:#0ea5e9;border-color:#bae6fd;">View SOP</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-4 gap-4">
+            <div>
+              <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Method Type</div>
+              <span class="type-badge bg-purple-100 text-purple-700 text-xs px-3 py-1">HPLC</span>
+            </div>
+            <div>
+              <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Compendial Ref</div>
+              <div class="text-sm font-semibold text-slate-700">Ph. Eur. 2.2.29</div>
+            </div>
+            <div>
+              <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Instrument</div>
+              <div class="text-sm font-semibold text-slate-700">HPLC-UV System</div>
+            </div>
+            <div>
+              <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Reportable Range</div>
+              <div class="text-sm font-semibold text-slate-700">0.05% – 120.0%</div>
+            </div>
+            <div>
+              <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Validation Status</div>
+              <span class="status-pill bg-green-100 text-green-700 text-[10px]">Validated — ICH Q2(R1)</span>
+            </div>
+            <div>
+              <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Validated By</div>
+              <div class="text-sm font-semibold text-slate-700">Nisha Kaur</div>
+            </div>
+            <div>
+              <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Validated On</div>
+              <div class="text-sm font-semibold text-slate-700">12 Nov 2023</div>
+            </div>
+            <div>
+              <div class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Reference SOP</div>
+              <a class="text-sm font-semibold text-violet-600 hover:underline cursor-pointer">SOP-QC-HPLC-003-Rev2.pdf</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Procedure details -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 mb-5 shadow-sm">
+          <div class="section-head">Procedure Details</div>
+          <div class="grid grid-cols-2 gap-5">
+            <div>
+              <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Principle</div>
+              <p class="text-xs text-slate-600 leading-relaxed">Reversed-phase HPLC with UV detection at 243 nm. Separation on C18 column (150 × 4.6 mm, 5 µm). Mobile phase: 0.1% phosphoric acid (pH 3.0) / acetonitrile gradient. External standard quantification against reference standard.</p>
+            </div>
+            <div>
+              <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">System Suitability Criteria</div>
+              <ul class="text-xs text-slate-600 space-y-1">
+                <li class="flex items-center gap-2"><svg class="w-3 h-3 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg> RSD ≤ 2.0% for 5 reference injections</li>
+                <li class="flex items-center gap-2"><svg class="w-3 h-3 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg> Tailing factor 0.8 – 2.0 for principal peak</li>
+                <li class="flex items-center gap-2"><svg class="w-3 h-3 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg> Plate count NLT 2000 for reference peak</li>
+              </ul>
+            </div>
+            <div>
+              <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Reagents &amp; Standards</div>
+              <ul class="text-xs text-slate-600 space-y-0.5">
+                <li>· Paracetamol RS (Ph.Eur. CRS, assigned potency on CoA)</li>
+                <li>· Acetonitrile HPLC grade</li>
+                <li>· Orthophosphoric acid, 85%</li>
+                <li>· Water for chromatography</li>
+              </ul>
+            </div>
+            <div>
+              <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2">Calculation Formula</div>
+              <div class="bg-slate-50 rounded-xl p-3 font-mono text-xs text-slate-700 leading-relaxed border border-slate-200">
+                Assay (%) =<br/>
+                (A<sub>sample</sub> / A<sub>std</sub>) × (W<sub>std</sub> / W<sub>sample</sub>)<br/>
+                × P<sub>std</sub> × D × 100
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Validation summary -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 mb-5 shadow-sm">
+          <div class="section-head">Validation Summary (ICH Q2(R1))</div>
+          <div class="grid grid-cols-4 gap-3">
+            <div class="flex items-center gap-2 bg-green-50 border border-green-100 rounded-xl p-3">
+              <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              <div><div class="text-[10px] font-bold text-green-700">Specificity</div><div class="text-[10px] text-green-600">Pass</div></div>
+            </div>
+            <div class="flex items-center gap-2 bg-green-50 border border-green-100 rounded-xl p-3">
+              <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              <div><div class="text-[10px] font-bold text-green-700">Linearity</div><div class="text-[10px] text-green-600">r² ≥ 0.999</div></div>
+            </div>
+            <div class="flex items-center gap-2 bg-green-50 border border-green-100 rounded-xl p-3">
+              <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              <div><div class="text-[10px] font-bold text-green-700">Accuracy</div><div class="text-[10px] text-green-600">98.5–101.5%</div></div>
+            </div>
+            <div class="flex items-center gap-2 bg-green-50 border border-green-100 rounded-xl p-3">
+              <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              <div><div class="text-[10px] font-bold text-green-700">Repeatability</div><div class="text-[10px] text-green-600">RSD 0.42%</div></div>
+            </div>
+            <div class="flex items-center gap-2 bg-green-50 border border-green-100 rounded-xl p-3">
+              <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              <div><div class="text-[10px] font-bold text-green-700">Interm. Prec.</div><div class="text-[10px] text-green-600">RSD 0.78%</div></div>
+            </div>
+            <div class="flex items-center gap-2 bg-green-50 border border-green-100 rounded-xl p-3">
+              <svg class="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              <div><div class="text-[10px] font-bold text-green-700">Robustness</div><div class="text-[10px] text-green-600">Passed</div></div>
+            </div>
+            <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-3">
+              <span class="text-slate-400 text-[10px]">—</span>
+              <div><div class="text-[10px] font-bold text-slate-500">LOD</div><div class="text-[10px] text-slate-400">N/A (Assay)</div></div>
+            </div>
+            <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-3">
+              <span class="text-slate-400 text-[10px]">—</span>
+              <div><div class="text-[10px] font-bold text-slate-500">LOQ</div><div class="text-[10px] text-slate-400">N/A (Assay)</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Linked Specs -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+          <div class="section-head">Used In Specifications</div>
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="border-b border-slate-100">
+                <th class="text-left pb-2 text-[10px] font-bold text-slate-400 uppercase">Spec Code</th>
+                <th class="text-left pb-2 text-[10px] font-bold text-slate-400 uppercase">Spec Name</th>
+                <th class="text-left pb-2 text-[10px] font-bold text-slate-400 uppercase">Parameter</th>
+                <th class="text-left pb-2 text-[10px] font-bold text-slate-400 uppercase">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-slate-50 hover:bg-slate-50 cursor-pointer">
+                <td class="py-2 font-mono font-bold text-violet-700">SP-2024-PARA-v4</td>
+                <td class="py-2 text-slate-600">Paracetamol API</td>
+                <td class="py-2 text-slate-500">Identification (HPLC RT), Assay</td>
+                <td class="py-2"><span class="status-pill bg-green-100 text-green-700 text-[10px]">Approved</span></td>
+              </tr>
+              <tr class="border-b border-slate-50 hover:bg-slate-50 cursor-pointer">
+                <td class="py-2 font-mono font-bold text-violet-700">SP-2025-ATOR-v1</td>
+                <td class="py-2 text-slate-600">Atorvastatin Calcium API</td>
+                <td class="py-2 text-slate-500">Assay</td>
+                <td class="py-2"><span class="status-pill bg-green-100 text-green-700 text-[10px]">Approved</span></td>
+              </tr>
+              <tr class="hover:bg-slate-50 cursor-pointer">
+                <td class="py-2 font-mono font-bold text-amber-700">SP-2026-LACT-v1</td>
+                <td class="py-2 text-slate-600">Lactose Monohydrate</td>
+                <td class="py-2 text-slate-500">Assay</td>
+                <td class="py-2"><span class="status-pill bg-amber-100 text-amber-700 text-[10px]">Draft</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div><!-- /moaTab -->
+
+  </div>
+</main>
+
+<!-- ================================================================ -->
+<!-- CREATE SPEC SLIDE-OVER -->
+<!-- ================================================================ -->
+<div id="specModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeSpecModal()"></div>
+  <div class="absolute right-0 top-0 bottom-0 w-[820px] bg-white shadow-2xl flex flex-col overflow-hidden slide-over">
+
+    <!-- Modal header -->
+    <div class="px-7 py-4 border-b border-slate-100 bg-white flex items-center justify-between flex-shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center">
+          <svg class="w-5 h-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        </div>
+        <div>
+          <div class="font-bold text-slate-800">New Specification</div>
+          <div class="text-xs text-slate-400">Define tests, acceptance criteria, and linked methods</div>
+        </div>
+        <span class="status-pill bg-amber-100 text-amber-700">Draft</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="closeSpecModal()" class="btn-secondary">Cancel</button>
+        <button class="btn-secondary" style="color:#475569;">Save Draft</button>
+        <button onclick="submitSpec()" class="btn-primary flex items-center gap-2">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2"/></svg>
+          Submit for Review
+        </button>
+        <button onclick="closeSpecModal()" class="p-2 rounded-lg hover:bg-slate-100">
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal body -->
+    <div class="flex-1 overflow-y-auto p-7 space-y-7">
+
+      <!-- Section 1: Spec Header -->
+      <div>
+        <div class="section-head">1 · Specification Header</div>
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="form-label">Spec Code *</label>
+            <input type="text" placeholder="e.g. SP-2026-MSTEAR-v1" class="w-full" />
+            <div class="text-[10px] text-slate-400 mt-1">Auto-suggest: SP-2026-NNNN</div>
+          </div>
+          <div class="col-span-2">
+            <label class="form-label">Specification Name *</label>
+            <input type="text" placeholder="e.g. Magnesium Stearate — Material Specification" class="w-full" />
+          </div>
+          <div>
+            <label class="form-label">Spec Type *</label>
+            <select class="w-full">
+              <option>Material</option>
+              <option>In-Process</option>
+              <option>Finished Product</option>
+              <option>Packaging</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Revision *</label>
+            <input type="text" placeholder="e.g. v1, Rev.01" class="w-full" />
+          </div>
+          <div>
+            <label class="form-label">Effective Date *</label>
+            <input type="text" placeholder="DD MMM YYYY" class="w-full" />
+          </div>
+          <div>
+            <label class="form-label">Target Market *</label>
+            <select class="w-full" id="targetMarketSelect" onchange="updateRegHint(this.value)">
+              <option value="">— Select —</option>
+              <option value="EU">EU (EMA · Ph. Eur. · EU GMP)</option>
+              <option value="US_FDA">US FDA (21 CFR · USP)</option>
+              <option value="UK_MHRA">UK MHRA (UK GMP · BP)</option>
+              <option value="INDIA_CDSCO">India CDSCO (Schedule M · IP)</option>
+              <option value="JAPAN_PMDA">Japan PMDA (GMP Ordinance · JP)</option>
+              <option value="CHINA_NMPA">China NMPA (ChGMP · ChP)</option>
+              <option value="WHO_PREQUALIFICATION">WHO Prequalification (WHO GMP · Ph. Int.)</option>
+              <option value="GLOBAL">Global / Multi-region (strictest criteria)</option>
+              <option value="INTERNAL">Internal Only (not for regulatory submission)</option>
+            </select>
+            <div id="regHint" class="text-[10px] text-slate-400 mt-1">Select target market to auto-suggest compendial reference and sampling method.</div>
+          </div>
+          <div>
+            <label class="form-label">Compendial Reference *</label>
+            <select class="w-full" id="compendialRefSelect">
+              <optgroup label="Primary Pharmacopoeias">
+                <option value="PH_EUR">Ph. Eur. — European Pharmacopoeia (EDQM)</option>
+                <option value="USP">USP-NF — United States Pharmacopeia</option>
+                <option value="BP">BP — British Pharmacopoeia (MHRA)</option>
+                <option value="JP">JP — Japanese Pharmacopoeia (PMDA)</option>
+                <option value="IP">IP — Indian Pharmacopoeia (IPC)</option>
+                <option value="CHN_PHARMACOPOEIA">ChP — Chinese Pharmacopoeia (NMPA)</option>
+                <option value="WHO_INT">Ph. Int. — International Pharmacopoeia (WHO)</option>
+              </optgroup>
+              <optgroup label="Multi / In-house">
+                <option value="MULTI_COMPENDIAL">Multi-Compendial (Ph. Eur. + USP, stricter applies)</option>
+                <option value="IN_HOUSE">In-house SOP — No pharmacopoeia reference</option>
+                <option value="NONE">None</option>
+              </optgroup>
+            </select>
+            <div class="text-[10px] text-slate-400 mt-1">Compendial edition (e.g. "Ph. Eur. 11th Ed."): <input type="text" placeholder="edition / year" class="inline-block w-28 px-1.5 py-0.5 text-[10px] rounded" /></div>
+          </div>
+          <div>
+            <label class="form-label">Sampling Method *</label>
+            <select class="w-full" onchange="updateSamplingHint(this.value)">
+              <option value="SQRT_N_PLUS_1">√N+1 Containers</option>
+              <option value="HUNDRED_PERCENT">100% All Containers</option>
+              <option value="MILITARY">Military Standard MIL-STD-1916</option>
+              <option value="COA_BASED">CoA-based — No Physical Sampling</option>
+            </select>
+            <div id="samplingHint" class="text-[10px] text-violet-600 mt-1">Container count = √(total containers) + 1, rounded up. Standard for most raw materials.</div>
+          </div>
+          <div>
+            <label class="form-label">Reference SOP / Attachment</label>
+            <input type="text" placeholder="SOP-QC-xxx.pdf" class="w-full" />
+          </div>
+          <div>
+            <label class="form-label">Notes</label>
+            <input type="text" placeholder="Any special instructions…" class="w-full" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Material Linkage -->
+      <div>
+        <div class="section-head">2 · Link Materials</div>
+        <div class="flex items-center gap-3 mb-3">
+          <input type="text" placeholder="Search material code or name…" class="flex-1 max-w-xs" />
+          <button class="btn-outline">Add Material</button>
+        </div>
+        <div class="text-xs text-slate-400 italic">No materials linked yet. Link at least one material before submitting for review.</div>
+      </div>
+
+      <!-- Section 3: Test Parameters -->
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <div class="section-head mb-0">3 · Test Parameters</div>
+          <button onclick="addParamRow()" class="btn-outline text-[11px] flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+            Add Test
+          </button>
+        </div>
+
+        <div class="overflow-hidden rounded-xl border border-slate-200">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="bg-slate-50 border-b border-slate-200">
+                <th class="text-left px-3 py-2.5 text-[10px] font-bold text-slate-400 w-8">#</th>
+                <th class="text-left px-3 py-2.5 text-[10px] font-bold text-slate-400">Test Name</th>
+                <th class="text-left px-3 py-2.5 text-[10px] font-bold text-slate-400">Type</th>
+                <th class="text-left px-3 py-2.5 text-[10px] font-bold text-slate-400">Method (MOA)</th>
+                <th class="text-left px-3 py-2.5 text-[10px] font-bold text-slate-400">Criteria</th>
+                <th class="text-left px-3 py-2.5 text-[10px] font-bold text-slate-400 w-16">Lower</th>
+                <th class="text-left px-3 py-2.5 text-[10px] font-bold text-slate-400 w-16">Upper</th>
+                <th class="text-left px-3 py-2.5 text-[10px] font-bold text-slate-400 w-16">Unit</th>
+                <th class="text-center px-3 py-2.5 text-[10px] font-bold text-slate-400 w-16">Req.</th>
+                <th class="w-8 px-3 py-2.5"></th>
+              </tr>
+            </thead>
+            <tbody id="paramTableBody">
+              <!-- Row 1 -->
+              <tr class="border-b border-slate-100 hover:bg-violet-50/30">
+                <td class="px-3 py-2.5 text-slate-400 font-mono">1</td>
+                <td class="px-3 py-2.5"><input type="text" value="Description" class="w-full border-0 bg-transparent p-0 text-xs font-semibold focus:ring-0" /></td>
+                <td class="px-3 py-2.5">
+                  <select class="text-xs border-0 bg-transparent p-0 focus:ring-0">
+                    <option>Physical</option><option>Identity</option><option>Assay</option><option>Purity</option><option>Chemical</option><option>Microbiological</option>
+                  </select>
+                </td>
+                <td class="px-3 py-2.5">
+                  <select class="text-xs">
+                    <option>MOA-VIS-001</option><option>MOA-IR-001</option><option>MOA-HPLC-003</option><option>MOA-LOD-001</option><option>MOA-KF-001</option>
+                  </select>
+                </td>
+                <td class="px-3 py-2.5">
+                  <select class="text-xs" onchange="toggleCriteriaInputs(this)">
+                    <option value="TEXT">Text</option><option value="PASS_FAIL">Pass/Fail</option><option value="COMPLIES">Complies</option><option value="NLT">NLT</option><option value="NMT">NMT</option><option value="RANGE">Range</option>
+                  </select>
+                </td>
+                <td class="px-3 py-2.5"><input type="text" placeholder="—" class="w-full text-xs" disabled /></td>
+                <td class="px-3 py-2.5"><input type="text" placeholder="—" class="w-full text-xs" disabled /></td>
+                <td class="px-3 py-2.5"><input type="text" placeholder="—" class="w-12 text-xs" /></td>
+                <td class="px-3 py-2.5 text-center"><input type="checkbox" checked class="accent-violet-600" /></td>
+                <td class="px-3 py-2.5 text-center"><button class="text-red-400 hover:text-red-600"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></td>
+              </tr>
+              <!-- Row 2 -->
+              <tr class="border-b border-slate-100 hover:bg-violet-50/30">
+                <td class="px-3 py-2.5 text-slate-400 font-mono">2</td>
+                <td class="px-3 py-2.5"><input type="text" value="Identification (IR)" class="w-full border-0 bg-transparent p-0 text-xs font-semibold focus:ring-0" /></td>
+                <td class="px-3 py-2.5">
+                  <select class="text-xs border-0 bg-transparent p-0 focus:ring-0">
+                    <option>Physical</option><option selected>Identity</option><option>Assay</option><option>Purity</option><option>Chemical</option><option>Microbiological</option>
+                  </select>
+                </td>
+                <td class="px-3 py-2.5">
+                  <select class="text-xs">
+                    <option>MOA-VIS-001</option><option selected>MOA-IR-001</option><option>MOA-HPLC-003</option>
+                  </select>
+                </td>
+                <td class="px-3 py-2.5">
+                  <select class="text-xs">
+                    <option value="TEXT">Text</option><option value="PASS_FAIL" selected>Pass/Fail</option><option value="COMPLIES">Complies</option><option value="NLT">NLT</option><option value="NMT">NMT</option><option value="RANGE">Range</option>
+                  </select>
+                </td>
+                <td class="px-3 py-2.5"><input type="text" placeholder="—" class="w-full text-xs" disabled /></td>
+                <td class="px-3 py-2.5"><input type="text" placeholder="—" class="w-full text-xs" disabled /></td>
+                <td class="px-3 py-2.5"><input type="text" placeholder="—" class="w-12 text-xs" /></td>
+                <td class="px-3 py-2.5 text-center"><input type="checkbox" checked class="accent-violet-600" /></td>
+                <td class="px-3 py-2.5 text-center"><button class="text-red-400 hover:text-red-600"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></td>
+              </tr>
+              <!-- Row 3 — Assay Range -->
+              <tr class="border-b border-slate-100 bg-blue-50/30 hover:bg-violet-50/30">
+                <td class="px-3 py-2.5 text-slate-400 font-mono">3</td>
+                <td class="px-3 py-2.5"><input type="text" value="Assay" class="w-full border-0 bg-transparent p-0 text-xs font-semibold focus:ring-0" /></td>
+                <td class="px-3 py-2.5">
+                  <select class="text-xs border-0 bg-transparent p-0 focus:ring-0">
+                    <option>Physical</option><option>Identity</option><option selected>Assay</option><option>Purity</option><option>Chemical</option><option>Microbiological</option>
+                  </select>
+                </td>
+                <td class="px-3 py-2.5">
+                  <select class="text-xs">
+                    <option>MOA-VIS-001</option><option>MOA-IR-001</option><option selected>MOA-HPLC-003</option>
+                  </select>
+                </td>
+                <td class="px-3 py-2.5">
+                  <select class="text-xs">
+                    <option>Text</option><option>Pass/Fail</option><option>Complies</option><option>NLT</option><option>NMT</option><option selected>Range</option>
+                  </select>
+                </td>
+                <td class="px-3 py-2.5"><input type="number" value="98.0" class="w-full text-xs border-violet-200 bg-violet-50/50" /></td>
+                <td class="px-3 py-2.5"><input type="number" value="102.0" class="w-full text-xs border-violet-200 bg-violet-50/50" /></td>
+                <td class="px-3 py-2.5"><input type="text" value="%" class="w-12 text-xs" /></td>
+                <td class="px-3 py-2.5 text-center"><input type="checkbox" checked class="accent-violet-600" /></td>
+                <td class="px-3 py-2.5 text-center"><button class="text-red-400 hover:text-red-600"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-3 bg-violet-50 border border-violet-100 rounded-xl px-4 py-2.5 text-xs text-violet-700">
+          <strong>Preview:</strong> Row 3 → Assay · HPLC (MOA-HPLC-003) · <strong>Range: 98.0 – 102.0 %</strong> · Mandatory
+        </div>
+      </div>
+
+      <!-- Section 4: Review confirmation -->
+      <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+        <div class="section-head" style="color:#b45309; border-color:#fde68a;">4 · Submission Confirmation</div>
+        <div class="grid grid-cols-3 gap-4">
+          <div class="bg-white border border-amber-100 rounded-xl p-3">
+            <div class="text-[10px] font-bold text-amber-700 uppercase mb-1">Status After Save</div>
+            <div class="text-sm font-bold text-amber-800">DRAFT</div>
+            <div class="text-[10px] text-amber-600">Editable. Not visible to production.</div>
+          </div>
+          <div class="bg-white border border-amber-100 rounded-xl p-3">
+            <div class="text-[10px] font-bold text-amber-700 uppercase mb-1">Status After Submit</div>
+            <div class="text-sm font-bold text-blue-700">UNDER_REVIEW</div>
+            <div class="text-[10px] text-slate-500">QC Manager / QA can approve.</div>
+          </div>
+          <div class="bg-white border border-amber-100 rounded-xl p-3">
+            <div class="text-[10px] font-bold text-amber-700 uppercase mb-1">Usable for Sampling</div>
+            <div class="text-sm font-bold text-green-700">After APPROVED only</div>
+            <div class="text-[10px] text-slate-500">Spec drives container count at GRN receive.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- CREATE MOA SLIDE-OVER -->
+<!-- ================================================================ -->
+<div id="moaModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="closeMoaModal()"></div>
+  <div class="absolute right-0 top-0 bottom-0 w-[720px] bg-white shadow-2xl flex flex-col overflow-hidden slide-over">
+
+    <div class="px-7 py-4 border-b border-slate-100 bg-white flex items-center justify-between flex-shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-purple-100 flex items-center justify-center">
+          <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+        </div>
+        <div>
+          <div class="font-bold text-slate-800">New Method of Analysis</div>
+          <div class="text-xs text-slate-400">Define analytical procedure and validation status</div>
+        </div>
+        <span class="status-pill bg-amber-100 text-amber-700">Draft</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="closeMoaModal()" class="btn-secondary">Cancel</button>
+        <button class="btn-secondary">Save Draft</button>
+        <button onclick="submitMoa()" class="btn-primary flex items-center gap-2">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+          Submit for Approval
+        </button>
+        <button onclick="closeMoaModal()" class="p-2 rounded-lg hover:bg-slate-100">
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-7 space-y-7">
+
+      <!-- Section 1: MOA Header -->
+      <div>
+        <div class="section-head">1 · Method Header</div>
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="form-label">MOA Code *</label>
+            <input type="text" placeholder="e.g. MOA-HPLC-012" class="w-full" />
+            <div class="text-[10px] text-slate-400 mt-1">Auto-suggest based on type</div>
+          </div>
+          <div class="col-span-2">
+            <label class="form-label">Method Name *</label>
+            <input type="text" placeholder="e.g. HPLC Assay — Magnesium Stearate" class="w-full" />
+          </div>
+          <div>
+            <label class="form-label">Method Type *</label>
+            <select class="w-full" onchange="suggestMoaCode(this.value)">
+              <option value="">— Select —</option>
+              <option value="HPLC">HPLC</option>
+              <option value="GC">Gas Chromatography (GC)</option>
+              <option value="UV_VIS">UV-Vis Spectrophotometry</option>
+              <option value="IR">Infrared (IR) Spectroscopy</option>
+              <option value="TITRATION">Titration</option>
+              <option value="KARL_FISCHER">Karl Fischer Titration</option>
+              <option value="LOD">Loss on Drying (LOD)</option>
+              <option value="PHYSICAL">Physical Testing</option>
+              <option value="MICROBIOLOGICAL">Microbiological</option>
+              <option value="VISUAL">Visual / Organoleptic</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Revision *</label>
+            <input type="text" placeholder="e.g. Rev.1" class="w-full" />
+          </div>
+          <div>
+            <label class="form-label">Compendial Reference</label>
+            <select class="w-full">
+              <option value="">In-house (no compendial)</option>
+              <option>Ph. Eur. 2.2.29 (HPLC)</option>
+              <option>Ph. Eur. 2.2.27 (GC)</option>
+              <option>Ph. Eur. 2.2.24 (IR)</option>
+              <option>Ph. Eur. 2.2.32 (LOD)</option>
+              <option>Ph. Eur. 2.6.12 (Microbio.)</option>
+              <option>USP &lt;621&gt; (Chromatography)</option>
+              <option>USP &lt;61&gt;/&lt;62&gt; (Microbio.)</option>
+              <option>ICH Q3C (Residual Solvents)</option>
+              <option>ICH Q3D (Elemental Impurities)</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Instrument / Equipment</label>
+            <input type="text" placeholder="e.g. HPLC-UV System, Agilent 1260" class="w-full" />
+          </div>
+          <div>
+            <label class="form-label">Reportable Range</label>
+            <input type="text" placeholder="e.g. 0.05% – 120.0%" class="w-full" />
+          </div>
+          <div>
+            <label class="form-label">Reference SOP</label>
+            <input type="text" placeholder="SOP-QC-xxx.pdf" class="w-full" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Procedure -->
+      <div>
+        <div class="section-head">2 · Procedure Details</div>
+        <div class="space-y-4">
+          <div>
+            <label class="form-label">Analytical Principle</label>
+            <textarea rows="3" placeholder="Brief description of the analytical principle and methodology…" class="w-full"></textarea>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="form-label">System Suitability Criteria</label>
+              <textarea rows="3" placeholder="e.g. RSD ≤ 2.0% for 5 injections; Tailing factor 0.8–2.0…" class="w-full"></textarea>
+            </div>
+            <div>
+              <label class="form-label">Reagents &amp; Reference Standards</label>
+              <textarea rows="3" placeholder="List reagents, reference standards, and grades…" class="w-full"></textarea>
+            </div>
+            <div>
+              <label class="form-label">Calculation Formula</label>
+              <textarea rows="2" placeholder="e.g. Assay (%) = (A_sample / A_std) × (W_std / W_sample) × P_std × D × 100" class="w-full font-mono text-xs"></textarea>
+            </div>
+            <div>
+              <label class="form-label">Notes / Special Instructions</label>
+              <textarea rows="2" placeholder="Any precautions, environmental controls, or analyst notes…" class="w-full"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Validation -->
+      <div>
+        <div class="section-head">3 · Validation Status</div>
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="form-label">Validation Status *</label>
+            <select class="w-full">
+              <option value="NOT_VALIDATED">Not Validated (draft use only)</option>
+              <option value="IN_VALIDATION">In Validation</option>
+              <option value="VALIDATED">Validated — ICH Q2(R1)</option>
+              <option value="VALIDATED_COMPENDIAL">Validated (Compendial — Ph.Eur./USP)</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Validated By</label>
+            <input type="text" placeholder="e.g. Nisha Kaur" class="w-full" />
+          </div>
+          <div>
+            <label class="form-label">Validated On</label>
+            <input type="text" placeholder="DD MMM YYYY" class="w-full" />
+          </div>
+        </div>
+        <div class="mt-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-xs text-amber-700">
+          <strong>Important:</strong> Only VALIDATED or VALIDATED (Compendial) methods can be linked to APPROVED specifications. NOT_VALIDATED methods block spec approval. This enforces ICH Q2(R1) / EU GMP Chapter 6 compliance.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Success toasts -->
+<div id="specToast" class="fixed bottom-6 right-6 z-[100] hidden">
+  <div class="flex items-center gap-3 bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl text-sm font-medium">
+    <svg class="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    SP-2026-MAGST-v1 · UNDER_REVIEW · Submitted to QA queue
+  </div>
+</div>
+
+<div id="moaToast" class="fixed bottom-6 right-6 z-[100] hidden">
+  <div class="flex items-center gap-3 bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl text-sm font-medium">
+    <svg class="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    MOA-HPLC-012 · Created · Pending validation before use in approved spec
+  </div>
+</div>
+
+<script>
+  // Tab switching
+  function switchTab(tab) {
+    const specTab = document.getElementById('specTab');
+    const moaTab = document.getElementById('moaTab');
+    const specBtn = document.getElementById('tabSpec');
+    const moaBtn = document.getElementById('tabMoa');
+    const specActions = document.getElementById('specActions');
+    const moaActions = document.getElementById('moaActions');
+
+    if (tab === 'spec') {
+      specTab.classList.remove('hidden');
+      moaTab.classList.add('hidden');
+      specBtn.classList.add('active');
+      moaBtn.classList.remove('active');
+      specActions.classList.remove('hidden');
+      moaActions.classList.add('hidden');
+    } else {
+      moaTab.classList.remove('hidden');
+      specTab.classList.add('hidden');
+      moaBtn.classList.add('active');
+      specBtn.classList.remove('active');
+      moaActions.classList.remove('hidden');
+      specActions.classList.add('hidden');
+    }
+  }
+
+  // List row selection
+  function selectSpec(row) {
+    document.querySelectorAll('#specTab .list-row').forEach(r => r.classList.remove('selected'));
+    if (row instanceof HTMLElement) row.classList.add('selected');
+  }
+  function selectMoa(row) {
+    if (typeof row === 'string') return; // called from MOA pill in spec detail
+    document.querySelectorAll('#moaTab .list-row').forEach(r => r.classList.remove('selected'));
+    if (row instanceof HTMLElement) row.classList.add('selected');
+  }
+
+  // Spec modal
+  function openSpecModal() {
+    document.getElementById('specModal').classList.remove('hidden');
+  }
+  function closeSpecModal() {
+    document.getElementById('specModal').classList.add('hidden');
+  }
+  function submitSpec() {
+    closeSpecModal();
+    const t = document.getElementById('specToast');
+    t.classList.remove('hidden');
+    setTimeout(() => t.classList.add('hidden'), 4000);
+  }
+
+  // MOA modal
+  function openMoaModal() {
+    document.getElementById('moaModal').classList.remove('hidden');
+  }
+  function closeMoaModal() {
+    document.getElementById('moaModal').classList.add('hidden');
+  }
+  function submitMoa() {
+    closeMoaModal();
+    const t = document.getElementById('moaToast');
+    t.classList.remove('hidden');
+    setTimeout(() => t.classList.add('hidden'), 4000);
+  }
+
+  // Sampling hint update
+  function updateRegHint(val) {
+    const hints = {
+      'EU': 'EU GMP Annex 8 · Ph. Eur. primary · Identity from ALL containers unless reduced sampling justified with validated procedure.',
+      'US_FDA': '21 CFR 211.84 · USP primary · Identity from at least 3 containers; full statistical sampling plan for other tests.',
+      'UK_MHRA': 'UK GMP (post-Brexit) · BP primary · Mirrors EU GMP Annex 8 for sampling identity.',
+      'INDIA_CDSCO': 'Schedule M 2023 · IP primary · SQRT(n)+1 for approved suppliers. IP monograph takes precedence where it exists.',
+      'JAPAN_PMDA': 'GMP Ordinance · JP primary · ICH-aligned. JP may specify different drying temps for LOD tests.',
+      'CHINA_NMPA': 'ChGMP · ChP 2020 primary · ICH member since 2017. ChP values may differ from Ph. Eur./USP.',
+      'WHO_PREQUALIFICATION': 'WHO TRS 992 · Ph. Int. or Ph. Eur./USP · Used for UN-procurement markets. Sampling per WHO Annex 4.',
+      'GLOBAL': 'Multi-region submission. Use strictest acceptance criteria across Ph. Eur. and USP. Both pharmacopoeias must be cited.',
+      'INTERNAL': 'Internal QC standard only. Not for regulatory submission. Any sampling method and criteria acceptable.'
+    };
+    const compHints = {
+      'EU': 'PH_EUR', 'US_FDA': 'USP', 'UK_MHRA': 'BP', 'INDIA_CDSCO': 'IP',
+      'JAPAN_PMDA': 'JP', 'CHINA_NMPA': 'CHN_PHARMACOPOEIA', 'WHO_PREQUALIFICATION': 'WHO_INT',
+      'GLOBAL': 'MULTI_COMPENDIAL', 'INTERNAL': 'IN_HOUSE'
+    };
+    const samplingHints = {
+      'EU': 'HUNDRED_PERCENT', 'US_FDA': 'SQRT_N_PLUS_1', 'INDIA_CDSCO': 'SQRT_N_PLUS_1',
+      'WHO_PREQUALIFICATION': 'SQRT_N_PLUS_1'
+    };
+    document.getElementById('regHint').textContent = hints[val] || 'Select target market to auto-suggest compendial reference and sampling method.';
+    document.getElementById('regHint').className = val ? 'text-[10px] text-blue-600 mt-1 font-medium' : 'text-[10px] text-slate-400 mt-1';
+    if (compHints[val]) {
+      document.getElementById('compendialRefSelect').value = compHints[val];
+    }
+    if (samplingHints[val]) {
+      document.querySelector('[onchange="updateSamplingHint(this.value)"]').value = samplingHints[val];
+      updateSamplingHint(samplingHints[val]);
+    }
+  }
+
+  function updateSamplingHint(val) {
+    const hints = {
+      'SQRT_N_PLUS_1': 'Container count = √(total containers) + 1, rounded up. WHO Annex 4 / Schedule M 2023 / general statistical plan.',
+      'HUNDRED_PERCENT': 'All containers must be sampled individually. Identity from each. EU GMP Annex 8 default — required without validated reduced-sampling justification.',
+      'MILITARY': 'MIL-STD-1916 sampling tables. Used for risk-stratified incoming inspection in some defense/industrial pharma contexts.',
+      'COA_BASED': 'No physical sampling. CoA review only. Requires: approved supplier + validated reduced-sampling procedure + documented risk justification per EU GMP Annex 8 or 21 CFR 211.84.'
+    };
+    document.getElementById('samplingHint').textContent = hints[val] || '';
+  }
+
+  // Add param row
+  let paramCount = 3;
+  function addParamRow() {
+    paramCount++;
+    const tbody = document.getElementById('paramTableBody');
+    const row = document.createElement('tr');
+    row.className = 'border-b border-slate-100 hover:bg-violet-50/30';
+    row.innerHTML = `
+      <td class="px-3 py-2.5 text-slate-400 font-mono">${paramCount}</td>
+      <td class="px-3 py-2.5"><input type="text" placeholder="Test name…" class="w-full border-0 bg-transparent p-0 text-xs font-semibold focus:ring-0" /></td>
+      <td class="px-3 py-2.5">
+        <select class="text-xs border-0 bg-transparent p-0 focus:ring-0">
+          <option>Physical</option><option>Identity</option><option>Assay</option><option>Purity</option><option>Chemical</option><option>Microbiological</option>
+        </select>
+      </td>
+      <td class="px-3 py-2.5">
+        <select class="text-xs">
+          <option>MOA-VIS-001</option><option>MOA-IR-001</option><option>MOA-HPLC-003</option><option>MOA-HPLC-004</option><option>MOA-LOD-001</option><option>MOA-KF-001</option><option>MOA-MIC-001</option>
+        </select>
+      </td>
+      <td class="px-3 py-2.5">
+        <select class="text-xs">
+          <option>Text</option><option>Pass/Fail</option><option>Complies</option><option>NLT</option><option>NMT</option><option>Range</option>
+        </select>
+      </td>
+      <td class="px-3 py-2.5"><input type="number" placeholder="—" class="w-full text-xs" /></td>
+      <td class="px-3 py-2.5"><input type="number" placeholder="—" class="w-full text-xs" /></td>
+      <td class="px-3 py-2.5"><input type="text" placeholder="%" class="w-12 text-xs" /></td>
+      <td class="px-3 py-2.5 text-center"><input type="checkbox" checked class="accent-violet-600" /></td>
+      <td class="px-3 py-2.5 text-center"><button onclick="this.closest('tr').remove()" class="text-red-400 hover:text-red-600"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></td>
+    `;
+    tbody.appendChild(row);
+    row.querySelector('input[type=text]').focus();
+  }
+
+  function openAddParamModal() {
+    openSpecModal();
+  }
+
+  // Keyboard escape
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      closeSpecModal();
+      closeMoaModal();
+    }
+  });
+</script>
+
+</body>
+</html>

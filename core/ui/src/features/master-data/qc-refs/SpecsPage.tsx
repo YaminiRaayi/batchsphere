@@ -1,5 +1,5 @@
-import { MasterDataPage } from "../MasterDataPage";
+import SpecMoaPage from "./SpecMoaPage";
 
 export default function SpecsPage() {
-  return <MasterDataPage section="spec" showHeader={false} />;
+  return <SpecMoaPage initialTab="spec" />;
 }

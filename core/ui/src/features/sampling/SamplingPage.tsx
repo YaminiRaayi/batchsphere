@@ -10,9 +10,15 @@ import {
   fetchPallets,
   fetchSamplingRequests,
   fetchSamplingSummary,
+  fetchSamplingWorksheet,
   fetchSamplingTools,
   fetchSpecs,
+  handoffSamplingToQc,
   recordQcDecision,
+  recordSamplingWorksheetResult,
+  receiveSamplingInQc,
+  startSampling,
+  startSamplingQcReview,
   updateSamplingPlan
 } from "../../lib/api";
 import type { Batch } from "../../types/batch";
@@ -23,11 +29,15 @@ import type { Moa } from "../../types/moa";
 import type { SamplingTool } from "../../types/sampling-tool";
 import type { Spec } from "../../types/spec";
 import type {
+  QcReceiptRequest,
+  QcWorksheetRow,
+  RecordQcWorksheetResultRequest,
   SampleType,
   SamplingContainerSampleRequest,
   SamplingMethod,
   SamplingPlanRequest,
   SamplingRequest,
+  StartQcReviewRequest,
   SamplingSummary
 } from "../../types/sampling";
 
@@ -37,7 +47,12 @@ function statusDotColor(status: string) {
   switch (status) {
     case "APPROVED":    return "bg-green-500";
     case "REJECTED":    return "bg-rose-500";
-    case "UNDER_TEST":  return "bg-amber-400";
+    case "UNDER_REVIEW":return "bg-violet-500";
+    case "RECEIVED":    return "bg-cyan-500";
+    case "HANDED_TO_QC":return "bg-indigo-500";
+    case "SAMPLED":     return "bg-orange-500";
+    case "IN_PROGRESS": return "bg-orange-400";
+    case "COMPLETED":   return "bg-amber-500";
     case "PLAN_DEFINED":return "bg-amber-400";
     case "REQUESTED":   return "bg-blue-400";
     default:            return "bg-slate-400";
@@ -48,7 +63,12 @@ function statusPillCls(status: string) {
   switch (status) {
     case "APPROVED":    return "bg-green-100 text-green-700";
     case "REJECTED":    return "bg-rose-100 text-rose-700";
-    case "UNDER_TEST":  return "bg-amber-100 text-amber-700";
+    case "UNDER_REVIEW":return "bg-violet-100 text-violet-700";
+    case "RECEIVED":    return "bg-cyan-100 text-cyan-700";
+    case "HANDED_TO_QC":return "bg-indigo-100 text-indigo-700";
+    case "SAMPLED":     return "bg-orange-100 text-orange-700";
+    case "IN_PROGRESS": return "bg-orange-100 text-orange-700";
+    case "COMPLETED":   return "bg-amber-100 text-amber-700";
     case "PLAN_DEFINED":return "bg-amber-100 text-amber-700";
     case "REQUESTED":   return "bg-blue-100 text-blue-700";
     default:            return "bg-slate-100 text-slate-500";
@@ -59,7 +79,12 @@ function statusLabel(status: string) {
   switch (status) {
     case "APPROVED":    return "Approved";
     case "REJECTED":    return "Rejected";
-    case "UNDER_TEST":  return "Testing";
+    case "UNDER_REVIEW":return "QC Review";
+    case "RECEIVED":    return "QC Received";
+    case "HANDED_TO_QC":return "Handed to QC";
+    case "SAMPLED":     return "Sampled";
+    case "IN_PROGRESS": return "Sampling";
+    case "COMPLETED":   return "QC Complete";
     case "PLAN_DEFINED":return "Plan Set";
     case "REQUESTED":   return "Pending";
     default:            return status;
@@ -80,7 +105,7 @@ function getChecklist(status: string, hasPlan: boolean) {
 }
 
 const sampleTypes: SampleType[] = ["INDIVIDUAL", "COMPOSITE"];
-const requestStatuses = ["ALL", "REQUESTED", "PLAN_DEFINED", "UNDER_TEST", "APPROVED", "REJECTED"] as const;
+const requestStatuses = ["ALL", "REQUESTED", "PLAN_DEFINED", "IN_PROGRESS", "SAMPLED", "HANDED_TO_QC", "RECEIVED", "UNDER_REVIEW", "APPROVED", "REJECTED"] as const;
 
 function createInitialPlanForm(currentUserName: string): SamplingPlanRequest {
   return {
@@ -131,6 +156,10 @@ export function SamplingPage() {
   const [statusFilter, setStatusFilter]       = useState<(typeof requestStatuses)[number]>("ALL");
   const [planForm, setPlanForm]               = useState<SamplingPlanRequest>(() => createInitialPlanForm(currentUserName));
   const [qcRemarks, setQcRemarks]             = useState("");
+  const [qcReceiptForm, setQcReceiptForm]     = useState<QcReceiptRequest>({ receivedBy: currentUserName, receiptCondition: "", sampleStorageLocation: "" });
+  const [qcReviewForm, setQcReviewForm]       = useState<StartQcReviewRequest>({ analystCode: "" });
+  const [worksheet, setWorksheet]             = useState<QcWorksheetRow[]>([]);
+  const [worksheetInputs, setWorksheetInputs] = useState<Record<string, RecordQcWorksheetResultRequest>>({});
   const [isLoading, setIsLoading]             = useState(true);
   const [isSubmitting, setIsSubmitting]       = useState(false);
   const [error, setError]                     = useState<string | null>(null);
@@ -204,6 +233,12 @@ export function SamplingPage() {
   useEffect(() => {
     if (!selectedRequest) return;
     setQcRemarks(selectedRequest.qcDecisionRemarks ?? "");
+    setQcReceiptForm({
+      receivedBy: selectedRequest.sample?.receivedByQc ?? currentUserName,
+      receiptCondition: selectedRequest.sample?.receiptCondition ?? "",
+      sampleStorageLocation: selectedRequest.sample?.qcStorageLocation ?? ""
+    });
+    setQcReviewForm({ analystCode: selectedRequest.plan?.analystEmployeeCode ?? "" });
     if (selectedRequest.plan) {
       setPlanForm({
         samplingMethod: selectedRequest.plan.samplingMethod as SamplingMethod,
@@ -239,6 +274,41 @@ export function SamplingPage() {
       hygroscopicHandlingRequired: selectedRequest.hygroscopicMaterial
     });
   }, [currentUserName, selectedMaterial, selectedRequest]);
+
+  useEffect(() => {
+    if (!selectedRequest?.sample || planForm.samplingMethod === "COA_BASED_RELEASE") {
+      setWorksheet([]);
+      setWorksheetInputs({});
+      return;
+    }
+    if (!["RECEIVED", "UNDER_REVIEW", "COMPLETED", "APPROVED", "REJECTED"].includes(selectedRequest.requestStatus)) {
+      setWorksheet([]);
+      setWorksheetInputs({});
+      return;
+    }
+    const samplingRequestId = selectedRequest.id;
+    let cancelled = false;
+    async function loadWorksheet() {
+      try {
+        const rows = await fetchSamplingWorksheet(samplingRequestId);
+        if (cancelled) return;
+        setWorksheet(rows);
+        setWorksheetInputs(Object.fromEntries(rows.map((row) => [row.id, {
+          resultValue: row.resultValue ?? undefined,
+          resultText: row.resultText ?? undefined,
+          moaIdUsed: row.moaIdUsed ?? row.specMoaId ?? undefined,
+          remarks: row.remarks ?? undefined
+        }])));
+      } catch {
+        if (!cancelled) {
+          setWorksheet([]);
+          setWorksheetInputs({});
+        }
+      }
+    }
+    void loadWorksheet();
+    return () => { cancelled = true; };
+  }, [currentUserName, planForm.samplingMethod, selectedRequest]);
 
   useEffect(() => {
     if (!selectedMaterial) return;
@@ -282,15 +352,23 @@ export function SamplingPage() {
   const canCompleteSampling = Boolean(
     selectedRequest &&
       selectedRequest.plan &&
-      selectedRequest.requestStatus === "PLAN_DEFINED" &&
+      selectedRequest.requestStatus === "IN_PROGRESS" &&
       planForm.samplingMethod !== "COA_BASED_RELEASE"
   );
+  const canStartSampling = Boolean(selectedRequest && selectedRequest.plan && selectedRequest.requestStatus === "PLAN_DEFINED" && planForm.samplingMethod !== "COA_BASED_RELEASE");
+  const canHandoffToQc = Boolean(selectedRequest && selectedRequest.requestStatus === "SAMPLED" && planForm.samplingMethod !== "COA_BASED_RELEASE");
+  const canReceiveInQc = Boolean(selectedRequest && selectedRequest.requestStatus === "HANDED_TO_QC" && planForm.samplingMethod !== "COA_BASED_RELEASE");
+  const canStartQcReview = Boolean(selectedRequest && selectedRequest.requestStatus === "RECEIVED" && planForm.samplingMethod !== "COA_BASED_RELEASE");
   const canRecordQcDecision = Boolean(
     selectedRequest &&
       selectedRequest.plan &&
       ((planForm.samplingMethod === "COA_BASED_RELEASE" && selectedRequest.requestStatus === "PLAN_DEFINED") ||
-        (planForm.samplingMethod !== "COA_BASED_RELEASE" && selectedRequest.requestStatus === "UNDER_TEST"))
+        (planForm.samplingMethod !== "COA_BASED_RELEASE" && selectedRequest.requestStatus === "UNDER_REVIEW"))
   );
+  const worksheetMandatoryCount = worksheet.filter((row) => row.mandatory).length;
+  const worksheetPassCount = worksheet.filter((row) => row.mandatory && row.status === "PASS").length;
+  const worksheetFailCount = worksheet.filter((row) => row.status === "FAIL" || row.status === "OOS").length;
+  const worksheetReadyForApproval = worksheetMandatoryCount > 0 && worksheetPassCount === worksheetMandatoryCount;
 
   async function handlePlanSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -338,6 +416,93 @@ export function SamplingPage() {
     }
   }
 
+  async function handleStartSampling() {
+    if (!selectedRequest) return;
+    setIsSubmitting(true); setPlanError(null);
+    try {
+      const updatedRequest = await startSampling(selectedRequest.id, planForm.updatedBy ?? currentUserName);
+      setRequests((c) => c.map((r) => (r.id === updatedRequest.id ? updatedRequest : r)));
+      setSuccessMessage("Sampling started.");
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : "Unknown error while starting sampling");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleHandoffToQc() {
+    if (!selectedRequest) return;
+    setIsSubmitting(true); setPlanError(null);
+    try {
+      const updatedRequest = await handoffSamplingToQc(selectedRequest.id, planForm.updatedBy ?? currentUserName);
+      setRequests((c) => c.map((r) => (r.id === updatedRequest.id ? updatedRequest : r)));
+      setSuccessMessage("Sample handed off to QC.");
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : "Unknown error while handing off to QC");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleQcReceipt() {
+    if (!selectedRequest) return;
+    if (!qcReceiptForm.receiptCondition.trim() || !qcReceiptForm.sampleStorageLocation.trim()) {
+      setPlanError("Receipt condition and QC storage location are required.");
+      return;
+    }
+    setIsSubmitting(true); setPlanError(null);
+    try {
+      const updatedRequest = await receiveSamplingInQc(selectedRequest.id, qcReceiptForm);
+      setRequests((c) => c.map((r) => (r.id === updatedRequest.id ? updatedRequest : r)));
+      setSuccessMessage("QC receipt recorded and worksheet generated.");
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : "Unknown error while recording QC receipt");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleStartQcReview() {
+    if (!selectedRequest) return;
+    if (!qcReviewForm.analystCode.trim()) {
+      setPlanError("Analyst code is required to start QC review.");
+      return;
+    }
+    setIsSubmitting(true); setPlanError(null);
+    try {
+      const updatedRequest = await startSamplingQcReview(selectedRequest.id, qcReviewForm);
+      setRequests((c) => c.map((r) => (r.id === updatedRequest.id ? updatedRequest : r)));
+      setSuccessMessage("QC review started.");
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : "Unknown error while starting QC review");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleWorksheetSave(rowId: string) {
+    if (!selectedRequest) return;
+    setIsSubmitting(true); setPlanError(null);
+    try {
+      const savedRow = await recordSamplingWorksheetResult(selectedRequest.id, rowId, worksheetInputs[rowId] ?? {});
+      setWorksheet((current) => current.map((row) => row.id === savedRow.id ? savedRow : row));
+      setWorksheetInputs((current) => ({
+        ...current,
+        [rowId]: {
+          resultValue: savedRow.resultValue ?? undefined,
+          resultText: savedRow.resultText ?? undefined,
+          moaIdUsed: savedRow.moaIdUsed ?? savedRow.specMoaId ?? undefined,
+          remarks: savedRow.remarks ?? undefined
+        }
+      }));
+      setSuccessMessage("Worksheet result saved.");
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : "Unknown error while saving worksheet result");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function handleQcDecision(approved: boolean) {
     if (!selectedRequest) return;
     if (!qcRemarks.trim()) { setPlanError("QC remarks are required."); return; }
@@ -359,7 +524,11 @@ export function SamplingPage() {
 
   // ─── Derived counts ─────────────────────────────────────────────────────────
   const pendingCount  = summary?.countsByStatus["REQUESTED"]   ?? 0;
-  const testingCount  = summary?.countsByStatus["UNDER_TEST"]  ?? 0;
+  const testingCount  = (summary?.countsByStatus["IN_PROGRESS"] ?? 0)
+    + (summary?.countsByStatus["SAMPLED"] ?? 0)
+    + (summary?.countsByStatus["HANDED_TO_QC"] ?? 0)
+    + (summary?.countsByStatus["RECEIVED"] ?? 0)
+    + (summary?.countsByStatus["UNDER_REVIEW"] ?? 0);
   const planSetCount  = summary?.countsByStatus["PLAN_DEFINED"]?? 0;
   const approvedCount = summary?.countsByStatus["APPROVED"]    ?? 0;
   const rejectedCount = summary?.countsByStatus["REJECTED"]    ?? 0;
@@ -447,7 +616,7 @@ export function SamplingPage() {
           </button>
           <button
             type="button"
-            onClick={() => setStatusFilter("UNDER_TEST")}
+            onClick={() => setStatusFilter("UNDER_REVIEW")}
             className="rounded-xl border border-green-200 bg-white p-4 text-left shadow-sm border-l-4 border-l-orange-400 hover:bg-orange-50/40 transition"
           >
             <div className="text-xs text-slate-500 mb-1">Under Testing</div>
@@ -488,7 +657,7 @@ export function SamplingPage() {
                 {([
                   { key: "ALL",       label: `All (${requests.length})` },
                   { key: "REQUESTED", label: `Pending (${pendingCount})` },
-                  { key: "UNDER_TEST",label: `Testing (${testingCount})` }
+                  { key: "UNDER_REVIEW",label: `QC Review (${summary?.countsByStatus["UNDER_REVIEW"] ?? 0})` }
                 ] as const).map((tab) => (
                   <button
                     key={tab.key}
@@ -562,7 +731,7 @@ export function SamplingPage() {
                           {material?.materialName ?? "Unknown material"} · {request.totalContainers} containers
                         </div>
                         <div className="mt-0.5 text-[10px] text-slate-400">
-                          {request.plan?.analystEmployeeCode
+                          {request.qcDisposition?.status ? `QC: ${statusLabel(request.qcDisposition.status)}` : request.plan?.analystEmployeeCode
                             ? `Analyst: ${request.plan.analystEmployeeCode}`
                             : "Unassigned"}
                           {request.plan?.coaBasedRelease ? " · CoA release" : ""}
@@ -668,7 +837,7 @@ export function SamplingPage() {
                   <div className="rounded-xl bg-green-50 p-3">
                     <div className="text-[10px] text-slate-500 mb-0.5">Analyst</div>
                     <div className="text-xs font-bold text-slate-800">
-                      {selectedRequest.plan?.analystEmployeeCode ?? "Unassigned"}
+                      {selectedRequest.qcDisposition?.status ? statusLabel(selectedRequest.qcDisposition.status) : selectedRequest.plan?.analystEmployeeCode ?? "Unassigned"}
                     </div>
                   </div>
                   <div className="rounded-xl bg-green-50 p-3">
@@ -866,6 +1035,16 @@ export function SamplingPage() {
                     >
                       {selectedRequest.plan ? "Update Sampling Plan" : "Create Sampling Plan"}
                     </button>
+                    {canStartSampling ? (
+                      <button
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={handleStartSampling}
+                        className="rounded-xl border border-green-200 px-5 py-2 text-xs font-semibold text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                      >
+                        Start Sampling
+                      </button>
+                    ) : null}
                     {selectedRequest.plan && planForm.samplingMethod !== "COA_BASED_RELEASE" ? (
                       <button
                         type="button"
@@ -874,6 +1053,16 @@ export function SamplingPage() {
                         className="rounded-xl border border-green-200 px-5 py-2 text-xs font-semibold text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:text-slate-300"
                       >
                         Mark Sampling Complete
+                      </button>
+                    ) : null}
+                    {canHandoffToQc ? (
+                      <button
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={handleHandoffToQc}
+                        className="rounded-xl border border-indigo-200 px-5 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                      >
+                        Handoff to QC
                       </button>
                     ) : null}
                   </div>
@@ -887,6 +1076,115 @@ export function SamplingPage() {
                 </form>
               </div>
 
+              {planForm.samplingMethod !== "COA_BASED_RELEASE" ? (
+                <div className="overflow-hidden rounded-2xl border border-green-100 bg-white shadow-sm">
+                  <div className="border-b border-green-100 bg-gradient-to-r from-green-50 to-white px-5 py-3">
+                    <span className="text-sm font-semibold text-slate-700">QC Receipt & Review</span>
+                  </div>
+                  <div className="space-y-4 p-5">
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <label className="block">
+                        <span className={labelCls}>Received By</span>
+                        <input value={qcReceiptForm.receivedBy} onChange={(e) => setQcReceiptForm((c) => ({ ...c, receivedBy: e.target.value }))} className={fieldCls} disabled={!canReceiveInQc || isSubmitting} />
+                      </label>
+                      <label className="block md:col-span-2">
+                        <span className={labelCls}>Receipt Condition</span>
+                        <input value={qcReceiptForm.receiptCondition} onChange={(e) => setQcReceiptForm((c) => ({ ...c, receiptCondition: e.target.value }))} className={fieldCls} placeholder="e.g. Sealed, intact, no visible damage" disabled={!canReceiveInQc || isSubmitting} />
+                      </label>
+                      <label className="block md:col-span-2">
+                        <span className={labelCls}>QC Storage Location</span>
+                        <input value={qcReceiptForm.sampleStorageLocation} onChange={(e) => setQcReceiptForm((c) => ({ ...c, sampleStorageLocation: e.target.value }))} className={fieldCls} placeholder="e.g. QC Cold Room Shelf A2" disabled={!canReceiveInQc || isSubmitting} />
+                      </label>
+                      <div className="flex items-end">
+                        <button type="button" onClick={handleQcReceipt} disabled={!canReceiveInQc || isSubmitting} className="w-full rounded-xl border border-cyan-200 px-4 py-2.5 text-xs font-semibold text-cyan-700 hover:bg-cyan-50 disabled:cursor-not-allowed disabled:text-slate-300">
+                          Record QC Receipt
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+                      <label className="block">
+                        <span className={labelCls}>QC Analyst Code</span>
+                        <input value={qcReviewForm.analystCode} onChange={(e) => setQcReviewForm({ analystCode: e.target.value })} className={fieldCls} placeholder="Analyst code required before worksheet entry" disabled={!canStartQcReview || isSubmitting} />
+                      </label>
+                      <div className="flex items-end">
+                        <button type="button" onClick={handleStartQcReview} disabled={!canStartQcReview || isSubmitting} className="rounded-xl border border-violet-200 px-5 py-2.5 text-xs font-semibold text-violet-700 hover:bg-violet-50 disabled:cursor-not-allowed disabled:text-slate-300">
+                          Start QC Review
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {planForm.samplingMethod !== "COA_BASED_RELEASE" && (worksheet.length > 0 || ["RECEIVED", "UNDER_REVIEW", "COMPLETED", "APPROVED", "REJECTED"].includes(selectedRequest.requestStatus)) ? (
+                <div className="overflow-hidden rounded-2xl border border-green-100 bg-white shadow-sm">
+                  <div className="flex items-center justify-between border-b border-green-100 bg-gradient-to-r from-green-50 to-white px-5 py-3">
+                    <span className="text-sm font-semibold text-slate-700">QC Worksheet</span>
+                    <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${worksheetReadyForApproval ? "bg-green-100 text-green-700" : worksheetFailCount > 0 ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"}`}>
+                      {worksheetPassCount}/{worksheetMandatoryCount} mandatory pass · {worksheetFailCount} fail
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-[1180px] w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-green-100 bg-green-50/40">
+                          <th className="px-3 py-2 text-left">#</th>
+                          <th className="px-3 py-2 text-left">Test</th>
+                          <th className="px-3 py-2 text-left">Type</th>
+                          <th className="px-3 py-2 text-left">MOA</th>
+                          <th className="px-3 py-2 text-left">Criteria</th>
+                          <th className="px-3 py-2 text-left">Result</th>
+                          <th className="px-3 py-2 text-left">Remarks</th>
+                          <th className="px-3 py-2 text-left">Status</th>
+                          <th className="px-3 py-2 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {worksheet.length === 0 ? (
+                          <tr><td colSpan={9} className="px-4 py-4 text-center text-slate-400">Worksheet will appear after QC receipt.</td></tr>
+                        ) : worksheet.map((row) => {
+                          const input = worksheetInputs[row.id] ?? {};
+                          const textBased = ["PASS_FAIL", "COMPLIES", "TEXT"].includes(row.criteriaTypeApplied);
+                          return (
+                            <tr key={row.id} className="border-b border-green-50 align-top">
+                              <td className="px-3 py-3 font-mono text-slate-500">{row.sequence}</td>
+                              <td className="px-3 py-3">
+                                <div className="font-semibold text-slate-800">{row.parameterName}</div>
+                                {row.mandatory ? <div className="text-[10px] text-rose-500">Mandatory</div> : <div className="text-[10px] text-slate-400">Optional</div>}
+                              </td>
+                              <td className="px-3 py-3 text-slate-600">{row.testType.replace(/_/g, " ")}</td>
+                              <td className="px-3 py-3 text-slate-600">{row.specMoaCode ?? "—"}</td>
+                              <td className="px-3 py-3 font-mono text-[11px] text-slate-600">{row.criteriaDisplay}</td>
+                              <td className="px-3 py-3">
+                                {textBased ? (
+                                  <input value={input.resultText ?? ""} onChange={(e) => setWorksheetInputs((current) => ({ ...current, [row.id]: { ...current[row.id], resultText: e.target.value } }))} className={fieldCls} disabled={selectedRequest.requestStatus !== "UNDER_REVIEW" || isSubmitting} placeholder="Enter textual result" />
+                                ) : (
+                                  <input type="number" step="0.0001" value={input.resultValue ?? ""} onChange={(e) => setWorksheetInputs((current) => ({ ...current, [row.id]: { ...current[row.id], resultValue: e.target.value ? Number(e.target.value) : undefined } }))} className={fieldCls} disabled={selectedRequest.requestStatus !== "UNDER_REVIEW" || isSubmitting} placeholder="Enter numeric result" />
+                                )}
+                              </td>
+                              <td className="px-3 py-3">
+                                <input value={input.remarks ?? ""} onChange={(e) => setWorksheetInputs((current) => ({ ...current, [row.id]: { ...current[row.id], remarks: e.target.value } }))} className={fieldCls} disabled={selectedRequest.requestStatus !== "UNDER_REVIEW" || isSubmitting} placeholder="Optional remarks" />
+                              </td>
+                              <td className="px-3 py-3">
+                                <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold ${row.status === "PASS" ? "bg-green-100 text-green-700" : row.status === "FAIL" || row.status === "OOS" ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-600"}`}>
+                                  {row.status}
+                                </span>
+                              </td>
+                              <td className="px-3 py-3 text-right">
+                                <button type="button" onClick={() => void handleWorksheetSave(row.id)} disabled={selectedRequest.requestStatus !== "UNDER_REVIEW" || isSubmitting} className="rounded-lg border border-green-200 px-3 py-1.5 text-[11px] font-semibold text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:text-slate-300">
+                                  Save Result
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+
               {/* ── QC Disposition Decision ────────────────────────────── */}
               <div className="overflow-hidden rounded-2xl border border-green-100 bg-white shadow-sm">
                 <div className="border-b border-green-100 bg-gradient-to-r from-green-50 to-white px-5 py-3">
@@ -897,7 +1195,9 @@ export function SamplingPage() {
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
                       {selectedRequest.requestStatus === "APPROVED" || selectedRequest.requestStatus === "REJECTED"
                         ? "QC decision already recorded for this request."
-                        : "Complete the sampling plan and mark sampling complete before recording a QC decision."}
+                        : planForm.samplingMethod === "COA_BASED_RELEASE"
+                          ? "CoA-based release can be decided once the sampling plan is defined."
+                          : "Complete QC receipt, start review, and finish mandatory worksheet results before recording a QC decision."}
                     </div>
                   )}
                   <div>

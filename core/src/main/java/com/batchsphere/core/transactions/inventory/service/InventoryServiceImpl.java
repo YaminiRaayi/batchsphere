@@ -128,37 +128,14 @@ public class InventoryServiceImpl implements InventoryService {
         }
 
         InventoryStatus targetStatus = request.getStatus();
-        validateStatusTransition(inventory.getStatus(), targetStatus);
-
-        if (inventory.getStatus() == targetStatus) {
-            return toResponse(inventory);
-        }
-
-        InventoryStatus previousStatus = inventory.getStatus();
-        LocalDateTime now = LocalDateTime.now();
-        inventory.setStatus(targetStatus);
-        inventory.setUpdatedBy(actor);
-        inventory.setUpdatedAt(now);
-        Inventory savedInventory = inventoryRepository.save(inventory);
-
-        inventoryTransactionRepository.save(InventoryTransaction.builder()
-                .id(UUID.randomUUID())
-                .inventoryId(savedInventory.getId())
-                .materialId(savedInventory.getMaterialId())
-                .batchId(savedInventory.getBatchId())
-                .warehouseLocation(savedInventory.getWarehouseLocation())
-                .palletId(savedInventory.getPalletId())
-                .transactionType(InventoryTransactionType.STATUS_CHANGE)
-                .referenceType(InventoryReferenceType.INVENTORY)
-                .referenceId(savedInventory.getId())
-                .quantity(savedInventory.getQuantityOnHand())
-                .uom(savedInventory.getUom())
-                .remarks(buildStatusChangeRemarks(previousStatus, targetStatus, request.getRemarks()))
-                .createdBy(actor)
-                .createdAt(now)
-                .build());
-
-        return toResponse(savedInventory);
+        return toResponse(transitionInventoryStatus(
+                inventory,
+                targetStatus,
+                actor,
+                InventoryReferenceType.INVENTORY,
+                inventory.getId(),
+                request.getRemarks()
+        ));
     }
 
     @Override
@@ -341,6 +318,28 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Transactional
     public void updateInventoryStatus(UUID materialId, UUID batchId, UUID palletId, InventoryStatus status, String actor) {
+        transitionInventoryStatus(
+                materialId,
+                batchId,
+                palletId,
+                status,
+                actor,
+                InventoryReferenceType.INVENTORY,
+                null,
+                null
+        );
+    }
+
+    @Override
+    @Transactional
+    public void transitionInventoryStatus(UUID materialId,
+                                          UUID batchId,
+                                          UUID palletId,
+                                          InventoryStatus status,
+                                          String actor,
+                                          InventoryReferenceType referenceType,
+                                          UUID referenceId,
+                                          String remarks) {
         Inventory inventory = inventoryRepository.findByMaterialIdAndBatchIdAndPalletId(
                         materialId,
                         batchId,
@@ -348,14 +347,58 @@ public class InventoryServiceImpl implements InventoryService {
                 )
                 .orElseThrow(() -> new ResourceNotFoundException("Inventory not found for material, batch and pallet"));
 
-        inventory.setStatus(status);
-        inventory.setUpdatedBy(actor);
-        inventory.setUpdatedAt(LocalDateTime.now());
-        inventoryRepository.save(inventory);
+        transitionInventoryStatus(inventory, status, actor, referenceType, referenceId, remarks);
     }
 
-    private void validateStatusTransition(InventoryStatus currentStatus, InventoryStatus targetStatus) {
+    private Inventory transitionInventoryStatus(Inventory inventory,
+                                                InventoryStatus targetStatus,
+                                                String actor,
+                                                InventoryReferenceType referenceType,
+                                                UUID referenceId,
+                                                String remarks) {
+        validateStatusTransition(inventory.getStatus(), targetStatus, referenceType);
+
+        if (inventory.getStatus() == targetStatus) {
+            return inventory;
+        }
+
+        InventoryStatus previousStatus = inventory.getStatus();
+        LocalDateTime now = LocalDateTime.now();
+        inventory.setStatus(targetStatus);
+        inventory.setUpdatedBy(actor);
+        inventory.setUpdatedAt(now);
+        Inventory savedInventory = inventoryRepository.save(inventory);
+
+        inventoryTransactionRepository.save(InventoryTransaction.builder()
+                .id(UUID.randomUUID())
+                .inventoryId(savedInventory.getId())
+                .materialId(savedInventory.getMaterialId())
+                .batchId(savedInventory.getBatchId())
+                .warehouseLocation(savedInventory.getWarehouseLocation())
+                .palletId(savedInventory.getPalletId())
+                .transactionType(InventoryTransactionType.STATUS_CHANGE)
+                .referenceType(referenceType != null ? referenceType : InventoryReferenceType.INVENTORY)
+                .referenceId(referenceId != null ? referenceId : savedInventory.getId())
+                .quantity(savedInventory.getQuantityOnHand())
+                .uom(savedInventory.getUom())
+                .remarks(buildStatusChangeRemarks(previousStatus, targetStatus, remarks))
+                .createdBy(actor)
+                .createdAt(now)
+                .build());
+
+        return savedInventory;
+    }
+
+    private void validateStatusTransition(InventoryStatus currentStatus,
+                                          InventoryStatus targetStatus,
+                                          InventoryReferenceType referenceType) {
         if (currentStatus == targetStatus) {
+            return;
+        }
+
+        if (referenceType == InventoryReferenceType.SAMPLING_REQUEST
+                && currentStatus == InventoryStatus.QUARANTINE
+                && EnumSet.of(InventoryStatus.RELEASED, InventoryStatus.REJECTED).contains(targetStatus)) {
             return;
         }
 

@@ -35,4 +35,6 @@ public class SamplingRequestResponse {
     String updatedBy;
     LocalDateTime updatedAt;
     SamplingPlanResponse plan;
+    SampleResponse sample;
+    QcDispositionResponse qcDisposition;
 }

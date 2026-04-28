@@ -79,6 +79,8 @@ export type SamplingRequest = {
   updatedBy: string | null;
   updatedAt: string | null;
   plan: SamplingPlan | null;
+  sample: SampleRecord | null;
+  qcDisposition: QcDisposition | null;
 };
 
 export type SamplingSummary = {
@@ -95,4 +97,90 @@ export type SamplingContainerSample = {
 export type SamplingContainerSampleRequest = {
   grnContainerId: string;
   sampledQuantity: number;
+};
+
+export type SampleRecord = {
+  id: string;
+  sampleNumber: string;
+  samplingRequestId: string;
+  batchId: string | null;
+  materialId: string;
+  sampleType: string;
+  sampleStatus: string;
+  sampleQuantity: number;
+  uom: string;
+  collectedBy: string;
+  collectedAt: string;
+  samplingLocation: string;
+  handoffToQcBy: string | null;
+  handoffToQcAt: string | null;
+  receivedByQc: string | null;
+  receivedAtQc: string | null;
+  receiptCondition: string | null;
+  qcStorageLocation: string | null;
+  remarks: string | null;
+  isActive: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedBy: string | null;
+  updatedAt: string | null;
+};
+
+export type QcDisposition = {
+  id: string;
+  sampleId: string | null;
+  samplingRequestId: string;
+  status: string;
+  decisionRemarks: string | null;
+  decisionBy: string | null;
+  decisionAt: string | null;
+  isActive: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedBy: string | null;
+  updatedAt: string | null;
+};
+
+export type QcReceiptRequest = {
+  receivedBy: string;
+  receiptCondition: string;
+  receiptTimestamp?: string;
+  sampleStorageLocation: string;
+};
+
+export type StartQcReviewRequest = {
+  analystCode: string;
+};
+
+export type QcWorksheetRow = {
+  id: string;
+  sampleId: string;
+  specParameterId: string;
+  moaIdUsed: string | null;
+  moaCodeUsed: string | null;
+  analystCode: string;
+  parameterName: string;
+  testType: string;
+  specMoaCode: string | null;
+  specMoaId: string | null;
+  resultValue: number | null;
+  resultText: string | null;
+  status: string;
+  passFailFlag: boolean | null;
+  lowerLimitApplied: number | null;
+  upperLimitApplied: number | null;
+  criteriaTypeApplied: string;
+  unitApplied: string | null;
+  criteriaDisplay: string;
+  mandatory: boolean;
+  sequence: number;
+  enteredAt: string | null;
+  remarks: string | null;
+};
+
+export type RecordQcWorksheetResultRequest = {
+  resultValue?: number;
+  resultText?: string;
+  moaIdUsed?: string;
+  remarks?: string;
 };

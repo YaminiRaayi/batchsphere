@@ -37,6 +37,8 @@ import com.batchsphere.core.masterdata.warehouselocation.service.WarehouseLocati
 import com.batchsphere.core.transactions.sampling.dto.CreateSamplingPlanRequest;
 import com.batchsphere.core.transactions.sampling.dto.SamplingRequestResponse;
 import com.batchsphere.core.transactions.sampling.dto.SamplingContainerSampleRequest;
+import com.batchsphere.core.transactions.sampling.dto.SamplingHandoffRequest;
+import com.batchsphere.core.transactions.sampling.dto.SamplingStartRequest;
 import com.batchsphere.core.transactions.grn.entity.ContainerType;
 import com.batchsphere.core.transactions.grn.entity.GrnContainer;
 import com.batchsphere.core.transactions.grn.entity.Grn;
@@ -49,7 +51,13 @@ import com.batchsphere.core.transactions.grn.repository.GrnItemRepository;
 import com.batchsphere.core.transactions.grn.repository.GrnRepository;
 import com.batchsphere.core.transactions.inventory.entity.Inventory;
 import com.batchsphere.core.transactions.inventory.entity.InventoryStatus;
+import com.batchsphere.core.transactions.inventory.entity.InventoryReferenceType;
+import com.batchsphere.core.transactions.inventory.entity.InventoryTransaction;
+import com.batchsphere.core.transactions.inventory.entity.InventoryTransactionType;
 import com.batchsphere.core.transactions.inventory.repository.InventoryRepository;
+import com.batchsphere.core.transactions.inventory.repository.InventoryTransactionRepository;
+import com.batchsphere.core.transactions.sampling.entity.QcDispositionStatus;
+import com.batchsphere.core.transactions.sampling.entity.SampleStatus;
 import com.batchsphere.core.transactions.sampling.entity.SampleType;
 import com.batchsphere.core.transactions.sampling.entity.SamplingMethod;
 import com.batchsphere.core.transactions.sampling.entity.SamplingContainerSample;
@@ -61,6 +69,9 @@ import com.batchsphere.core.transactions.sampling.dto.SamplingSummaryResponse;
 import com.batchsphere.core.transactions.sampling.repository.SamplingRequestRepository;
 import com.batchsphere.core.transactions.sampling.repository.SamplingPlanRepository;
 import com.batchsphere.core.transactions.sampling.repository.SamplingContainerSampleRepository;
+import com.batchsphere.core.transactions.sampling.repository.SampleContainerLinkRepository;
+import com.batchsphere.core.transactions.sampling.repository.SampleRepository;
+import com.batchsphere.core.transactions.sampling.repository.QcDispositionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
@@ -128,10 +139,22 @@ class SamplingServiceIntegrationTest {
     private InventoryRepository inventoryRepository;
 
     @Autowired
+    private InventoryTransactionRepository inventoryTransactionRepository;
+
+    @Autowired
     private SamplingPlanRepository samplingPlanRepository;
 
     @Autowired
     private SamplingContainerSampleRepository samplingContainerSampleRepository;
+
+    @Autowired
+    private SampleRepository sampleRepository;
+
+    @Autowired
+    private SampleContainerLinkRepository sampleContainerLinkRepository;
+
+    @Autowired
+    private QcDispositionRepository qcDispositionRepository;
 
     @Autowired
     private WarehouseLocationService warehouseLocationService;
@@ -564,25 +587,67 @@ class SamplingServiceIntegrationTest {
         assertThrows(BusinessConflictException.class,
                 () -> samplingService.recordQcDecision(samplingRequest.getId(), prematureDecision));
 
+        SamplingStartRequest startRequest = new SamplingStartRequest();
+        startRequest.setUpdatedBy("tester");
+        SamplingRequestResponse started = samplingService.startSampling(samplingRequest.getId(), startRequest);
+        assertEquals(SamplingRequestStatus.IN_PROGRESS, started.getRequestStatus());
+
         SamplingCompletionRequest completionRequest = new SamplingCompletionRequest();
         completionRequest.setUpdatedBy("tester");
         SamplingRequestResponse completed = samplingService.completeSampling(samplingRequest.getId(), completionRequest);
-        assertEquals(SamplingRequestStatus.UNDER_TEST, completed.getRequestStatus());
+        assertEquals(SamplingRequestStatus.SAMPLED, completed.getRequestStatus());
+        assertNotNull(completed.getSample());
+        assertEquals(SampleStatus.COLLECTED, completed.getSample().getSampleStatus());
+        assertEquals(new BigDecimal("1.000"), completed.getSample().getSampleQuantity());
+        assertEquals(1, completed.getSample().getContainerLinks().size());
+
+        QcDecisionRequest stillPrematureDecision = new QcDecisionRequest();
+        stillPrematureDecision.setApproved(true);
+        stillPrematureDecision.setRemarks("approved");
+        stillPrematureDecision.setUpdatedBy("tester");
+        assertThrows(BusinessConflictException.class,
+                () -> samplingService.recordQcDecision(samplingRequest.getId(), stillPrematureDecision));
+
+        SamplingHandoffRequest handoffRequest = new SamplingHandoffRequest();
+        handoffRequest.setUpdatedBy("tester");
+        SamplingRequestResponse handedOff = samplingService.handoffToQc(samplingRequest.getId(), handoffRequest);
+        assertEquals(SamplingRequestStatus.HANDED_TO_QC, handedOff.getRequestStatus());
+        assertNotNull(handedOff.getSample());
+        assertEquals(SampleStatus.HANDED_TO_QC, handedOff.getSample().getSampleStatus());
+        assertNotNull(handedOff.getQcDisposition());
+        assertEquals(QcDispositionStatus.PENDING, handedOff.getQcDisposition().getStatus());
+
+        List<InventoryTransaction> statusTransactionsAfterCompletion = inventoryTransactionRepository.findAll().stream()
+                .filter(transaction -> transaction.getReferenceType() == InventoryReferenceType.SAMPLING_REQUEST)
+                .filter(transaction -> transaction.getReferenceId().equals(samplingRequest.getId()))
+                .filter(transaction -> transaction.getTransactionType() == InventoryTransactionType.STATUS_CHANGE)
+                .toList();
+        assertEquals(2, statusTransactionsAfterCompletion.size());
+        assertTrue(statusTransactionsAfterCompletion.stream()
+                .anyMatch(transaction -> transaction.getRemarks().contains("to SAMPLING")));
+        assertTrue(statusTransactionsAfterCompletion.stream()
+                .anyMatch(transaction -> transaction.getRemarks().contains("to UNDER_TEST")));
 
         GrnContainer updatedContainer = grnContainerRepository.findById(container.getId()).orElseThrow();
         assertEquals(new BigDecimal("9.000"), updatedContainer.getQuantity());
         assertEquals(new BigDecimal("1.000"), updatedContainer.getSampledQuantity());
         assertEquals(InventoryStatus.UNDER_TEST, updatedContainer.getInventoryStatus());
+        UUID sampleId = sampleRepository.findBySamplingRequestId(samplingRequest.getId()).orElseThrow().getId();
+        assertEquals(1, sampleContainerLinkRepository.findBySampleIdOrderByContainerNumber(sampleId).size());
 
         QcDecisionRequest finalDecision = new QcDecisionRequest();
         finalDecision.setApproved(true);
         finalDecision.setRemarks("meets specification");
         finalDecision.setUpdatedBy("tester");
         SamplingRequestResponse approved = samplingService.recordQcDecision(samplingRequest.getId(), finalDecision);
-        assertEquals(SamplingRequestStatus.APPROVED, approved.getRequestStatus());
+        assertEquals(SamplingRequestStatus.COMPLETED, approved.getRequestStatus());
+        assertNotNull(approved.getSample());
+        assertEquals(SampleStatus.APPROVED, approved.getSample().getSampleStatus());
+        assertNotNull(approved.getQcDisposition());
+        assertEquals(QcDispositionStatus.APPROVED, approved.getQcDisposition().getStatus());
 
         SamplingSummaryResponse summary = samplingService.getSamplingSummary();
-        assertTrue(summary.countsByStatus().get(SamplingRequestStatus.APPROVED) >= 1);
+        assertTrue(summary.countsByStatus().get(SamplingRequestStatus.COMPLETED) >= 1);
     }
 
     @Test
@@ -625,7 +690,11 @@ class SamplingServiceIntegrationTest {
         decision.setUpdatedBy("tester");
 
         SamplingRequestResponse approved = samplingService.recordQcDecision(fixture.samplingRequest().getId(), decision);
-        assertEquals(SamplingRequestStatus.APPROVED, approved.getRequestStatus());
+        assertEquals(SamplingRequestStatus.COMPLETED, approved.getRequestStatus());
+        assertNotNull(approved.getSample());
+        assertEquals(SampleStatus.APPROVED, approved.getSample().getSampleStatus());
+        assertNotNull(approved.getQcDisposition());
+        assertEquals(QcDispositionStatus.APPROVED, approved.getQcDisposition().getStatus());
 
         Inventory inventory = inventoryRepository
                 .findByMaterialIdAndBatchIdAndPalletIdAndIsActiveTrue(
@@ -635,6 +704,11 @@ class SamplingServiceIntegrationTest {
                 )
                 .orElseThrow();
         assertEquals(InventoryStatus.RELEASED, inventory.getStatus());
+        assertTrue(inventoryTransactionRepository.findAll().stream()
+                .anyMatch(transaction -> transaction.getReferenceType() == InventoryReferenceType.SAMPLING_REQUEST
+                        && transaction.getReferenceId().equals(fixture.samplingRequest().getId())
+                        && transaction.getTransactionType() == InventoryTransactionType.STATUS_CHANGE
+                        && transaction.getRemarks().contains("to RELEASED")));
     }
 
     @Test
@@ -669,9 +743,15 @@ class SamplingServiceIntegrationTest {
         request.setCreatedBy("tester");
 
         samplingService.createSamplingPlan(fixture.samplingRequest().getId(), request);
+        SamplingStartRequest startRequest = new SamplingStartRequest();
+        startRequest.setUpdatedBy("tester");
+        samplingService.startSampling(fixture.samplingRequest().getId(), startRequest);
         SamplingCompletionRequest completionRequest = new SamplingCompletionRequest();
         completionRequest.setUpdatedBy("tester");
         samplingService.completeSampling(fixture.samplingRequest().getId(), completionRequest);
+        SamplingHandoffRequest handoffRequest = new SamplingHandoffRequest();
+        handoffRequest.setUpdatedBy("tester");
+        samplingService.handoffToQc(fixture.samplingRequest().getId(), handoffRequest);
 
         QcDecisionRequest decision = new QcDecisionRequest();
         decision.setApproved(false);
@@ -679,7 +759,11 @@ class SamplingServiceIntegrationTest {
         decision.setUpdatedBy("tester");
 
         SamplingRequestResponse rejected = samplingService.recordQcDecision(fixture.samplingRequest().getId(), decision);
-        assertEquals(SamplingRequestStatus.REJECTED, rejected.getRequestStatus());
+        assertEquals(SamplingRequestStatus.COMPLETED, rejected.getRequestStatus());
+        assertNotNull(rejected.getSample());
+        assertEquals(SampleStatus.REJECTED, rejected.getSample().getSampleStatus());
+        assertNotNull(rejected.getQcDisposition());
+        assertEquals(QcDispositionStatus.REJECTED, rejected.getQcDisposition().getStatus());
 
         Inventory inventory = inventoryRepository
                 .findByMaterialIdAndBatchIdAndPalletIdAndIsActiveTrue(
@@ -689,6 +773,11 @@ class SamplingServiceIntegrationTest {
                 )
                 .orElseThrow();
         assertEquals(InventoryStatus.REJECTED, inventory.getStatus());
+        assertTrue(inventoryTransactionRepository.findAll().stream()
+                .anyMatch(transaction -> transaction.getReferenceType() == InventoryReferenceType.SAMPLING_REQUEST
+                        && transaction.getReferenceId().equals(fixture.samplingRequest().getId())
+                        && transaction.getTransactionType() == InventoryTransactionType.STATUS_CHANGE
+                        && transaction.getRemarks().contains("to REJECTED")));
     }
 
     @Test

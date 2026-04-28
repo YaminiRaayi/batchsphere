@@ -69,7 +69,7 @@ const hubCards = [
     pills: [
       { label: "Current", className: "bg-green-100 text-green-700" },
       { label: "Draft",   className: "bg-amber-100 text-amber-700" },
-      { label: "Expired", className: "bg-red-100 text-red-700"     }
+      { label: "Expired", className: "bg-red-100 text-red-700" }
     ],
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -237,6 +237,10 @@ export default function MasterDataLayout() {
   const currentSection = pathSegments[1] ?? "";
   const sectionNav = sectionNavMap[currentSection];
 
+  if (currentSection === "qc-refs") {
+    return <Outlet />;
+  }
+
   if (isHub) {
     return (
       <div className="space-y-6">
@@ -282,25 +286,16 @@ export default function MasterDataLayout() {
       <aside className="hidden w-48 shrink-0 flex-col xl:flex">
         <div className="overflow-hidden rounded-2xl border border-blue-900/20 bg-[#1e3a8a] text-white shadow-sm">
 
-          {/* Back to hub */}
-          <NavLink
-            to="/master-data"
-            className="flex items-center gap-2 border-b border-white/10 px-4 py-3 text-[11px] font-medium text-blue-200 transition hover:bg-white/10 hover:text-white"
-          >
-            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/>
-            </svg>
-            Master Data Hub
-          </NavLink>
-
           {/* Section label */}
           {sectionNav && (
             <>
-              <div className="px-4 pt-3 pb-1">
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-blue-300">
-                  {sectionNav.label}
-                </p>
-              </div>
+              {currentSection !== "qc-refs" ? (
+                <div className="px-4 pb-1 pt-3">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-blue-300">
+                    {sectionNav.label}
+                  </p>
+                </div>
+              ) : null}
 
               <nav className="space-y-0.5 px-2 pb-3">
                 {sectionNav.items.map((item) => (

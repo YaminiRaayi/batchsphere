@@ -5,6 +5,7 @@ import com.batchsphere.core.transactions.grn.entity.GrnItem;
 import com.batchsphere.core.transactions.inventory.dto.InventorySummaryResponse;
 import com.batchsphere.core.transactions.inventory.dto.InventoryTransferRequest;
 import com.batchsphere.core.transactions.inventory.dto.InventoryStatusUpdateRequest;
+import com.batchsphere.core.transactions.inventory.entity.InventoryReferenceType;
 import com.batchsphere.core.transactions.inventory.entity.InventoryStatus;
 import com.batchsphere.core.transactions.inventory.dto.InventoryResponse;
 import com.batchsphere.core.transactions.inventory.dto.InventoryTransactionResponse;
@@ -33,4 +34,13 @@ public interface InventoryService {
     void recordGrnReceipt(UUID grnId, List<GrnItem> items, String actor);
 
     void updateInventoryStatusForGrnItem(UUID grnItemId, InventoryStatus status, String actor);
+
+    void transitionInventoryStatus(UUID materialId,
+                                   UUID batchId,
+                                   UUID palletId,
+                                   InventoryStatus status,
+                                   String actor,
+                                   InventoryReferenceType referenceType,
+                                   UUID referenceId,
+                                   String remarks);
 }

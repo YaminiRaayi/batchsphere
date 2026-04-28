@@ -2,6 +2,9 @@ package com.batchsphere.core.masterdata.material.controller;
 
 import com.batchsphere.core.masterdata.material.dto.MaterialRequest;
 import com.batchsphere.core.masterdata.material.entity.Material;
+import com.batchsphere.core.masterdata.spec.dto.DelinkMaterialSpecRequest;
+import com.batchsphere.core.masterdata.spec.dto.LinkMaterialSpecRequest;
+import com.batchsphere.core.masterdata.spec.entity.MaterialSpecLink;
 import com.batchsphere.core.masterdata.material.service.MaterialServiceImpl;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/materials")
@@ -46,5 +50,26 @@ public class MaterialController {
     public ResponseEntity<Material> updateMaterial(@PathVariable UUID id, @Valid @RequestBody MaterialRequest request){
         Material material = materialService.updateMaterial(id,request);
         return ResponseEntity.ok(material);
+    }
+
+    @PostMapping("/{id}/spec")
+    public ResponseEntity<MaterialSpecLink> linkSpec(@PathVariable UUID id, @Valid @RequestBody LinkMaterialSpecRequest request) {
+        return ResponseEntity.ok(materialService.linkSpec(id, request));
+    }
+
+    @DeleteMapping("/{id}/spec")
+    public ResponseEntity<Void> delinkSpec(@PathVariable UUID id, @RequestBody(required = false) DelinkMaterialSpecRequest request) {
+        materialService.delinkSpec(id, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/spec")
+    public ResponseEntity<MaterialSpecLink> getActiveSpecLink(@PathVariable UUID id) {
+        return ResponseEntity.ok(materialService.getActiveSpecLink(id));
+    }
+
+    @GetMapping("/{id}/spec/history")
+    public ResponseEntity<List<MaterialSpecLink>> getSpecHistory(@PathVariable UUID id) {
+        return ResponseEntity.ok(materialService.getSpecHistory(id));
     }
 }
