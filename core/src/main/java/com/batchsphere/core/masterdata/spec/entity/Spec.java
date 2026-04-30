@@ -32,13 +32,13 @@ public class Spec {
     @Column(nullable = false, updatable = false)
     private UUID id;
 
-    @Column(name = "spec_code", nullable = false, unique = true, length = 100)
+    @Column(name = "spec_code", nullable = false, length = 100)
     private String specCode;
 
     @Column(name = "spec_name", nullable = false, length = 255)
     private String specName;
 
-    @Column(name = "revision", length = 50)
+    @Column(name = "revision", nullable = false, length = 50)
     private String revision;
 
     @Enumerated(EnumType.STRING)

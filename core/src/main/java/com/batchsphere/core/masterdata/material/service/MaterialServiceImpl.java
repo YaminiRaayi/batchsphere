@@ -49,12 +49,24 @@ public class MaterialServiceImpl implements  MaterialServiceInterface{
         Material material = Material.builder().id(UUID.randomUUID())
                 .materialCode(materialCode)
                 .materialName(materialRequest.getMaterialName())
+                .materialCategory(materialRequest.getMaterialCategory())
+                .genericNames(materialRequest.getGenericNames())
                 .materialType(materialRequest.getMaterialType())
                 .uom(materialRequest.getUom())
                 .specId(materialRequest.getSpecId())
+                .hsnCode(materialRequest.getHsnCode())
+                .casNumber(materialRequest.getCasNumber())
+                .pharmacopoeialRef(materialRequest.getPharmacopoeialRef())
                 .storageCondition(materialRequest.getStorageCondition())
+                .maxHumidity(materialRequest.getMaxHumidity())
+                .lightSensitivity(materialRequest.getLightSensitivity())
                 .photosensitive(materialRequest.getPhotosensitive())
                 .hygroscopic(materialRequest.getHygroscopic())
+                .controlledSubstance(materialRequest.getControlledSubstance())
+                .shelfLifeMonths(materialRequest.getShelfLifeMonths())
+                .retestPeriodMonths(materialRequest.getRetestPeriodMonths())
+                .reorderLevel(materialRequest.getReorderLevel())
+                .leadTimeDays(materialRequest.getLeadTimeDays())
                 .hazardous(materialRequest.getHazardous())
                 .selectiveMaterial(materialRequest.getSelectiveMaterial())
                 .vendorCoaReleaseAllowed(materialRequest.getVendorCoaReleaseAllowed())
@@ -122,12 +134,24 @@ public class MaterialServiceImpl implements  MaterialServiceInterface{
         validateMaterialLinkableSpec(spec);
         material.setMaterialCode(materialCode);
         material.setMaterialName(request.getMaterialName());
+        material.setMaterialCategory(request.getMaterialCategory());
+        material.setGenericNames(request.getGenericNames());
         material.setMaterialType(request.getMaterialType());
         material.setUom(request.getUom());
         material.setSpecId(request.getSpecId());
+        material.setHsnCode(request.getHsnCode());
+        material.setCasNumber(request.getCasNumber());
+        material.setPharmacopoeialRef(request.getPharmacopoeialRef());
         material.setStorageCondition(request.getStorageCondition());
+        material.setMaxHumidity(request.getMaxHumidity());
+        material.setLightSensitivity(request.getLightSensitivity());
         material.setPhotosensitive(request.getPhotosensitive());
         material.setHygroscopic(request.getHygroscopic());
+        material.setControlledSubstance(request.getControlledSubstance());
+        material.setShelfLifeMonths(request.getShelfLifeMonths());
+        material.setRetestPeriodMonths(request.getRetestPeriodMonths());
+        material.setReorderLevel(request.getReorderLevel());
+        material.setLeadTimeDays(request.getLeadTimeDays());
         material.setHazardous(request.getHazardous());
         material.setSelectiveMaterial(request.getSelectiveMaterial());
         material.setVendorCoaReleaseAllowed(request.getVendorCoaReleaseAllowed());

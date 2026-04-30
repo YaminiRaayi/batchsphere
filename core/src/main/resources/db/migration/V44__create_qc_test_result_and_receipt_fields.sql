@@ -1,8 +1,7 @@
-ALTER TABLE qc_sample
-    ADD COLUMN IF NOT EXISTS received_by_qc VARCHAR(100),
-    ADD COLUMN IF NOT EXISTS received_at_qc TIMESTAMP,
-    ADD COLUMN IF NOT EXISTS receipt_condition VARCHAR(255),
-    ADD COLUMN IF NOT EXISTS qc_storage_location VARCHAR(150);
+ALTER TABLE qc_sample ADD COLUMN IF NOT EXISTS received_by_qc VARCHAR(100);
+ALTER TABLE qc_sample ADD COLUMN IF NOT EXISTS received_at_qc TIMESTAMP;
+ALTER TABLE qc_sample ADD COLUMN IF NOT EXISTS receipt_condition VARCHAR(255);
+ALTER TABLE qc_sample ADD COLUMN IF NOT EXISTS qc_storage_location VARCHAR(150);
 
 CREATE TABLE IF NOT EXISTS qc_test_result (
     id UUID PRIMARY KEY,

@@ -77,8 +77,37 @@ class AuthorizationIntegrationTest {
         assertEquals(403, performGet("/api/vendors", token));
     }
 
+    @Test
+    void qcCanReadGrnContainersNeededBySamplingFlow() throws Exception {
+        String token = login("qc_user");
+
+        assertEquals(200, performGet("/api/grns/items/00000000-0000-0000-0000-000000000001/containers", token));
+    }
+
+    @Test
+    void qcCanReadBatchesNeededBySamplingPageButCannotModifyThem() throws Exception {
+        String token = login("qc_user");
+
+        assertEquals(200, performGet("/api/batches", token));
+        assertEquals(403, performPost("/api/batches", token, """
+                {
+                  "materialId": "00000000-0000-0000-0000-000000000001",
+                  "batchNumber": "BATCH-001"
+                }
+                """));
+    }
+
     private int performGet(String path, String token) throws Exception {
         MvcResult result = mockMvc.perform(get(path).header("Authorization", "Bearer " + token)).andReturn();
+        return result.getResponse().getStatus();
+    }
+
+    private int performPost(String path, String token, String body) throws Exception {
+        MvcResult result = mockMvc.perform(post(path)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andReturn();
         return result.getResponse().getStatus();
     }
 

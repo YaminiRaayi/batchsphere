@@ -14,6 +14,10 @@ public class MaterialRequest {
     @NotBlank(message = "Material name is required")
     private String materialName;
 
+    private String materialCategory;
+
+    private String genericNames;
+
     @NotBlank(message = "Material types is required")
     private String materialType;
 
@@ -25,6 +29,10 @@ public class MaterialRequest {
 
     @NotNull(message = "Storage condition is required")
     private StorageCondition storageCondition;
+
+    private String maxHumidity;
+
+    private String lightSensitivity;
 
     @NotNull(message = "Photosensitive flag is required")
     private Boolean photosensitive;
@@ -41,8 +49,25 @@ public class MaterialRequest {
     @NotNull(message = "Vendor CoA release flag is required")
     private Boolean vendorCoaReleaseAllowed;
 
+    @NotNull(message = "Controlled substance flag is required")
+    private Boolean controlledSubstance;
+
     @NotNull(message = "Sampling required flag is required")
     private Boolean samplingRequired;
+
+    private Integer shelfLifeMonths;
+
+    private Integer retestPeriodMonths;
+
+    private String reorderLevel;
+
+    private Integer leadTimeDays;
+
+    private String hsnCode;
+
+    private String casNumber;
+
+    private String pharmacopoeialRef;
 
     private String description;
 

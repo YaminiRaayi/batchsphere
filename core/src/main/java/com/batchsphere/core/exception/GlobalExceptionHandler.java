@@ -1,8 +1,8 @@
 package com.batchsphere.core.exception;
 
-import org.springframework.cglib.core.Local;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -21,6 +21,16 @@ String errors = ex.getBindingResult()
 ErrorResponse errorResponse = new ErrorResponse("Validation Failed",errors, LocalDateTime.now());
     return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex) {
+        ErrorResponse response = new ErrorResponse(
+                "Upload Too Large",
+                "Uploaded file exceeds the 20MB limit",
+                LocalDateTime.now()
+        );
+        return new ResponseEntity<>(response, HttpStatus.PAYLOAD_TOO_LARGE);
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponse> handleRuntimeException(RuntimeException ex){
         ErrorResponse errorResponse = new ErrorResponse("Application Error", ex.getMessage(),LocalDateTime.now());

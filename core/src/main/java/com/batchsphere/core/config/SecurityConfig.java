@@ -4,6 +4,7 @@ import com.batchsphere.core.auth.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -30,7 +31,11 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/login", "/api/auth/refresh").permitAll()
                         .requestMatchers("/api/auth/me", "/api/auth/logout").authenticated()
                         .requestMatchers("/api/auth/users/**").hasRole("SUPER_ADMIN")
+                        .requestMatchers("/api/grns/items/*/containers").hasAnyRole("SUPER_ADMIN", "WAREHOUSE_OP", "QC_ANALYST", "QC_MANAGER")
+                        .requestMatchers(HttpMethod.GET, "/api/batches", "/api/batches/*").hasAnyRole("SUPER_ADMIN", "WAREHOUSE_OP", "QC_ANALYST", "QC_MANAGER")
                         .requestMatchers("/api/grns/**", "/api/inventory/**", "/api/batches/**").hasAnyRole("SUPER_ADMIN", "WAREHOUSE_OP")
+                        .requestMatchers("/api/sampling-requests/*/investigations/*/qa-review", "/api/sampling-requests/*/qc-decision")
+                        .hasAnyRole("SUPER_ADMIN", "QC_MANAGER")
                         .requestMatchers("/api/sampling-requests/**", "/api/specs/**", "/api/moas/**", "/api/sampling-tools/**")
                         .hasAnyRole("SUPER_ADMIN", "QC_ANALYST", "QC_MANAGER")
                         .requestMatchers("/api/suppliers/**", "/api/vendors/**", "/api/vendor-business-units/**")

@@ -12,4 +12,8 @@ public class QcDecisionRequest {
     private String remarks;
     @NotBlank
     private String updatedBy;
+    @NotBlank
+    private String confirmedBy;
+    @NotBlank
+    private String confirmationText;
 }

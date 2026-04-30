@@ -1,8 +1,7 @@
-ALTER TABLE room
-    ADD COLUMN max_capacity NUMERIC(18, 3),
-    ADD COLUMN capacity_uom VARCHAR(20),
-    ADD COLUMN temperature_range VARCHAR(100),
-    ADD COLUMN humidity_range VARCHAR(100);
+ALTER TABLE room ADD COLUMN max_capacity NUMERIC(18, 3);
+ALTER TABLE room ADD COLUMN capacity_uom VARCHAR(20);
+ALTER TABLE room ADD COLUMN temperature_range VARCHAR(100);
+ALTER TABLE room ADD COLUMN humidity_range VARCHAR(100);
 
 CREATE TABLE warehouse_zone_rule (
     id UUID PRIMARY KEY,
@@ -24,7 +23,7 @@ CREATE TABLE warehouse_zone_rule (
 );
 
 CREATE UNIQUE INDEX uk_warehouse_zone_rule_room_zone_rule
-    ON warehouse_zone_rule(room_id, zone_name, COALESCE(allowed_material_type, ''), COALESCE(allowed_storage_condition, ''));
+    ON warehouse_zone_rule(room_id, zone_name, allowed_material_type, allowed_storage_condition);
 
 CREATE TABLE material_location_rule (
     id UUID PRIMARY KEY,

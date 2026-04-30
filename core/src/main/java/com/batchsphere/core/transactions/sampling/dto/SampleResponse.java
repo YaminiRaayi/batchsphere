@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -31,6 +32,12 @@ public class SampleResponse {
     LocalDateTime receivedAtQc;
     String receiptCondition;
     String qcStorageLocation;
+    Boolean retainedFlag;
+    Boolean consumedFlag;
+    Boolean destroyedFlag;
+    BigDecimal retainedQuantity;
+    LocalDate retainedUntil;
+    Boolean retentionExpired;
     String remarks;
     Boolean isActive;
     String createdBy;

@@ -47,9 +47,18 @@ import type {
   PageResponse
 } from "../types/grn";
 import type {
+  CompleteQaInvestigationReviewRequest,
+  DestroyRetainedSampleRequest,
+  EscalateQcInvestigationRequest,
+  QcDecisionRequest,
   QcReceiptRequest,
+  QcInvestigation,
   QcWorksheetRow,
+  OpenQcInvestigationRequest,
   RecordQcWorksheetResultRequest,
+  ResolveQcInvestigationRequest,
+  ExecuteRetestRequest,
+  ExecuteResampleRequest,
   SamplingPlanRequest,
   SamplingRequest,
   SamplingSummary,
@@ -1213,6 +1222,14 @@ export async function fetchSamplingWorksheet(samplingRequestId: string) {
   return requestJson<QcWorksheetRow[]>(`/api/sampling-requests/${samplingRequestId}/worksheet`);
 }
 
+export async function fetchSamplingCycles(samplingRequestId: string) {
+  return requestJson<SamplingRequest[]>(`/api/sampling-requests/${samplingRequestId}/cycles`);
+}
+
+export async function fetchSamplingInvestigations(samplingRequestId: string) {
+  return requestJson<QcInvestigation[]>(`/api/sampling-requests/${samplingRequestId}/investigations`);
+}
+
 export async function recordSamplingWorksheetResult(
   samplingRequestId: string,
   testResultId: string,
@@ -1224,9 +1241,82 @@ export async function recordSamplingWorksheetResult(
   });
 }
 
+export async function openSamplingInvestigation(
+  samplingRequestId: string,
+  payload: OpenQcInvestigationRequest
+) {
+  return requestMutation<QcInvestigation>(`/api/sampling-requests/${samplingRequestId}/investigations`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function resolveSamplingInvestigation(
+  samplingRequestId: string,
+  investigationId: string,
+  payload: ResolveQcInvestigationRequest
+) {
+  return requestMutation<QcInvestigation>(`/api/sampling-requests/${samplingRequestId}/investigations/${investigationId}/resolve`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function completeSamplingInvestigationQaReview(
+  samplingRequestId: string,
+  investigationId: string,
+  payload: CompleteQaInvestigationReviewRequest
+) {
+  return requestMutation<QcInvestigation>(`/api/sampling-requests/${samplingRequestId}/investigations/${investigationId}/qa-review`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function escalateSamplingInvestigationToPhaseTwo(
+  samplingRequestId: string,
+  investigationId: string,
+  payload: EscalateQcInvestigationRequest
+) {
+  return requestMutation<QcInvestigation>(`/api/sampling-requests/${samplingRequestId}/investigations/${investigationId}/phase-ii`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function executeSamplingRetest(
+  samplingRequestId: string,
+  payload: ExecuteRetestRequest
+) {
+  return requestMutation<SamplingRequest>(`/api/sampling-requests/${samplingRequestId}/retest`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function destroySamplingRetainedSample(
+  samplingRequestId: string,
+  payload: DestroyRetainedSampleRequest
+) {
+  return requestMutation<SamplingRequest>(`/api/sampling-requests/${samplingRequestId}/retained-sample/destroy`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function executeSamplingResample(
+  samplingRequestId: string,
+  payload: ExecuteResampleRequest
+) {
+  return requestMutation<SamplingRequest>(`/api/sampling-requests/${samplingRequestId}/resample`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function recordQcDecision(
   samplingRequestId: string,
-  payload: { approved: boolean; remarks: string; updatedBy: string }
+  payload: QcDecisionRequest
 ) {
   return requestMutation<SamplingRequest>(
     `/api/sampling-requests/${samplingRequestId}/qc-decision`,

@@ -57,9 +57,12 @@ export type SamplingRequest = {
   id: string;
   grnId: string;
   grnItemId: string;
+  parentSamplingRequestId: string | null;
+  rootSamplingRequestId: string;
   materialId: string;
   batchId: string | null;
   palletId: string;
+  cycleNumber: number;
   requestStatus: string;
   warehouseLabelApplied: boolean;
   samplingLabelRequired: boolean;
@@ -69,10 +72,14 @@ export type SamplingRequest = {
   hazardousMaterial: boolean;
   selectiveMaterial: boolean;
   remarks: string | null;
+  resampleReason: string | null;
   totalContainers: number;
   qcDecisionRemarks: string | null;
   qcDecidedBy: string | null;
   qcDecidedAt: string | null;
+  qcDecisionConfirmedBy: string | null;
+  qcDecisionConfirmationText: string | null;
+  qcDecisionConfirmationAt: string | null;
   isActive: boolean;
   createdBy: string;
   createdAt: string;
@@ -118,6 +125,12 @@ export type SampleRecord = {
   receivedAtQc: string | null;
   receiptCondition: string | null;
   qcStorageLocation: string | null;
+  retainedFlag: boolean;
+  consumedFlag: boolean;
+  destroyedFlag: boolean;
+  retainedQuantity: number | null;
+  retainedUntil: string | null;
+  retentionExpired: boolean;
   remarks: string | null;
   isActive: boolean;
   createdBy: string;
@@ -146,6 +159,9 @@ export type QcReceiptRequest = {
   receiptCondition: string;
   receiptTimestamp?: string;
   sampleStorageLocation: string;
+  retainedFlag?: boolean;
+  retainedQuantity?: number;
+  retainedUntil?: string;
 };
 
 export type StartQcReviewRequest = {
@@ -183,4 +199,99 @@ export type RecordQcWorksheetResultRequest = {
   resultText?: string;
   moaIdUsed?: string;
   remarks?: string;
+};
+
+export type QcInvestigation = {
+  id: string;
+  qcDispositionId: string;
+  samplingRequestId: string;
+  sampleId: string;
+  qcTestResultId: string;
+  investigationNumber: string;
+  status: string;
+  investigationType: "OOS" | "OOT" | "GENERAL";
+  phase: "PHASE_I" | "PHASE_II";
+  outcome: string | null;
+  reason: string;
+  initialAssessment: string | null;
+  phaseOneSummary: string | null;
+  phaseTwoAssessment: string | null;
+  phaseTwoSummary: string | null;
+  phaseTwoEscalatedBy: string | null;
+  phaseTwoEscalatedAt: string | null;
+  rootCause: string | null;
+  resolutionRemarks: string | null;
+  capaRequired: boolean;
+  capaReference: string | null;
+  outcomeSubmittedBy: string | null;
+  outcomeSubmittedAt: string | null;
+  openedBy: string;
+  openedAt: string;
+  closedBy: string | null;
+  closedAt: string | null;
+  qaReviewRemarks: string | null;
+  qaReviewedBy: string | null;
+  qaReviewedAt: string | null;
+  qaReviewDecision: "APPROVED" | "RETURNED" | null;
+  closureCategory: "INVALIDATED_NO_ASSIGNABLE_CAUSE" | "RETEST_FROM_RETAINED_SAMPLE" | "FRESH_RESAMPLE_REQUIRED" | "MATERIAL_REJECTION_CONFIRMED" | null;
+  returnedToQcBy: string | null;
+  returnedToQcAt: string | null;
+  returnedToQcRemarks: string | null;
+  qaReviewConfirmedBy: string | null;
+  qaReviewConfirmationText: string | null;
+  qaReviewConfirmationAt: string | null;
+  isActive: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedBy: string | null;
+  updatedAt: string | null;
+};
+
+export type OpenQcInvestigationRequest = {
+  qcTestResultId: string;
+  reason: string;
+  initialAssessment?: string;
+  investigationType?: "OOS" | "OOT" | "GENERAL";
+};
+
+export type EscalateQcInvestigationRequest = {
+  phaseOneSummary: string;
+  phaseTwoAssessment: string;
+};
+
+export type ResolveQcInvestigationRequest = {
+  outcome: "RESUME_REVIEW" | "RETEST_REQUIRED" | "RESAMPLE_REQUIRED" | "REJECTED";
+  phaseSummary: string;
+  rootCause?: string;
+  resolutionRemarks: string;
+  capaRequired?: boolean;
+  capaReference?: string;
+};
+
+export type CompleteQaInvestigationReviewRequest = {
+  approved: boolean;
+  qaReviewRemarks: string;
+  confirmedBy: string;
+  confirmationText: string;
+};
+
+export type ExecuteRetestRequest = {
+  analystCode: string;
+  remarks?: string;
+};
+
+export type ExecuteResampleRequest = {
+  reason: string;
+};
+
+export type QcDecisionRequest = {
+  approved: boolean;
+  remarks: string;
+  updatedBy: string;
+  confirmedBy: string;
+  confirmationText: string;
+};
+
+export type DestroyRetainedSampleRequest = {
+  remarks: string;
 };

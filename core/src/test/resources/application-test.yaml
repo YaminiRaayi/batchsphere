@@ -30,6 +30,15 @@ app:
       email: admin@batchsphere.test
       password: Admin@123
       role: SUPER_ADMIN
+    seed-users:
+      - username: qc.analyst
+        email: qc.analyst@batchsphere.test
+        password: Admin@123
+        role: QC_ANALYST
+      - username: qc.manager
+        email: qc.manager@batchsphere.test
+        password: Admin@123
+        role: QC_MANAGER
   cors:
     allowed-origins: http://localhost:5173,http://127.0.0.1:5173
   storage:

@@ -31,8 +31,17 @@ public class SamplingRequest {
     @Column(name = "grn_id", nullable = false)
     private UUID grnId;
 
-    @Column(name = "grn_item_id", nullable = false, unique = true)
+    @Column(name = "grn_item_id", nullable = false)
     private UUID grnItemId;
+
+    @Column(name = "parent_sampling_request_id")
+    private UUID parentSamplingRequestId;
+
+    @Column(name = "root_sampling_request_id", nullable = false)
+    private UUID rootSamplingRequestId;
+
+    @Column(name = "cycle_number", nullable = false)
+    private Integer cycleNumber;
 
     @Column(name = "material_id", nullable = false)
     private UUID materialId;
@@ -77,6 +86,9 @@ public class SamplingRequest {
     @Column(length = 500)
     private String remarks;
 
+    @Column(name = "resample_reason", length = 1000)
+    private String resampleReason;
+
     @Column(name = "qc_decision_remarks", length = 1000)
     private String qcDecisionRemarks;
 
@@ -85,6 +97,15 @@ public class SamplingRequest {
 
     @Column(name = "qc_decided_at")
     private LocalDateTime qcDecidedAt;
+
+    @Column(name = "qc_decision_confirmed_by", length = 100)
+    private String qcDecisionConfirmedBy;
+
+    @Column(name = "qc_decision_confirmation_text", length = 120)
+    private String qcDecisionConfirmationText;
+
+    @Column(name = "qc_decision_confirmation_at")
+    private LocalDateTime qcDecisionConfirmationAt;
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;

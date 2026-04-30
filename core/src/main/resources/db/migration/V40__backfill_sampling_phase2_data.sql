@@ -1,15 +1,3 @@
-WITH sample_seed AS (
-    SELECT
-        sr.id AS sampling_request_id,
-        (
-            substr(md5(sr.id::text || '-sample'), 1, 8) || '-' ||
-            substr(md5(sr.id::text || '-sample'), 9, 4) || '-' ||
-            substr(md5(sr.id::text || '-sample'), 13, 4) || '-' ||
-            substr(md5(sr.id::text || '-sample'), 17, 4) || '-' ||
-            substr(md5(sr.id::text || '-sample'), 21, 12)
-        )::uuid AS sample_id
-    FROM sampling_request sr
-)
 INSERT INTO qc_sample (
     id,
     sample_number,
@@ -33,8 +21,8 @@ INSERT INTO qc_sample (
     updated_at
 )
 SELECT
-    ss.sample_id,
-    'SMP-HIST-' || upper(substr(replace(sr.id::text, '-', ''), 1, 8)),
+    RANDOM_UUID(),
+    'SMP-HIST-' || upper(substr(replace(CAST(sr.id AS VARCHAR), '-', ''), 1, 8)),
     sr.id,
     sr.batch_id,
     sr.material_id,
@@ -67,7 +55,6 @@ SELECT
     sr.updated_by,
     sr.updated_at
 FROM sampling_request sr
-JOIN sample_seed ss ON ss.sampling_request_id = sr.id
 JOIN sampling_plan sp ON sp.sampling_request_id = sr.id
 LEFT JOIN sampling_container_sample scs ON scs.sampling_plan_id = sp.id
 LEFT JOIN grn_container gc ON gc.id = scs.grn_container_id
@@ -83,7 +70,6 @@ WHERE existing_sample.id IS NULL
       )
   )
 GROUP BY
-    ss.sample_id,
     sr.id,
     sr.batch_id,
     sr.material_id,
@@ -108,13 +94,7 @@ INSERT INTO qc_sample_container_link (
     updated_at
 )
 SELECT
-    (
-        substr(md5(scs.id::text || '-sample-link'), 1, 8) || '-' ||
-        substr(md5(scs.id::text || '-sample-link'), 9, 4) || '-' ||
-        substr(md5(scs.id::text || '-sample-link'), 13, 4) || '-' ||
-        substr(md5(scs.id::text || '-sample-link'), 17, 4) || '-' ||
-        substr(md5(scs.id::text || '-sample-link'), 21, 12)
-    )::uuid,
+    RANDOM_UUID(),
     qs.id,
     scs.grn_container_id,
     scs.container_number,
@@ -146,13 +126,7 @@ INSERT INTO qc_disposition (
     updated_at
 )
 SELECT
-    (
-        substr(md5(sr.id::text || '-qc-disposition'), 1, 8) || '-' ||
-        substr(md5(sr.id::text || '-qc-disposition'), 9, 4) || '-' ||
-        substr(md5(sr.id::text || '-qc-disposition'), 13, 4) || '-' ||
-        substr(md5(sr.id::text || '-qc-disposition'), 17, 4) || '-' ||
-        substr(md5(sr.id::text || '-qc-disposition'), 21, 12)
-    )::uuid,
+    RANDOM_UUID(),
     qs.id,
     sr.id,
     CASE
@@ -176,5 +150,5 @@ WHERE existing_disposition.id IS NULL
 
 UPDATE sampling_request
 SET request_status = 'COMPLETED',
-    updated_at = COALESCE(updated_at, now())
+    updated_at = COALESCE(updated_at, CURRENT_TIMESTAMP)
 WHERE request_status IN ('APPROVED', 'REJECTED');

@@ -490,6 +490,16 @@ export function AppShell() {
           </div>
 
           <div className="ml-auto flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                void handleSignOut();
+              }}
+              className="inline-flex items-center rounded-xl border border-blue-100 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-blue-50 hover:text-blue-700"
+            >
+              Sign out
+            </button>
+
             <div className="hidden items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs text-slate-400 md:flex">
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                 <circle cx="11" cy="11" r="8" />

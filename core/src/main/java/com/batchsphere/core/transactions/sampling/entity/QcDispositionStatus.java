@@ -4,6 +4,10 @@ public enum QcDispositionStatus {
     PENDING,
     RECEIVED,
     UNDER_REVIEW,
+    UNDER_INVESTIGATION,
+    BLOCKED,
+    RESAMPLE_REQUIRED,
+    RETEST_REQUIRED,
     APPROVED,
     REJECTED
 }

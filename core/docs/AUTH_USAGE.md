@@ -8,6 +8,8 @@ At this stage, there is no public registration flow and no user-management UI ye
 
 Login works through a bootstrap admin account that is created automatically on backend startup if the configured username does not already exist.
 
+For local development and test, QC seed users are also created automatically when missing so QC workflows can be exercised without manual provisioning.
+
 Admin-managed user provisioning is now available on the backend through `SUPER_ADMIN`-only APIs:
 
 - `GET /api/auth/users`
@@ -21,12 +23,20 @@ Configured in [`src/main/resources/application.yaml`](/Users/induraghav/gitrepo/
 
 - Username: `admin`
 - Password: `Admin@123`
+- Username: `qc.analyst`
+- Password: `Admin@123`
+- Username: `qc.manager`
+- Password: `Admin@123`
 
 ## Test Credentials
 
 Configured in [`src/test/resources/application-test.yaml`](/Users/induraghav/gitrepo/batchsphere/core/src/test/resources/application-test.yaml:1):
 
 - Username: `admin`
+- Password: `Admin@123`
+- Username: `qc.analyst`
+- Password: `Admin@123`
+- Username: `qc.manager`
 - Password: `Admin@123`
 
 ## Production Bootstrap
@@ -46,8 +56,9 @@ On application startup:
 
 1. the backend checks whether the configured bootstrap username already exists
 2. if not, it creates that user
-3. the password is stored as a hash
-4. login is then available through `/api/auth/login`
+3. any configured `app.auth.seed-users` that do not yet exist are also created
+4. passwords are stored as hashes
+5. login is then available through `/api/auth/login`
 
 Implementation reference:
 

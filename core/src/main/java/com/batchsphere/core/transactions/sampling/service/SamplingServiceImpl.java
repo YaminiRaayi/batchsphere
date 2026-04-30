@@ -1,5 +1,6 @@
 package com.batchsphere.core.transactions.sampling.service;
 
+import com.batchsphere.core.auth.entity.UserRole;
 import com.batchsphere.core.auth.service.AuthenticatedActorService;
 import com.batchsphere.core.exception.BusinessConflictException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
@@ -19,10 +20,18 @@ import com.batchsphere.core.transactions.inventory.entity.InventoryStatus;
 import com.batchsphere.core.transactions.inventory.entity.InventoryReferenceType;
 import com.batchsphere.core.transactions.inventory.service.InventoryService;
 import com.batchsphere.core.transactions.sampling.dto.CreateSamplingPlanRequest;
+import com.batchsphere.core.transactions.sampling.dto.CompleteQaInvestigationReviewRequest;
+import com.batchsphere.core.transactions.sampling.dto.DestroyRetainedSampleRequest;
+import com.batchsphere.core.transactions.sampling.dto.EscalateQcInvestigationRequest;
+import com.batchsphere.core.transactions.sampling.dto.ExecuteResampleRequest;
+import com.batchsphere.core.transactions.sampling.dto.ExecuteRetestRequest;
+import com.batchsphere.core.transactions.sampling.dto.OpenQcInvestigationRequest;
 import com.batchsphere.core.transactions.sampling.dto.QcReceiptRequest;
 import com.batchsphere.core.transactions.sampling.dto.QcDecisionRequest;
+import com.batchsphere.core.transactions.sampling.dto.QcInvestigationResponse;
 import com.batchsphere.core.transactions.sampling.dto.QcTestResultResponse;
 import com.batchsphere.core.transactions.sampling.dto.RecordQcTestResultRequest;
+import com.batchsphere.core.transactions.sampling.dto.ResolveQcInvestigationRequest;
 import com.batchsphere.core.transactions.sampling.dto.SamplingCompletionRequest;
 import com.batchsphere.core.transactions.sampling.dto.SamplingContainerSampleRequest;
 import com.batchsphere.core.transactions.sampling.dto.SamplingContainerSampleResponse;
@@ -39,8 +48,17 @@ import com.batchsphere.core.transactions.sampling.dto.UpdateSamplingPlanRequest;
 import com.batchsphere.core.transactions.sampling.entity.Sample;
 import com.batchsphere.core.transactions.sampling.entity.SampleContainerLink;
 import com.batchsphere.core.transactions.sampling.entity.SampleStatus;
+import com.batchsphere.core.transactions.sampling.entity.QcInvestigation;
+import com.batchsphere.core.transactions.sampling.entity.QcInvestigationClosureCategory;
+import com.batchsphere.core.transactions.sampling.entity.QcInvestigationOutcome;
+import com.batchsphere.core.transactions.sampling.entity.QcInvestigationPhase;
+import com.batchsphere.core.transactions.sampling.entity.QcInvestigationQaReviewDecision;
+import com.batchsphere.core.transactions.sampling.entity.QcInvestigationStatus;
+import com.batchsphere.core.transactions.sampling.entity.QcInvestigationType;
 import com.batchsphere.core.transactions.sampling.entity.QcDisposition;
 import com.batchsphere.core.transactions.sampling.entity.QcDispositionStatus;
+import com.batchsphere.core.transactions.sampling.entity.QcTestResult;
+import com.batchsphere.core.transactions.sampling.entity.QcTestResultStatus;
 import com.batchsphere.core.transactions.sampling.entity.SamplingContainerSample;
 import com.batchsphere.core.transactions.sampling.entity.SamplingMethod;
 import com.batchsphere.core.transactions.sampling.entity.SamplingPlan;
@@ -49,6 +67,8 @@ import com.batchsphere.core.transactions.sampling.entity.SamplingRequestStatus;
 import com.batchsphere.core.transactions.sampling.repository.SampleContainerLinkRepository;
 import com.batchsphere.core.transactions.sampling.repository.SampleRepository;
 import com.batchsphere.core.transactions.sampling.repository.QcDispositionRepository;
+import com.batchsphere.core.transactions.sampling.repository.QcInvestigationRepository;
+import com.batchsphere.core.transactions.sampling.repository.QcTestResultRepository;
 import com.batchsphere.core.transactions.sampling.repository.SamplingContainerSampleRepository;
 import com.batchsphere.core.transactions.sampling.repository.SamplingPlanRepository;
 import com.batchsphere.core.transactions.sampling.repository.SamplingRequestRepository;
@@ -60,8 +80,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -70,6 +92,25 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class SamplingServiceImpl implements SamplingService {
+
+    private static final String QA_REVIEW_APPROVAL_CONFIRMATION = "I APPROVE THIS QA REVIEW";
+    private static final String QA_REVIEW_RETURN_CONFIRMATION = "I RETURN THIS INVESTIGATION TO QC";
+    private static final String QC_DECISION_APPROVAL_CONFIRMATION = "I APPROVE THIS FINAL QC DECISION";
+    private static final String QC_DECISION_REJECTION_CONFIRMATION = "I REJECT THIS FINAL QC DECISION";
+
+    private static final EnumSet<QcInvestigationStatus> OPEN_INVESTIGATION_STATUSES =
+            EnumSet.of(QcInvestigationStatus.PHASE_I, QcInvestigationStatus.PHASE_II);
+
+    private static final EnumSet<QcInvestigationStatus> CLOSED_INVESTIGATION_STATUSES =
+            EnumSet.of(
+                    QcInvestigationStatus.CLOSED_INVALID,
+                    QcInvestigationStatus.CLOSED_CONFIRMED,
+                    QcInvestigationStatus.CLOSED_RESAMPLE,
+                    QcInvestigationStatus.CLOSED_RETEST
+            );
+
+    private static final EnumSet<QcInvestigationStatus> PENDING_QA_INVESTIGATION_STATUSES =
+            EnumSet.of(QcInvestigationStatus.QA_REVIEW_PENDING);
 
     private final SamplingRequestRepository samplingRequestRepository;
     private final SamplingPlanRepository samplingPlanRepository;
@@ -85,6 +126,8 @@ public class SamplingServiceImpl implements SamplingService {
     private final SampleRepository sampleRepository;
     private final SampleContainerLinkRepository sampleContainerLinkRepository;
     private final QcDispositionRepository qcDispositionRepository;
+    private final QcInvestigationRepository qcInvestigationRepository;
+    private final QcTestResultRepository qcTestResultRepository;
     private final QcWorksheetService qcWorksheetService;
     private final QcTestResultService qcTestResultService;
 
@@ -94,15 +137,19 @@ public class SamplingServiceImpl implements SamplingService {
         LocalDateTime now = LocalDateTime.now();
 
         for (GrnItem item : items) {
-            if (samplingRequestRepository.findByGrnItemId(item.getId()).isPresent()) {
+            if (samplingRequestRepository.findByGrnItemIdAndParentSamplingRequestIdIsNull(item.getId()).isPresent()) {
                 continue;
             }
 
             Material material = getMaterial(item.getMaterialId());
+            UUID requestId = UUID.randomUUID();
             SamplingRequest samplingRequest = SamplingRequest.builder()
-                    .id(UUID.randomUUID())
+                    .id(requestId)
                     .grnId(grnId)
                     .grnItemId(item.getId())
+                    .parentSamplingRequestId(null)
+                    .rootSamplingRequestId(requestId)
+                    .cycleNumber(1)
                     .materialId(item.getMaterialId())
                     .batchId(item.getBatchId())
                     .warehouseLocation(item.getWarehouseLocation())
@@ -165,6 +212,17 @@ public class SamplingServiceImpl implements SamplingService {
     @Transactional(readOnly = true)
     public SamplingRequestResponse getSamplingRequestById(UUID id) {
         return toResponse(getSamplingRequest(id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SamplingRequestResponse> getSamplingCycles(UUID samplingRequestId) {
+        SamplingRequest request = getSamplingRequest(samplingRequestId);
+        UUID rootRequestId = request.getRootSamplingRequestId() != null ? request.getRootSamplingRequestId() : request.getId();
+        return samplingRequestRepository.findByRootSamplingRequestIdAndIsActiveTrueOrderByCycleNumberAsc(rootRequestId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     @Override
@@ -406,6 +464,7 @@ public class SamplingServiceImpl implements SamplingService {
         sample.setReceivedAtQc(receiptTime);
         sample.setReceiptCondition(request.getReceiptCondition().trim());
         sample.setQcStorageLocation(request.getSampleStorageLocation().trim());
+        applyRetentionDetails(sample, request);
         sample.setUpdatedBy(actor);
         sample.setUpdatedAt(LocalDateTime.now());
         sampleRepository.save(sample);
@@ -464,9 +523,396 @@ public class SamplingServiceImpl implements SamplingService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<QcInvestigationResponse> getInvestigations(UUID samplingRequestId) {
+        getSamplingRequest(samplingRequestId);
+        return qcInvestigationRepository.findBySamplingRequestIdAndIsActiveTrueOrderByCreatedAtAsc(samplingRequestId)
+                .stream()
+                .map(this::toQcInvestigationResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public QcInvestigationResponse openInvestigation(UUID samplingRequestId, OpenQcInvestigationRequest request) {
+        String actor = authenticatedActorService.currentActor();
+        SamplingRequest samplingRequest = getSamplingRequest(samplingRequestId);
+        if (samplingRequest.getRequestStatus() != SamplingRequestStatus.UNDER_REVIEW) {
+            throw new BusinessConflictException("QC investigation can only be opened while review is in progress");
+        }
+
+        Sample sample = sampleRepository.findBySamplingRequestId(samplingRequestId)
+                .orElseThrow(() -> new ResourceNotFoundException("QC sample not found for request: " + samplingRequestId));
+        QcDisposition disposition = qcDispositionRepository.findBySamplingRequestId(samplingRequestId)
+                .orElseThrow(() -> new ResourceNotFoundException("QC disposition not found for request: " + samplingRequestId));
+        QcTestResult testResult = qcTestResultRepository.findById(request.getQcTestResultId())
+                .orElseThrow(() -> new ResourceNotFoundException("QC test result not found with id: " + request.getQcTestResultId()));
+
+        if (!testResult.getSampleId().equals(sample.getId())) {
+            throw new BusinessConflictException("QC test result does not belong to the sampling request sample");
+        }
+        if (!EnumSet.of(QcTestResultStatus.FAIL, QcTestResultStatus.OOS, QcTestResultStatus.INCONCLUSIVE).contains(testResult.getStatus())) {
+            throw new BusinessConflictException("Only failing or inconclusive test results can be investigated");
+        }
+        if (qcInvestigationRepository.existsByQcTestResultIdAndStatusInAndIsActiveTrue(testResult.getId(), OPEN_INVESTIGATION_STATUSES)) {
+            throw new BusinessConflictException("An open QC investigation already exists for this test result");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        QcInvestigation investigation = QcInvestigation.builder()
+                .id(UUID.randomUUID())
+                .qcDispositionId(disposition.getId())
+                .samplingRequestId(samplingRequestId)
+                .sampleId(sample.getId())
+                .qcTestResultId(testResult.getId())
+                .investigationNumber(generateInvestigationNumber())
+                .status(QcInvestigationStatus.PHASE_I)
+                .investigationType(request.getInvestigationType() != null ? request.getInvestigationType() : QcInvestigationType.OOS)
+                .phase(QcInvestigationPhase.PHASE_I)
+                .reason(request.getReason().trim())
+                .initialAssessment(trimToNull(request.getInitialAssessment()))
+                .capaRequired(false)
+                .openedBy(actor)
+                .openedAt(now)
+                .isActive(true)
+                .createdBy(actor)
+                .createdAt(now)
+                .updatedBy(actor)
+                .updatedAt(now)
+                .build();
+        qcInvestigationRepository.save(investigation);
+
+        samplingRequest.setRequestStatus(SamplingRequestStatus.UNDER_INVESTIGATION);
+        samplingRequest.setUpdatedBy(actor);
+        samplingRequest.setUpdatedAt(now);
+        samplingRequestRepository.save(samplingRequest);
+
+        updateQcDispositionStatus(samplingRequestId, QcDispositionStatus.UNDER_INVESTIGATION, actor);
+        updateInventoryStatus(
+                samplingRequest,
+                InventoryStatus.BLOCKED,
+                actor,
+                "QC investigation opened"
+        );
+        return toQcInvestigationResponse(investigation);
+    }
+
+    @Override
+    @Transactional
+    public QcInvestigationResponse escalateInvestigationToPhaseTwo(UUID samplingRequestId,
+                                                                   UUID investigationId,
+                                                                   EscalateQcInvestigationRequest request) {
+        String actor = authenticatedActorService.currentActor();
+        getSamplingRequest(samplingRequestId);
+        QcInvestigation investigation = qcInvestigationRepository.findById(investigationId)
+                .orElseThrow(() -> new ResourceNotFoundException("QC investigation not found with id: " + investigationId));
+        if (!investigation.getSamplingRequestId().equals(samplingRequestId)) {
+            throw new BusinessConflictException("QC investigation does not belong to the sampling request");
+        }
+        if (!OPEN_INVESTIGATION_STATUSES.contains(investigation.getStatus())) {
+            throw new BusinessConflictException("Only active QC investigations can be escalated to Phase II");
+        }
+        if (investigation.getPhase() == QcInvestigationPhase.PHASE_II) {
+            throw new BusinessConflictException("QC investigation is already in Phase II");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        investigation.setPhaseOneSummary(resolveInvestigationNarrative(
+                request.getPhaseOneSummary(),
+                investigation.getPhaseOneSummary(),
+                investigation.getInitialAssessment()
+        ));
+        investigation.setStatus(QcInvestigationStatus.PHASE_II);
+        investigation.setPhase(QcInvestigationPhase.PHASE_II);
+        investigation.setPhaseTwoAssessment(resolveInvestigationNarrative(
+                request.getPhaseTwoAssessment(),
+                investigation.getPhaseTwoAssessment(),
+                investigation.getInitialAssessment()
+        ));
+        investigation.setPhaseTwoEscalatedBy(actor);
+        investigation.setPhaseTwoEscalatedAt(now);
+        investigation.setUpdatedBy(actor);
+        investigation.setUpdatedAt(now);
+        qcInvestigationRepository.save(investigation);
+        return toQcInvestigationResponse(investigation);
+    }
+
+    @Override
+    @Transactional
+    public QcInvestigationResponse resolveInvestigation(UUID samplingRequestId,
+                                                        UUID investigationId,
+                                                        ResolveQcInvestigationRequest request) {
+        String actor = authenticatedActorService.currentActor();
+        getSamplingRequest(samplingRequestId);
+        QcInvestigation investigation = qcInvestigationRepository.findById(investigationId)
+                .orElseThrow(() -> new ResourceNotFoundException("QC investigation not found with id: " + investigationId));
+        if (!investigation.getSamplingRequestId().equals(samplingRequestId)) {
+            throw new BusinessConflictException("QC investigation does not belong to the sampling request");
+        }
+        if (!OPEN_INVESTIGATION_STATUSES.contains(investigation.getStatus())) {
+            throw new BusinessConflictException("Only active QC investigations can be resolved");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        applyPhaseSummary(investigation, request.getPhaseSummary());
+        investigation.setStatus(QcInvestigationStatus.QA_REVIEW_PENDING);
+        investigation.setOutcome(request.getOutcome());
+        investigation.setRootCause(trimToNull(request.getRootCause()));
+        investigation.setResolutionRemarks(resolveInvestigationNarrative(
+                request.getResolutionRemarks(),
+                investigation.getResolutionRemarks(),
+                investigation.getReason()
+        ));
+        investigation.setCapaRequired(Boolean.TRUE.equals(request.getCapaRequired()));
+        investigation.setCapaReference(resolveCapaReference(request.getCapaRequired(), request.getCapaReference()));
+        investigation.setOutcomeSubmittedBy(actor);
+        investigation.setOutcomeSubmittedAt(now);
+        investigation.setQaReviewRemarks(null);
+        investigation.setQaReviewedBy(null);
+        investigation.setQaReviewedAt(null);
+        investigation.setQaReviewDecision(null);
+        investigation.setClosureCategory(null);
+        investigation.setQaReviewConfirmedBy(null);
+        investigation.setQaReviewConfirmationText(null);
+        investigation.setQaReviewConfirmationAt(null);
+        investigation.setClosedBy(null);
+        investigation.setClosedAt(null);
+        investigation.setUpdatedBy(actor);
+        investigation.setUpdatedAt(now);
+        qcInvestigationRepository.save(investigation);
+        return toQcInvestigationResponse(investigation);
+    }
+
+    @Override
+    @Transactional
+    public QcInvestigationResponse completeQaInvestigationReview(UUID samplingRequestId,
+                                                                 UUID investigationId,
+                                                                 CompleteQaInvestigationReviewRequest request) {
+        String actor = authenticatedActorService.currentActor();
+        assertQaApprovalRole();
+        assertConfirmationMatchesActor(request.getConfirmedBy(), actor);
+        assertApprovalConfirmationText(
+                request.getConfirmationText(),
+                Boolean.TRUE.equals(request.getApproved())
+                        ? QA_REVIEW_APPROVAL_CONFIRMATION
+                        : QA_REVIEW_RETURN_CONFIRMATION
+        );
+        SamplingRequest samplingRequest = getSamplingRequest(samplingRequestId);
+        Sample sample = sampleRepository.findBySamplingRequestId(samplingRequestId)
+                .orElseThrow(() -> new ResourceNotFoundException("QC sample not found for request: " + samplingRequestId));
+        QcInvestigation investigation = qcInvestigationRepository.findById(investigationId)
+                .orElseThrow(() -> new ResourceNotFoundException("QC investigation not found with id: " + investigationId));
+        if (!investigation.getSamplingRequestId().equals(samplingRequestId)) {
+            throw new BusinessConflictException("QC investigation does not belong to the sampling request");
+        }
+        if (investigation.getStatus() != QcInvestigationStatus.QA_REVIEW_PENDING) {
+            throw new BusinessConflictException("Only investigations pending QA review can be completed");
+        }
+        assertQaReviewerIsIndependent(investigation, actor);
+
+        LocalDateTime now = LocalDateTime.now();
+        investigation.setQaReviewRemarks(request.getQaReviewRemarks().trim());
+        investigation.setQaReviewedBy(actor);
+        investigation.setQaReviewedAt(now);
+        investigation.setQaReviewConfirmedBy(request.getConfirmedBy().trim());
+        investigation.setQaReviewConfirmationText(request.getConfirmationText().trim());
+        investigation.setQaReviewConfirmationAt(now);
+        investigation.setUpdatedBy(actor);
+        investigation.setUpdatedAt(now);
+
+        if (!Boolean.TRUE.equals(request.getApproved())) {
+            investigation.setQaReviewDecision(QcInvestigationQaReviewDecision.RETURNED);
+            investigation.setStatus(resolveReturnedInvestigationStatus(investigation.getPhase()));
+            investigation.setReturnedToQcBy(actor);
+            investigation.setReturnedToQcAt(now);
+            investigation.setReturnedToQcRemarks(request.getQaReviewRemarks().trim());
+            qcInvestigationRepository.save(investigation);
+            return toQcInvestigationResponse(investigation);
+        }
+
+        investigation.setQaReviewDecision(QcInvestigationQaReviewDecision.APPROVED);
+        investigation.setStatus(resolveClosedInvestigationStatus(investigation.getOutcome()));
+        investigation.setClosureCategory(resolveClosureCategory(investigation.getOutcome()));
+        investigation.setClosedBy(actor);
+        investigation.setClosedAt(now);
+        qcInvestigationRepository.save(investigation);
+
+        boolean openInvestigationsRemain = qcInvestigationRepository.existsBySamplingRequestIdAndStatusInAndIsActiveTrue(
+                samplingRequestId, OPEN_INVESTIGATION_STATUSES);
+        boolean pendingQaInvestigationsRemain = qcInvestigationRepository.existsBySamplingRequestIdAndStatusInAndIsActiveTrue(
+                samplingRequestId, PENDING_QA_INVESTIGATION_STATUSES);
+        if (openInvestigationsRemain || pendingQaInvestigationsRemain) {
+            return toQcInvestigationResponse(investigation);
+        }
+
+        applyApprovedInvestigationOutcome(samplingRequest, sample, investigation, actor, now);
+        return toQcInvestigationResponse(investigation);
+    }
+
+    @Override
+    @Transactional
+    public SamplingRequestResponse executeRetest(UUID samplingRequestId, ExecuteRetestRequest request) {
+        String actor = authenticatedActorService.currentActor();
+        SamplingRequest samplingRequest = getSamplingRequest(samplingRequestId);
+        if (samplingRequest.getRequestStatus() != SamplingRequestStatus.RETEST_REQUIRED) {
+            throw new BusinessConflictException("Retest can only be started after a RETEST_REQUIRED investigation outcome");
+        }
+
+        Sample sample = sampleRepository.findBySamplingRequestId(samplingRequestId)
+                .orElseThrow(() -> new ResourceNotFoundException("QC sample not found for request: " + samplingRequestId));
+        if (!Boolean.TRUE.equals(sample.getRetainedFlag())
+                || sample.getRetainedQuantity() == null
+                || sample.getRetainedQuantity().signum() <= 0) {
+            throw new BusinessConflictException("Retest requires an available retained sample quantity");
+        }
+        if (Boolean.TRUE.equals(sample.getDestroyedFlag())) {
+            throw new BusinessConflictException("Retest cannot start because the retained sample has already been destroyed");
+        }
+        if (sample.getRetainedUntil() == null || sample.getRetainedUntil().isBefore(LocalDate.now())) {
+            throw new BusinessConflictException("Retest requires a retained sample that is still within the retention period");
+        }
+
+        SamplingPlan plan = samplingPlanRepository.findBySamplingRequestId(samplingRequestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Sampling plan not found for request: " + samplingRequestId));
+        List<QcTestResult> worksheetRows = qcTestResultRepository.findBySampleIdAndIsActiveTrueOrderByCreatedAtAsc(sample.getId());
+        if (worksheetRows.isEmpty()) {
+            throw new BusinessConflictException("Retest requires an existing QC worksheet");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        for (QcTestResult row : worksheetRows) {
+            row.setAnalystCode(request.getAnalystCode().trim());
+            row.setResultValue(null);
+            row.setResultText(null);
+            row.setStatus(QcTestResultStatus.PENDING);
+            row.setPassFailFlag(null);
+            row.setEnteredAt(null);
+            row.setReviewedBy(null);
+            row.setReviewedAt(null);
+            row.setRemarks(trimToNull(request.getRemarks()));
+            row.setUpdatedBy(actor);
+            row.setUpdatedAt(now);
+            qcTestResultRepository.save(row);
+        }
+
+        plan.setAnalystEmployeeCode(request.getAnalystCode().trim());
+        plan.setUpdatedBy(actor);
+        plan.setUpdatedAt(now);
+        samplingPlanRepository.save(plan);
+
+        consumeRetainedSample(sample, actor, now, request.getRemarks());
+        sample.setSampleStatus(SampleStatus.UNDER_REVIEW);
+        sample.setUpdatedBy(actor);
+        sample.setUpdatedAt(now);
+        sampleRepository.save(sample);
+
+        samplingRequest.setRequestStatus(SamplingRequestStatus.UNDER_REVIEW);
+        samplingRequest.setUpdatedBy(actor);
+        samplingRequest.setUpdatedAt(now);
+        samplingRequestRepository.save(samplingRequest);
+
+        updateQcDispositionStatus(samplingRequestId, QcDispositionStatus.UNDER_REVIEW, actor);
+        return toResponse(samplingRequest);
+    }
+
+    @Override
+    @Transactional
+    public SamplingRequestResponse destroyRetainedSample(UUID samplingRequestId, DestroyRetainedSampleRequest request) {
+        String actor = authenticatedActorService.currentActor();
+        SamplingRequest samplingRequest = getSamplingRequest(samplingRequestId);
+        Sample sample = sampleRepository.findBySamplingRequestId(samplingRequestId)
+                .orElseThrow(() -> new ResourceNotFoundException("QC sample not found for request: " + samplingRequestId));
+
+        if (Boolean.TRUE.equals(sample.getDestroyedFlag())) {
+            throw new BusinessConflictException("Retained sample has already been destroyed");
+        }
+        if (!hasRetainedSampleAvailable(sample)) {
+            throw new BusinessConflictException("No retained sample is available to destroy");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        sample.setDestroyedFlag(true);
+        sample.setRetainedFlag(false);
+        sample.setRetainedQuantity(BigDecimal.ZERO.setScale(3, RoundingMode.HALF_UP));
+        sample.setRemarks(appendSampleRemark(sample.getRemarks(), "Retained sample destroyed: " + request.getRemarks().trim()));
+        sample.setUpdatedBy(actor);
+        sample.setUpdatedAt(now);
+        sampleRepository.save(sample);
+
+        samplingRequest.setUpdatedBy(actor);
+        samplingRequest.setUpdatedAt(now);
+        samplingRequestRepository.save(samplingRequest);
+        return toResponse(samplingRequest);
+    }
+
+    @Override
+    @Transactional
+    public SamplingRequestResponse executeResample(UUID samplingRequestId, ExecuteResampleRequest request) {
+        String actor = authenticatedActorService.currentActor();
+        SamplingRequest current = getSamplingRequest(samplingRequestId);
+        if (current.getRequestStatus() != SamplingRequestStatus.RESAMPLE_REQUIRED) {
+            throw new BusinessConflictException("Resample can only be started after a RESAMPLE_REQUIRED investigation outcome");
+        }
+        if (samplingRequestRepository.existsByParentSamplingRequestIdAndIsActiveTrue(current.getId())) {
+            throw new BusinessConflictException("A resample child cycle already exists for this sampling request");
+        }
+
+        UUID rootRequestId = current.getRootSamplingRequestId() != null ? current.getRootSamplingRequestId() : current.getId();
+        int nextCycle = samplingRequestRepository.findMaxCycleNumberByRootSamplingRequestId(rootRequestId) + 1;
+        LocalDateTime now = LocalDateTime.now();
+        UUID childRequestId = UUID.randomUUID();
+
+        SamplingRequest child = SamplingRequest.builder()
+                .id(childRequestId)
+                .grnId(current.getGrnId())
+                .grnItemId(current.getGrnItemId())
+                .parentSamplingRequestId(current.getId())
+                .rootSamplingRequestId(rootRequestId)
+                .cycleNumber(nextCycle)
+                .materialId(current.getMaterialId())
+                .batchId(current.getBatchId())
+                .warehouseLocation(current.getWarehouseLocation())
+                .palletId(current.getPalletId())
+                .totalContainers(current.getTotalContainers())
+                .requestStatus(SamplingRequestStatus.REQUESTED)
+                .warehouseLabelApplied(current.getWarehouseLabelApplied())
+                .samplingLabelRequired(current.getSamplingLabelRequired())
+                .vendorCoaReleaseAllowed(current.getVendorCoaReleaseAllowed())
+                .photosensitiveMaterial(current.getPhotosensitiveMaterial())
+                .hygroscopicMaterial(current.getHygroscopicMaterial())
+                .hazardousMaterial(current.getHazardousMaterial())
+                .selectiveMaterial(current.getSelectiveMaterial())
+                .remarks("Resample cycle created from request " + current.getId())
+                .resampleReason(request.getReason().trim())
+                .isActive(true)
+                .createdBy(actor)
+                .createdAt(now)
+                .build();
+        samplingRequestRepository.save(child);
+
+        current.setRequestStatus(SamplingRequestStatus.RESAMPLED);
+        current.setRemarks(appendSampleRemark(
+                current.getRemarks(),
+                "Superseded by resample child cycle " + childRequestId + ": " + request.getReason().trim()
+        ));
+        current.setUpdatedBy(actor);
+        current.setUpdatedAt(now);
+        samplingRequestRepository.save(current);
+        return toResponse(child);
+    }
+
+    @Override
     @Transactional
     public SamplingRequestResponse recordQcDecision(UUID samplingRequestId, QcDecisionRequest request) {
         String actor = authenticatedActorService.currentActor();
+        assertFinalQcDecisionRole();
+        assertConfirmationMatchesActor(request.getConfirmedBy(), actor);
+        assertApprovalConfirmationText(
+                request.getConfirmationText(),
+                Boolean.TRUE.equals(request.getApproved())
+                        ? QC_DECISION_APPROVAL_CONFIRMATION
+                        : QC_DECISION_REJECTION_CONFIRMATION
+        );
         SamplingRequest samplingRequest = getSamplingRequest(samplingRequestId);
         SamplingPlan plan = samplingPlanRepository.findBySamplingRequestId(samplingRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Sampling plan not found for request: " + samplingRequestId));
@@ -492,17 +938,35 @@ public class SamplingServiceImpl implements SamplingService {
                 if (!qcWorksheetService.isWorksheetComplete(sample.getId())) {
                     throw new BusinessConflictException("QC approval requires all mandatory worksheet results to pass");
                 }
-            } else if (!qcWorksheetService.hasFailingResults(sample.getId())) {
-                throw new BusinessConflictException("QC rejection requires at least one failing worksheet result");
+            } else {
+                if (!qcWorksheetService.hasFailingResults(sample.getId())) {
+                    throw new BusinessConflictException("QC rejection requires at least one failing worksheet result");
+                }
+                if (!qcInvestigationRepository.existsBySamplingRequestIdAndStatusInAndIsActiveTrue(
+                        samplingRequestId, CLOSED_INVESTIGATION_STATUSES)) {
+                    throw new BusinessConflictException("QC rejection requires a completed investigation for failing worksheet results");
+                }
+            }
+            if (qcInvestigationRepository.existsBySamplingRequestIdAndStatusInAndIsActiveTrue(
+                    samplingRequestId, OPEN_INVESTIGATION_STATUSES)) {
+                throw new BusinessConflictException("QC decision cannot be recorded while an investigation is still open");
+            }
+            if (qcInvestigationRepository.existsBySamplingRequestIdAndStatusInAndIsActiveTrue(
+                    samplingRequestId, PENDING_QA_INVESTIGATION_STATUSES)) {
+                throw new BusinessConflictException("QC decision cannot be recorded while an investigation is pending QA review");
             }
         }
 
+        LocalDateTime now = LocalDateTime.now();
         samplingRequest.setRequestStatus(SamplingRequestStatus.COMPLETED);
         samplingRequest.setQcDecisionRemarks(request.getRemarks().trim());
         samplingRequest.setQcDecidedBy(actor);
-        samplingRequest.setQcDecidedAt(LocalDateTime.now());
+        samplingRequest.setQcDecidedAt(now);
+        samplingRequest.setQcDecisionConfirmedBy(request.getConfirmedBy().trim());
+        samplingRequest.setQcDecisionConfirmationText(request.getConfirmationText().trim());
+        samplingRequest.setQcDecisionConfirmationAt(now);
         samplingRequest.setUpdatedBy(actor);
-        samplingRequest.setUpdatedAt(LocalDateTime.now());
+        samplingRequest.setUpdatedAt(now);
         samplingRequestRepository.save(samplingRequest);
         updateSampleOnQcDecision(samplingRequest.getId(), Boolean.TRUE.equals(request.getApproved()), actor);
         updateQcDispositionOnDecision(samplingRequest.getId(), request.getRemarks().trim(), Boolean.TRUE.equals(request.getApproved()), actor);
@@ -579,17 +1043,12 @@ public class SamplingServiceImpl implements SamplingService {
     }
 
     private SamplingMethod resolveSamplingMethod(Material material, SamplingRequest request, UUID specId, SamplingMethod requestedMethod) {
-        MaterialSpecLink activeLink = materialSpecLinkRepository.findByMaterialIdAndIsActiveTrue(material.getId()).orElse(null);
-        UUID activeSpecId = activeLink != null ? activeLink.getSpecId() : material.getSpecId();
-        if (activeSpecId == null) {
-            throw new BusinessConflictException("No active specification is linked to the material master for this sampling request");
-        }
+        MaterialSpecLink activeLink = materialSpecLinkRepository.findByMaterialIdAndIsActiveTrue(material.getId())
+                .orElseThrow(() -> new BusinessConflictException(
+                        "No active material-spec link is defined for this material; sampling cannot proceed until the material is linked to an approved spec"));
+        UUID activeSpecId = activeLink.getSpecId();
         if (!activeSpecId.equals(specId)) {
             throw new BusinessConflictException("Sampling must use the active specification linked to the material master");
-        }
-
-        if ("CRITICAL".equalsIgnoreCase(material.getMaterialType())) {
-            return SamplingMethod.HUNDRED_PERCENT;
         }
 
         Spec spec = specRepository.findById(specId)
@@ -598,12 +1057,12 @@ public class SamplingServiceImpl implements SamplingService {
             throw new BusinessConflictException("Sampling must use an active APPROVED spec");
         }
         SamplingMethod specMethod = spec.getSamplingMethod();
-        if (specMethod != SamplingMethod.SQRT_N_PLUS_1 && specMethod != SamplingMethod.COA_BASED_RELEASE) {
-            throw new BusinessConflictException("Non-critical materials currently support only SQRT_N_PLUS_1 or VENDOR_COA_BASED_RELEASE");
-        }
-
         if (requestedMethod != specMethod) {
             throw new BusinessConflictException("Sampling method must match the selected spec");
+        }
+        if (specMethod == SamplingMethod.COA_BASED_RELEASE &&
+                (!Boolean.TRUE.equals(material.getVendorCoaReleaseAllowed()) || !Boolean.TRUE.equals(request.getVendorCoaReleaseAllowed()))) {
+            throw new BusinessConflictException("CoA based release is allowed only when the material master explicitly permits vendor CoA release");
         }
 
         return specMethod;
@@ -679,6 +1138,7 @@ public class SamplingServiceImpl implements SamplingService {
 
     private void replaceContainerSamples(UUID samplingPlanId, List<SamplingContainerSampleRequest> requests, String actor) {
         samplingContainerSampleRepository.deleteBySamplingPlanId(samplingPlanId);
+        samplingContainerSampleRepository.flush();
         if (requests == null || requests.isEmpty()) {
             return;
         }
@@ -739,9 +1199,12 @@ public class SamplingServiceImpl implements SamplingService {
                 .id(request.getId())
                 .grnId(request.getGrnId())
                 .grnItemId(request.getGrnItemId())
+                .parentSamplingRequestId(request.getParentSamplingRequestId())
+                .rootSamplingRequestId(request.getRootSamplingRequestId())
                 .materialId(request.getMaterialId())
                 .batchId(request.getBatchId())
                 .palletId(request.getPalletId())
+                .cycleNumber(request.getCycleNumber())
                 .requestStatus(request.getRequestStatus())
                 .warehouseLabelApplied(request.getWarehouseLabelApplied())
                 .samplingLabelRequired(request.getSamplingLabelRequired())
@@ -751,10 +1214,14 @@ public class SamplingServiceImpl implements SamplingService {
                 .hazardousMaterial(request.getHazardousMaterial())
                 .selectiveMaterial(request.getSelectiveMaterial())
                 .remarks(request.getRemarks())
+                .resampleReason(request.getResampleReason())
                 .totalContainers(request.getTotalContainers())
                 .qcDecisionRemarks(request.getQcDecisionRemarks())
                 .qcDecidedBy(request.getQcDecidedBy())
                 .qcDecidedAt(request.getQcDecidedAt())
+                .qcDecisionConfirmedBy(request.getQcDecisionConfirmedBy())
+                .qcDecisionConfirmationText(request.getQcDecisionConfirmationText())
+                .qcDecisionConfirmationAt(request.getQcDecisionConfirmationAt())
                 .isActive(request.getIsActive())
                 .createdBy(request.getCreatedBy())
                 .createdAt(request.getCreatedAt())
@@ -793,6 +1260,15 @@ public class SamplingServiceImpl implements SamplingService {
         sample.setCollectedBy(actor);
         sample.setCollectedAt(now);
         sample.setSamplingLocation(plan.getSamplingLocation());
+        sample.setReceivedByQc(null);
+        sample.setReceivedAtQc(null);
+        sample.setReceiptCondition(null);
+        sample.setQcStorageLocation(null);
+        sample.setRetainedFlag(false);
+        sample.setConsumedFlag(false);
+        sample.setDestroyedFlag(false);
+        sample.setRetainedQuantity(null);
+        sample.setRetainedUntil(null);
         sample.setRemarks("Sample collected from selected GRN containers");
         sample.setUpdatedBy(actor);
         sample.setUpdatedAt(now);
@@ -888,6 +1364,209 @@ public class SamplingServiceImpl implements SamplingService {
                 : actor;
     }
 
+    private String trimToNull(String value) {
+        return value != null && !value.isBlank() ? value.trim() : null;
+    }
+
+    private void assertQaApprovalRole() {
+        UserRole role = authenticatedActorService.currentRole();
+        if (role != UserRole.SUPER_ADMIN && role != UserRole.QC_MANAGER) {
+            throw new BusinessConflictException("Only QC managers or super admins can complete QA review");
+        }
+    }
+
+    private void assertFinalQcDecisionRole() {
+        UserRole role = authenticatedActorService.currentRole();
+        if (role != UserRole.SUPER_ADMIN && role != UserRole.QC_MANAGER) {
+            throw new BusinessConflictException("Only QC managers or super admins can record the final QC decision");
+        }
+    }
+
+    private void assertConfirmationMatchesActor(String confirmedBy, String actor) {
+        String normalizedSignature = trimToNull(confirmedBy);
+        if (normalizedSignature == null || !actor.equals(normalizedSignature)) {
+            throw new BusinessConflictException("Approval signature must match the authenticated user");
+        }
+    }
+
+    private void assertQaReviewerIsIndependent(QcInvestigation investigation, String actor) {
+        if (actor.equals(investigation.getOutcomeSubmittedBy())) {
+            throw new BusinessConflictException("QA reviewer must be different from the QC outcome submitter");
+        }
+    }
+
+    private void applyPhaseSummary(QcInvestigation investigation, String phaseSummary) {
+        String normalizedSummary = resolveInvestigationNarrative(
+                phaseSummary,
+                investigation.getPhase() == QcInvestigationPhase.PHASE_II
+                        ? investigation.getPhaseTwoSummary()
+                        : investigation.getPhaseOneSummary(),
+                investigation.getInitialAssessment()
+        );
+        if (investigation.getPhase() == QcInvestigationPhase.PHASE_II) {
+            investigation.setPhaseTwoSummary(normalizedSummary);
+            return;
+        }
+        investigation.setPhaseOneSummary(normalizedSummary);
+    }
+
+    private String resolveInvestigationNarrative(String proposedValue, String existingValue, String fallbackValue) {
+        String normalizedProposed = trimToNull(proposedValue);
+        if (normalizedProposed != null) {
+            return normalizedProposed;
+        }
+        String normalizedExisting = trimToNull(existingValue);
+        if (normalizedExisting != null) {
+            return normalizedExisting;
+        }
+        return trimToNull(fallbackValue);
+    }
+
+    private String resolveCapaReference(Boolean capaRequired, String capaReference) {
+        if (!Boolean.TRUE.equals(capaRequired)) {
+            return null;
+        }
+        if (capaReference == null || capaReference.isBlank()) {
+            throw new BusinessConflictException("CAPA reference is required when CAPA linkage is marked as required");
+        }
+        return capaReference.trim();
+    }
+
+    private QcInvestigationClosureCategory resolveClosureCategory(QcInvestigationOutcome outcome) {
+        return switch (outcome) {
+            case RESUME_REVIEW -> QcInvestigationClosureCategory.INVALIDATED_NO_ASSIGNABLE_CAUSE;
+            case RETEST_REQUIRED -> QcInvestigationClosureCategory.RETEST_FROM_RETAINED_SAMPLE;
+            case RESAMPLE_REQUIRED -> QcInvestigationClosureCategory.FRESH_RESAMPLE_REQUIRED;
+            case REJECTED -> QcInvestigationClosureCategory.MATERIAL_REJECTION_CONFIRMED;
+        };
+    }
+
+    private void assertApprovalConfirmationText(String actualText, String expectedText) {
+        if (!expectedText.equals(actualText.trim())) {
+            throw new BusinessConflictException("Approval confirmation text is invalid for this action");
+        }
+    }
+
+    private QcInvestigationStatus resolveReturnedInvestigationStatus(QcInvestigationPhase phase) {
+        return phase == QcInvestigationPhase.PHASE_II
+                ? QcInvestigationStatus.PHASE_II
+                : QcInvestigationStatus.PHASE_I;
+    }
+
+    private void applyApprovedInvestigationOutcome(SamplingRequest samplingRequest,
+                                                   Sample sample,
+                                                   QcInvestigation investigation,
+                                                   String actor,
+                                                   LocalDateTime now) {
+        switch (investigation.getOutcome()) {
+            case RESUME_REVIEW -> {
+                samplingRequest.setRequestStatus(SamplingRequestStatus.UNDER_REVIEW);
+                sample.setSampleStatus(SampleStatus.UNDER_REVIEW);
+                updateQcDispositionStatus(samplingRequest.getId(), QcDispositionStatus.UNDER_REVIEW, actor);
+                updateInventoryStatus(
+                        samplingRequest,
+                        InventoryStatus.UNDER_TEST,
+                        actor,
+                        "QC investigation approved by QA: resume review"
+                );
+            }
+            case RETEST_REQUIRED -> {
+                samplingRequest.setRequestStatus(SamplingRequestStatus.RETEST_REQUIRED);
+                sample.setSampleStatus(SampleStatus.RECEIVED);
+                updateQcDispositionStatus(samplingRequest.getId(), QcDispositionStatus.RETEST_REQUIRED, actor);
+                updateInventoryStatus(
+                        samplingRequest,
+                        InventoryStatus.UNDER_TEST,
+                        actor,
+                        "QC investigation approved by QA: retained sample retest required"
+                );
+            }
+            case RESAMPLE_REQUIRED -> {
+                samplingRequest.setRequestStatus(SamplingRequestStatus.RESAMPLE_REQUIRED);
+                sample.setSampleStatus(SampleStatus.RECEIVED);
+                updateQcDispositionStatus(samplingRequest.getId(), QcDispositionStatus.RESAMPLE_REQUIRED, actor);
+                updateInventoryStatus(
+                        samplingRequest,
+                        InventoryStatus.SAMPLING,
+                        actor,
+                        "QC investigation approved by QA: fresh resample required"
+                );
+            }
+            case REJECTED -> {
+                samplingRequest.setRequestStatus(SamplingRequestStatus.COMPLETED);
+                samplingRequest.setQcDecisionRemarks(investigation.getResolutionRemarks());
+                samplingRequest.setQcDecidedBy(actor);
+                samplingRequest.setQcDecidedAt(now);
+                sample.setSampleStatus(SampleStatus.REJECTED);
+                updateQcDispositionOnDecision(samplingRequest.getId(), investigation.getResolutionRemarks(), false, actor);
+                updateInventoryStatus(
+                        samplingRequest,
+                        InventoryStatus.REJECTED,
+                        actor,
+                        "QC investigation approved by QA: rejected"
+                );
+            }
+        }
+
+        sample.setUpdatedBy(actor);
+        sample.setUpdatedAt(now);
+        sampleRepository.save(sample);
+
+        samplingRequest.setUpdatedBy(actor);
+        samplingRequest.setUpdatedAt(now);
+        samplingRequestRepository.save(samplingRequest);
+    }
+
+    private boolean hasRetainedSampleAvailable(Sample sample) {
+        return Boolean.TRUE.equals(sample.getRetainedFlag())
+                && !Boolean.TRUE.equals(sample.getDestroyedFlag())
+                && sample.getRetainedQuantity() != null
+                && sample.getRetainedQuantity().signum() > 0;
+    }
+
+    private void consumeRetainedSample(Sample sample, String actor, LocalDateTime now, String remarks) {
+        sample.setRetainedFlag(false);
+        sample.setConsumedFlag(true);
+        sample.setRetainedQuantity(BigDecimal.ZERO.setScale(3, RoundingMode.HALF_UP));
+        sample.setRemarks(appendSampleRemark(sample.getRemarks(),
+                "Retained sample consumed for retest" + (trimToNull(remarks) != null ? ": " + remarks.trim() : "")));
+        sample.setUpdatedBy(actor);
+        sample.setUpdatedAt(now);
+    }
+
+    private String appendSampleRemark(String currentRemarks, String nextRemark) {
+        if (currentRemarks == null || currentRemarks.isBlank()) {
+            return nextRemark;
+        }
+        return currentRemarks + " | " + nextRemark;
+    }
+
+    private void applyRetentionDetails(Sample sample, QcReceiptRequest request) {
+        boolean retained = Boolean.TRUE.equals(request.getRetainedFlag());
+        if (!retained) {
+            sample.setRetainedFlag(false);
+            sample.setRetainedQuantity(null);
+            sample.setRetainedUntil(null);
+            return;
+        }
+
+        BigDecimal retainedQuantity = request.getRetainedQuantity();
+        LocalDate retainedUntil = request.getRetainedUntil();
+        if (retainedQuantity == null || retainedQuantity.signum() <= 0) {
+            throw new BusinessConflictException("Retained quantity must be greater than zero when retained flag is set");
+        }
+        if (retainedUntil == null) {
+            throw new BusinessConflictException("Retained-until date is required when retained flag is set");
+        }
+        if (sample.getSampleQuantity() != null && retainedQuantity.compareTo(sample.getSampleQuantity()) > 0) {
+            throw new BusinessConflictException("Retained quantity cannot exceed the total received sample quantity");
+        }
+
+        sample.setRetainedFlag(true);
+        sample.setRetainedQuantity(retainedQuantity.setScale(3, RoundingMode.HALF_UP));
+        sample.setRetainedUntil(retainedUntil);
+    }
+
     private String resolveSampleUom(List<SamplingContainerSample> containerSamples) {
         if (containerSamples.isEmpty()) {
             return "EA";
@@ -900,6 +1579,19 @@ public class SamplingServiceImpl implements SamplingService {
 
     private String generateSampleNumber() {
         return "SMP-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+
+    private String generateInvestigationNumber() {
+        return "QCINV-" + LocalDate.now().toString().replace("-", "") + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+
+    private QcInvestigationStatus resolveClosedInvestigationStatus(QcInvestigationOutcome outcome) {
+        return switch (outcome) {
+            case RESUME_REVIEW -> QcInvestigationStatus.CLOSED_INVALID;
+            case RETEST_REQUIRED -> QcInvestigationStatus.CLOSED_RETEST;
+            case RESAMPLE_REQUIRED -> QcInvestigationStatus.CLOSED_RESAMPLE;
+            case REJECTED -> QcInvestigationStatus.CLOSED_CONFIRMED;
+        };
     }
 
     private SamplingPlanResponse toPlanResponse(SamplingPlan plan) {
@@ -959,6 +1651,12 @@ public class SamplingServiceImpl implements SamplingService {
                 .receivedAtQc(sample.getReceivedAtQc())
                 .receiptCondition(sample.getReceiptCondition())
                 .qcStorageLocation(sample.getQcStorageLocation())
+                .retainedFlag(sample.getRetainedFlag())
+                .consumedFlag(sample.getConsumedFlag())
+                .destroyedFlag(sample.getDestroyedFlag())
+                .retainedQuantity(sample.getRetainedQuantity())
+                .retainedUntil(sample.getRetainedUntil())
+                .retentionExpired(sample.getRetainedUntil() != null && sample.getRetainedUntil().isBefore(LocalDate.now()))
                 .remarks(sample.getRemarks())
                 .isActive(sample.getIsActive())
                 .createdBy(sample.getCreatedBy())
@@ -991,6 +1689,54 @@ public class SamplingServiceImpl implements SamplingService {
                 .createdAt(disposition.getCreatedAt())
                 .updatedBy(disposition.getUpdatedBy())
                 .updatedAt(disposition.getUpdatedAt())
+                .build();
+    }
+
+    private QcInvestigationResponse toQcInvestigationResponse(QcInvestigation investigation) {
+        return QcInvestigationResponse.builder()
+                .id(investigation.getId())
+                .qcDispositionId(investigation.getQcDispositionId())
+                .samplingRequestId(investigation.getSamplingRequestId())
+                .sampleId(investigation.getSampleId())
+                .qcTestResultId(investigation.getQcTestResultId())
+                .investigationNumber(investigation.getInvestigationNumber())
+                .status(investigation.getStatus())
+                .investigationType(investigation.getInvestigationType())
+                .phase(investigation.getPhase())
+                .outcome(investigation.getOutcome())
+                .reason(investigation.getReason())
+                .initialAssessment(investigation.getInitialAssessment())
+                .phaseOneSummary(investigation.getPhaseOneSummary())
+                .phaseTwoAssessment(investigation.getPhaseTwoAssessment())
+                .phaseTwoSummary(investigation.getPhaseTwoSummary())
+                .phaseTwoEscalatedBy(investigation.getPhaseTwoEscalatedBy())
+                .phaseTwoEscalatedAt(investigation.getPhaseTwoEscalatedAt())
+                .rootCause(investigation.getRootCause())
+                .resolutionRemarks(investigation.getResolutionRemarks())
+                .capaRequired(investigation.getCapaRequired())
+                .capaReference(investigation.getCapaReference())
+                .outcomeSubmittedBy(investigation.getOutcomeSubmittedBy())
+                .outcomeSubmittedAt(investigation.getOutcomeSubmittedAt())
+                .openedBy(investigation.getOpenedBy())
+                .openedAt(investigation.getOpenedAt())
+                .closedBy(investigation.getClosedBy())
+                .closedAt(investigation.getClosedAt())
+                .qaReviewRemarks(investigation.getQaReviewRemarks())
+                .qaReviewedBy(investigation.getQaReviewedBy())
+                .qaReviewedAt(investigation.getQaReviewedAt())
+                .qaReviewDecision(investigation.getQaReviewDecision())
+                .closureCategory(investigation.getClosureCategory())
+                .returnedToQcBy(investigation.getReturnedToQcBy())
+                .returnedToQcAt(investigation.getReturnedToQcAt())
+                .returnedToQcRemarks(investigation.getReturnedToQcRemarks())
+                .qaReviewConfirmedBy(investigation.getQaReviewConfirmedBy())
+                .qaReviewConfirmationText(investigation.getQaReviewConfirmationText())
+                .qaReviewConfirmationAt(investigation.getQaReviewConfirmationAt())
+                .isActive(investigation.getIsActive())
+                .createdBy(investigation.getCreatedBy())
+                .createdAt(investigation.getCreatedAt())
+                .updatedBy(investigation.getUpdatedBy())
+                .updatedAt(investigation.getUpdatedAt())
                 .build();
     }
 }

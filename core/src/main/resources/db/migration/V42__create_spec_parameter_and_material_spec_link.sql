@@ -54,20 +54,14 @@ INSERT INTO material_spec_link (
     created_at
 )
 SELECT
-    (
-        substr(md5(m.id::text || '-material-spec-link'), 1, 8) || '-' ||
-        substr(md5(m.id::text || '-material-spec-link'), 9, 4) || '-' ||
-        substr(md5(m.id::text || '-material-spec-link'), 13, 4) || '-' ||
-        substr(md5(m.id::text || '-material-spec-link'), 17, 4) || '-' ||
-        substr(md5(m.id::text || '-material-spec-link'), 21, 12)
-    )::uuid,
+    RANDOM_UUID(),
     m.id,
     m.spec_id,
     true,
     COALESCE(m.updated_by, m.created_by),
     COALESCE(m.updated_at, m.created_at),
     'Backfilled from material.spec_id',
-    COALESCE(m.created_at, now())
+    COALESCE(m.created_at, CURRENT_TIMESTAMP)
 FROM material m
 LEFT JOIN material_spec_link existing_link
     ON existing_link.material_id = m.id

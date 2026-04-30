@@ -88,6 +88,27 @@ class AuthControllerIntegrationTest {
     }
 
     @Test
+    void seededQcAnalystCanLogin() throws Exception {
+        assertTrue(userRepository.existsByUsername("qc.analyst"));
+
+        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                          "username": "qc.analyst",
+                          "password": "Admin@123"
+                        }
+                        """))
+                .andReturn();
+        assertEquals(200, loginResult.getResponse().getStatus(), loginResult.getResponse().getContentAsString());
+
+        JsonNode root = objectMapper.readTree(loginResult.getResponse().getContentAsString());
+        assertEquals("qc.analyst", root.get("user").get("username").asText());
+        assertEquals("QC_ANALYST", root.get("user").get("role").asText());
+        assertFalse(root.get("accessToken").asText().isBlank());
+    }
+
+    @Test
     void logoutRequiresAuthenticationAndReturnsNoContentForAuthenticatedUser() throws Exception {
         MvcResult unauthenticatedLogout = mockMvc.perform(post("/api/auth/logout")).andReturn();
         assertEquals(403, unauthenticatedLogout.getResponse().getStatus(), unauthenticatedLogout.getResponse().getContentAsString());

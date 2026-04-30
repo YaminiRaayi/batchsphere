@@ -1,6 +1,5 @@
-ALTER TABLE vendor
-    ADD COLUMN corporate_address TEXT,
-    ADD COLUMN city VARCHAR(100),
-    ADD COLUMN state VARCHAR(100),
-    ADD COLUMN country VARCHAR(100),
-    ADD COLUMN pincode VARCHAR(20);
+ALTER TABLE vendor ADD COLUMN corporate_address TEXT;
+ALTER TABLE vendor ADD COLUMN city VARCHAR(100);
+ALTER TABLE vendor ADD COLUMN state VARCHAR(100);
+ALTER TABLE vendor ADD COLUMN country VARCHAR(100);
+ALTER TABLE vendor ADD COLUMN pincode VARCHAR(20);

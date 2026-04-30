@@ -36,6 +36,7 @@ import type { VendorBusinessUnit } from "../../types/vendor-business-unit";
 import type { Vendor } from "../../types/vendor";
 
 type DocumentDraft = {
+  lineItemIndex: number;
   documentName: string;
   documentType: string;
   documentUrl: string;
@@ -239,6 +240,7 @@ export function GrnPage() {
   const [queueSearch, setQueueSearch] = useState("");
   const detailSectionRef = useRef<HTMLElement | null>(null);
   const [createDocumentDraft, setCreateDocumentDraft] = useState<DocumentDraft>({
+    lineItemIndex: 0,
     documentName: "",
     documentType: "",
     documentUrl: "",
@@ -402,6 +404,16 @@ export function GrnPage() {
   }, [selectedGrn?.id]);
 
   useEffect(() => {
+    if (createDocumentDraft.lineItemIndex < form.items.length) {
+      return;
+    }
+    setCreateDocumentDraft((current) => ({
+      ...current,
+      lineItemIndex: Math.max(0, form.items.length - 1)
+    }));
+  }, [createDocumentDraft.lineItemIndex, form.items.length]);
+
+  useEffect(() => {
     if (isCreateMode || queueSearch.trim().length === 0 || queueItems.length !== 1) {
       return;
     }
@@ -469,7 +481,8 @@ export function GrnPage() {
       });
 
       if (createDocumentDraft.file && createdGrn.items[0]) {
-        await uploadGrnDocument(createdGrn.items[0].id, {
+        const targetItem = createdGrn.items[createDocumentDraft.lineItemIndex] ?? createdGrn.items[0];
+        await uploadGrnDocument(targetItem.id, {
           documentName: createDocumentDraft.documentName.trim(),
           documentType: createDocumentDraft.documentType.trim(),
           documentUrl: createDocumentDraft.documentUrl.trim() || undefined,
@@ -487,6 +500,7 @@ export function GrnPage() {
       );
       setForm(createInitialForm(currentUserName));
       setCreateDocumentDraft({
+        lineItemIndex: 0,
         documentName: "",
         documentType: "",
         documentUrl: "",
@@ -896,7 +910,9 @@ export function GrnPage() {
               ) : (
                 <div className="mt-6 space-y-5">
                   {selectedGrn.items[0] ? (() => {
-                    const allDocs = selectedGrn.items.flatMap((item) => item.documents);
+                    const allDocs = selectedGrn.items.flatMap((item) =>
+                      item.documents.map((doc) => ({ ...doc, lineNumber: item.lineNumber }))
+                    );
                     const allContainers = selectedGrn.items.flatMap((item) => itemContainers[item.id] ?? []);
                     const CONTAINERS_PER_PAGE = 5;
                     const totalContainerPages = Math.ceil(allContainers.length / CONTAINERS_PER_PAGE);
@@ -922,7 +938,7 @@ export function GrnPage() {
                                 { label: "Vendor BU", value: vendorBusinessUnitById.get(selectedGrn.vendorBusinessUnitId)?.unitName ?? "Not linked", mono: false },
                                 { label: "Material", value: materialById.get(selectedGrn.items[0].materialId)?.materialName ?? "Pending", mono: false },
                                 { label: "Material Code", value: materialById.get(selectedGrn.items[0].materialId)?.materialCode ?? "Pending", mono: true, accent: true },
-                                { label: "Supplier Batch", value: selectedGrn.items[0].vendorBatch || "Pending", mono: true },
+                                { label: "Vendor / Supplier Batch", value: selectedGrn.items[0].vendorBatch || "Pending", mono: true },
                                 { label: "Receipt Time", value: formatDisplayDateTime(selectedGrn.receiptDate), mono: false },
                                 { label: "Expiry Date", value: formatDisplayDate(selectedGrn.items[0].expiryDate), mono: false },
                                 { label: "MFG Date", value: formatDisplayDate(selectedGrn.items[0].manufactureDate), mono: false },
@@ -961,7 +977,7 @@ export function GrnPage() {
                                       PDF
                                     </div>
                                     <span className="flex-1 truncate text-xs font-medium text-slate-700">{doc.documentName}</span>
-                                    <span className="shrink-0 text-[10px] text-slate-400">{doc.documentType}</span>
+                                    <span className="shrink-0 text-[10px] text-slate-400">Line {doc.lineNumber} · {doc.documentType}</span>
                                     {doc.documentUrl ? (
                                       <a href={doc.documentUrl} target="_blank" rel="noopener noreferrer"
                                         className="shrink-0 text-[10px] font-semibold text-blue-600 hover:underline">
@@ -1374,7 +1390,7 @@ export function GrnPage() {
                               <input readOnly value={selectedMaterial?.materialType ?? "–"} className="w-full rounded-xl border border-slate-100 bg-slate-100 px-3 py-2.5 text-sm text-slate-500 outline-none" />
                             </label>
                             <label className="block">
-                              <span className={lbl}>Supplier Batch No. <span className="text-red-400">*</span></span>
+                              <span className={lbl}>Vendor / Supplier Batch No. <span className="text-red-400">*</span></span>
                               <input required value={item.vendorBatch} placeholder="As on CoA"
                                 onChange={(e) => setForm((c) => ({ ...c, items: c.items.map((ci, i) => i === index ? { ...ci, vendorBatch: e.target.value } : ci) }))}
                                 className={fld} />
@@ -1523,7 +1539,7 @@ export function GrnPage() {
                     <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white shadow-sm">4</div>
                     <div>
                       <div className="font-semibold text-slate-700">Supporting Documents</div>
-                      <div className="text-xs text-slate-400">Attach CoA, MSDS, invoice copy — required for QC release</div>
+                      <div className="text-xs text-slate-400">Attach CoA, MSDS, invoice copy and link each file to the correct GRN line item</div>
                     </div>
                   </div>
 
@@ -1542,16 +1558,35 @@ export function GrnPage() {
                   </div>
 
                   <div className="rounded-xl border border-blue-100 bg-white p-4">
-                    <p className="mb-3 text-xs font-semibold text-slate-600">Attach document to first line item</p>
+                    <p className="mb-3 text-xs font-semibold text-slate-600">Document metadata is stored against the selected GRN line item; file uploads are limited to 20MB.</p>
                     <div className="grid gap-3 sm:grid-cols-2">
+                      <select
+                        value={createDocumentDraft.lineItemIndex}
+                        onChange={(e) => setCreateDocumentDraft((c) => ({ ...c, lineItemIndex: Number(e.target.value) }))}
+                        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:bg-white"
+                      >
+                        {form.items.map((item, index) => (
+                          <option key={`doc-line-${index}`} value={index}>
+                            Line {index + 1} · {materialById.get(item.materialId)?.materialName ?? "Material not selected"}
+                          </option>
+                        ))}
+                      </select>
                       <input value={createDocumentDraft.documentName}
                         onChange={(e) => setCreateDocumentDraft((c) => ({ ...c, documentName: e.target.value }))}
                         className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:bg-white"
                         placeholder="Document name (e.g. CoA)" />
-                      <input value={createDocumentDraft.documentType}
+                      <select
+                        value={createDocumentDraft.documentType}
                         onChange={(e) => setCreateDocumentDraft((c) => ({ ...c, documentType: e.target.value }))}
                         className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:bg-white"
-                        placeholder="Type (COA / MSDS / INVOICE)" />
+                      >
+                        <option value="">Select document type</option>
+                        <option value="COA">COA</option>
+                        <option value="MSDS">MSDS / SDS</option>
+                        <option value="INVOICE">Invoice</option>
+                        <option value="PACKING_LIST">Packing List</option>
+                        <option value="OTHER">Other</option>
+                      </select>
                       <input value={createDocumentDraft.documentUrl}
                         onChange={(e) => setCreateDocumentDraft((c) => ({ ...c, documentUrl: e.target.value }))}
                         className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-blue-400 focus:bg-white"
@@ -1580,7 +1615,7 @@ export function GrnPage() {
                       <div><span className="block text-[10px] font-bold uppercase text-slate-500">GRN No.</span><span className="font-mono font-bold text-blue-700">{form.grnNumber || "Pending"}</span></div>
                       <div><span className="block text-[10px] font-bold uppercase text-slate-500">Total Containers</span><span className="font-semibold text-slate-800">{form.items.reduce((sum, item) => sum + item.numberOfContainers, 0)}</span></div>
                       <div><span className="block text-[10px] font-bold uppercase text-slate-500">Receipt Date</span><span className="font-semibold text-slate-800">{formatDisplayDate(form.receiptDate)}</span></div>
-                      <div><span className="block text-[10px] font-bold uppercase text-slate-500">Document</span><span className={`font-semibold ${createDocumentDraft.file ? "text-green-700" : "text-amber-600"}`}>{createDocumentDraft.file ? createDocumentDraft.documentName || "1 attached" : "None attached"}</span></div>
+                      <div><span className="block text-[10px] font-bold uppercase text-slate-500">Document</span><span className={`font-semibold ${createDocumentDraft.file ? "text-green-700" : "text-amber-600"}`}>{createDocumentDraft.file ? `${createDocumentDraft.documentName || "1 attached"} · Line ${createDocumentDraft.lineItemIndex + 1}` : "None attached"}</span></div>
                     </div>
                   </div>
 

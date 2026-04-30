@@ -1,37 +1,57 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useAppShellStore } from "../../stores/appShellStore";
 import {
+  completeSamplingInvestigationQaReview,
   completeSampling,
+  destroySamplingRetainedSample,
+  escalateSamplingInvestigationToPhaseTwo,
+  executeSamplingResample,
+  executeSamplingRetest,
   createSamplingPlan,
   fetchBatches,
   fetchGrnItemContainers,
   fetchMaterials,
   fetchMoas,
   fetchPallets,
+  fetchSamplingCycles,
+  fetchSamplingInvestigations,
   fetchSamplingRequests,
+  fetchSpecParameters,
   fetchSamplingSummary,
   fetchSamplingWorksheet,
   fetchSamplingTools,
   fetchSpecs,
   handoffSamplingToQc,
+  openSamplingInvestigation,
   recordQcDecision,
   recordSamplingWorksheetResult,
   receiveSamplingInQc,
+  resolveSamplingInvestigation,
   startSampling,
   startSamplingQcReview,
   updateSamplingPlan
 } from "../../lib/api";
+import { useAuthStore } from "../../stores/authStore";
 import type { Batch } from "../../types/batch";
 import type { GrnContainer } from "../../types/grn";
 import type { Pallet } from "../../types/location";
 import type { Material } from "../../types/material";
 import type { Moa } from "../../types/moa";
 import type { SamplingTool } from "../../types/sampling-tool";
-import type { Spec } from "../../types/spec";
+import type { Spec, SpecParameter } from "../../types/spec";
 import type {
+  CompleteQaInvestigationReviewRequest,
+  DestroyRetainedSampleRequest,
+  EscalateQcInvestigationRequest,
+  QcDecisionRequest,
   QcReceiptRequest,
+  QcInvestigation,
   QcWorksheetRow,
+  ExecuteResampleRequest,
+  ExecuteRetestRequest,
+  OpenQcInvestigationRequest,
   RecordQcWorksheetResultRequest,
+  ResolveQcInvestigationRequest,
   SampleType,
   SamplingContainerSampleRequest,
   SamplingMethod,
@@ -47,6 +67,10 @@ function statusDotColor(status: string) {
   switch (status) {
     case "APPROVED":    return "bg-green-500";
     case "REJECTED":    return "bg-rose-500";
+    case "UNDER_INVESTIGATION": return "bg-fuchsia-500";
+    case "RETEST_REQUIRED": return "bg-yellow-500";
+    case "RESAMPLE_REQUIRED": return "bg-amber-500";
+    case "RESAMPLED":   return "bg-slate-500";
     case "UNDER_REVIEW":return "bg-violet-500";
     case "RECEIVED":    return "bg-cyan-500";
     case "HANDED_TO_QC":return "bg-indigo-500";
@@ -63,6 +87,10 @@ function statusPillCls(status: string) {
   switch (status) {
     case "APPROVED":    return "bg-green-100 text-green-700";
     case "REJECTED":    return "bg-rose-100 text-rose-700";
+    case "UNDER_INVESTIGATION": return "bg-fuchsia-100 text-fuchsia-700";
+    case "RETEST_REQUIRED": return "bg-yellow-100 text-yellow-700";
+    case "RESAMPLE_REQUIRED": return "bg-amber-100 text-amber-700";
+    case "RESAMPLED":   return "bg-slate-100 text-slate-700";
     case "UNDER_REVIEW":return "bg-violet-100 text-violet-700";
     case "RECEIVED":    return "bg-cyan-100 text-cyan-700";
     case "HANDED_TO_QC":return "bg-indigo-100 text-indigo-700";
@@ -79,6 +107,10 @@ function statusLabel(status: string) {
   switch (status) {
     case "APPROVED":    return "Approved";
     case "REJECTED":    return "Rejected";
+    case "UNDER_INVESTIGATION": return "Investigation";
+    case "RETEST_REQUIRED": return "Retest Required";
+    case "RESAMPLE_REQUIRED": return "Resample Required";
+    case "RESAMPLED":   return "Resampled";
     case "UNDER_REVIEW":return "QC Review";
     case "RECEIVED":    return "QC Received";
     case "HANDED_TO_QC":return "Handed to QC";
@@ -88,6 +120,36 @@ function statusLabel(status: string) {
     case "PLAN_DEFINED":return "Plan Set";
     case "REQUESTED":   return "Pending";
     default:            return status;
+  }
+}
+
+function isActiveInvestigationStatus(status: string) {
+  return status === "PHASE_I" || status === "PHASE_II";
+}
+
+function isPendingQaInvestigationStatus(status: string) {
+  return status === "QA_REVIEW_PENDING";
+}
+
+function isClosedInvestigationStatus(status: string) {
+  return status === "CLOSED_INVALID" || status === "CLOSED_CONFIRMED" || status === "CLOSED_RETEST" || status === "CLOSED_RESAMPLE";
+}
+
+function isReturnedInvestigation(item: QcInvestigation) {
+  return isActiveInvestigationStatus(item.status) && item.qaReviewDecision === "RETURNED";
+}
+
+function phaseSummaryLabel(phase: QcInvestigation["phase"]) {
+  return phase === "PHASE_II" ? "Phase II summary" : "Phase I summary";
+}
+
+function closureCategoryLabel(category: NonNullable<QcInvestigation["closureCategory"]>) {
+  switch (category) {
+    case "INVALIDATED_NO_ASSIGNABLE_CAUSE": return "Invalidated";
+    case "RETEST_FROM_RETAINED_SAMPLE": return "Retest from retained sample";
+    case "FRESH_RESAMPLE_REQUIRED": return "Fresh resample required";
+    case "MATERIAL_REJECTION_CONFIRMED": return "Material rejection confirmed";
+    default: return category;
   }
 }
 
@@ -105,7 +167,15 @@ function getChecklist(status: string, hasPlan: boolean) {
 }
 
 const sampleTypes: SampleType[] = ["INDIVIDUAL", "COMPOSITE"];
-const requestStatuses = ["ALL", "REQUESTED", "PLAN_DEFINED", "IN_PROGRESS", "SAMPLED", "HANDED_TO_QC", "RECEIVED", "UNDER_REVIEW", "APPROVED", "REJECTED"] as const;
+const requestStatuses = ["ALL", "REQUESTED", "PLAN_DEFINED", "IN_PROGRESS", "SAMPLED", "HANDED_TO_QC", "RECEIVED", "UNDER_REVIEW", "UNDER_INVESTIGATION", "RETEST_REQUIRED", "RESAMPLE_REQUIRED", "RESAMPLED", "APPROVED", "REJECTED"] as const;
+const qaReviewApprovalConfirmation = "I APPROVE THIS QA REVIEW";
+const qaReviewReturnConfirmation = "I RETURN THIS INVESTIGATION TO QC";
+const qcDecisionApprovalConfirmation = "I APPROVE THIS FINAL QC DECISION";
+const qcDecisionRejectionConfirmation = "I REJECT THIS FINAL QC DECISION";
+
+function formatDateInputValue(value?: string | null) {
+  return value ? value.slice(0, 10) : "";
+}
 
 function createInitialPlanForm(currentUserName: string): SamplingPlanRequest {
   return {
@@ -143,6 +213,10 @@ function computeRequiredContainers(method: SamplingMethod, totalContainers: numb
 
 export function SamplingPage() {
   const currentUserName = useAppShellStore((state) => state.currentUser.name);
+  const authUser = useAuthStore((state) => state.user);
+  const authenticatedUsername = authUser?.username ?? "";
+  const canQaReviewInvestigations = authUser?.role === "QC_MANAGER" || authUser?.role === "SUPER_ADMIN";
+  const canRecordFinalQcDecision = canQaReviewInvestigations;
   const [requests, setRequests]               = useState<SamplingRequest[]>([]);
   const [summary, setSummary]                 = useState<SamplingSummary | null>(null);
   const [materials, setMaterials]             = useState<Material[]>([]);
@@ -156,15 +230,36 @@ export function SamplingPage() {
   const [statusFilter, setStatusFilter]       = useState<(typeof requestStatuses)[number]>("ALL");
   const [planForm, setPlanForm]               = useState<SamplingPlanRequest>(() => createInitialPlanForm(currentUserName));
   const [qcRemarks, setQcRemarks]             = useState("");
-  const [qcReceiptForm, setQcReceiptForm]     = useState<QcReceiptRequest>({ receivedBy: currentUserName, receiptCondition: "", sampleStorageLocation: "" });
+  const [qcDecisionSignoff, setQcDecisionSignoff] = useState({ confirmedBy: "", confirmationText: "" });
+  const [qcReceiptForm, setQcReceiptForm]     = useState<QcReceiptRequest>({ receivedBy: currentUserName, receiptCondition: "", sampleStorageLocation: "", retainedFlag: false });
   const [qcReviewForm, setQcReviewForm]       = useState<StartQcReviewRequest>({ analystCode: "" });
   const [worksheet, setWorksheet]             = useState<QcWorksheetRow[]>([]);
   const [worksheetInputs, setWorksheetInputs] = useState<Record<string, RecordQcWorksheetResultRequest>>({});
+  const [cycles, setCycles]                   = useState<SamplingRequest[]>([]);
+  const [investigations, setInvestigations]   = useState<QcInvestigation[]>([]);
+  const [investigationForm, setInvestigationForm] = useState<OpenQcInvestigationRequest>({ qcTestResultId: "", reason: "", initialAssessment: "", investigationType: "OOS" });
+  const [resolveForms, setResolveForms]       = useState<Record<string, ResolveQcInvestigationRequest>>({});
+  const [phaseTwoForms, setPhaseTwoForms]     = useState<Record<string, EscalateQcInvestigationRequest>>({});
+  const [qaReviewForms, setQaReviewForms]     = useState<Record<string, CompleteQaInvestigationReviewRequest>>({});
+  const [retestForm, setRetestForm]           = useState<ExecuteRetestRequest>({ analystCode: "", remarks: "" });
+  const [resampleForm, setResampleForm]       = useState<ExecuteResampleRequest>({ reason: "" });
+  const [destroyRetainedForm, setDestroyRetainedForm] = useState<DestroyRetainedSampleRequest>({ remarks: "" });
   const [isLoading, setIsLoading]             = useState(true);
   const [isSubmitting, setIsSubmitting]       = useState(false);
   const [error, setError]                     = useState<string | null>(null);
   const [planError, setPlanError]             = useState<string | null>(null);
   const [successMessage, setSuccessMessage]   = useState<string | null>(null);
+  const [specParametersBySpecId, setSpecParametersBySpecId] = useState<Record<string, SpecParameter[]>>({});
+
+  useEffect(() => {
+    if (!authenticatedUsername) {
+      return;
+    }
+    setQcDecisionSignoff((current) => current.confirmedBy === authenticatedUsername ? current : {
+      ...current,
+      confirmedBy: authenticatedUsername
+    });
+  }, [authenticatedUsername]);
 
   useEffect(() => {
     let cancelled = false;
@@ -183,6 +278,9 @@ export function SamplingPage() {
             fetchMoas(),
             fetchSamplingTools()
           ]);
+        const specParameterEntries = await Promise.all(
+          specData.map(async (spec) => [spec.id, await fetchSpecParameters(spec.id)] as const)
+        );
         if (!cancelled) {
           setRequests(requestPage.content);
           setSummary(summaryData);
@@ -192,6 +290,7 @@ export function SamplingPage() {
           setSpecs(specData);
           setMoas(moaData);
           setSamplingTools(toolData);
+          setSpecParametersBySpecId(Object.fromEntries(specParameterEntries));
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -217,6 +316,15 @@ export function SamplingPage() {
   const selectedBatch  = selectedRequest?.batchId ? batchMap.get(selectedRequest.batchId) : null;
   const selectedPallet = selectedRequest ? palletMap.get(selectedRequest.palletId) : null;
   const selectedSpec   = selectedRequest?.plan ? specMap.get(selectedRequest.plan.specId) : null;
+  const selectedPlanSpecParameters = planForm.specId ? specParametersBySpecId[planForm.specId] ?? [] : [];
+  const selectedPlanMoaIds = useMemo(
+    () => Array.from(new Set(selectedPlanSpecParameters.map((parameter) => parameter.moaId).filter((value): value is string => Boolean(value)))),
+    [selectedPlanSpecParameters]
+  );
+  const selectedPlanMoas = useMemo(
+    () => (selectedPlanMoaIds.length > 0 ? moas.filter((moa) => selectedPlanMoaIds.includes(moa.id)) : moas),
+    [moas, selectedPlanMoaIds]
+  );
 
   useEffect(() => {
     if (!selectedRequest || containersByRequest[selectedRequest.id]) return;
@@ -236,9 +344,19 @@ export function SamplingPage() {
     setQcReceiptForm({
       receivedBy: selectedRequest.sample?.receivedByQc ?? currentUserName,
       receiptCondition: selectedRequest.sample?.receiptCondition ?? "",
-      sampleStorageLocation: selectedRequest.sample?.qcStorageLocation ?? ""
+      sampleStorageLocation: selectedRequest.sample?.qcStorageLocation ?? "",
+      retainedFlag: selectedRequest.sample?.retainedFlag ?? false,
+      retainedQuantity: selectedRequest.sample?.retainedQuantity ?? undefined,
+      retainedUntil: formatDateInputValue(selectedRequest.sample?.retainedUntil) || undefined
     });
     setQcReviewForm({ analystCode: selectedRequest.plan?.analystEmployeeCode ?? "" });
+    setRetestForm({
+      analystCode: selectedRequest.plan?.analystEmployeeCode ?? "",
+      remarks: ""
+    });
+    setQcDecisionSignoff({ confirmedBy: authenticatedUsername, confirmationText: "" });
+    setResampleForm({ reason: selectedRequest.resampleReason ?? "" });
+    setDestroyRetainedForm({ remarks: "" });
     if (selectedRequest.plan) {
       setPlanForm({
         samplingMethod: selectedRequest.plan.samplingMethod as SamplingMethod,
@@ -268,12 +386,19 @@ export function SamplingPage() {
     setPlanForm({
       ...createInitialPlanForm(currentUserName),
       specId: selectedMaterial?.specId ?? "",
+      moaId: selectedMaterial?.specId
+        ? (() => {
+            const specParameters = specParametersBySpecId[selectedMaterial.specId] ?? [];
+            const uniqueMoaIds = Array.from(new Set(specParameters.map((parameter) => parameter.moaId).filter((value): value is string => Boolean(value))));
+            return uniqueMoaIds.length === 1 ? uniqueMoaIds[0] : "";
+          })()
+        : "",
       totalContainers: selectedRequest.totalContainers,
       containersToSample: selectedRequest.totalContainers,
       photosensitiveHandlingRequired: selectedRequest.photosensitiveMaterial,
       hygroscopicHandlingRequired: selectedRequest.hygroscopicMaterial
     });
-  }, [currentUserName, selectedMaterial, selectedRequest]);
+  }, [authenticatedUsername, currentUserName, selectedMaterial, selectedRequest, specParametersBySpecId]);
 
   useEffect(() => {
     if (!selectedRequest?.sample || planForm.samplingMethod === "COA_BASED_RELEASE") {
@@ -281,7 +406,7 @@ export function SamplingPage() {
       setWorksheetInputs({});
       return;
     }
-    if (!["RECEIVED", "UNDER_REVIEW", "COMPLETED", "APPROVED", "REJECTED"].includes(selectedRequest.requestStatus)) {
+    if (!["RECEIVED", "UNDER_REVIEW", "COMPLETED", "APPROVED", "REJECTED", "RESAMPLED"].includes(selectedRequest.requestStatus)) {
       setWorksheet([]);
       setWorksheetInputs({});
       return;
@@ -311,12 +436,61 @@ export function SamplingPage() {
   }, [currentUserName, planForm.samplingMethod, selectedRequest]);
 
   useEffect(() => {
+    if (!selectedRequest) {
+      setCycles([]);
+      setInvestigations([]);
+      setResolveForms({});
+      setPhaseTwoForms({});
+      setQaReviewForms({});
+      return;
+    }
+    const request = selectedRequest;
+    let cancelled = false;
+    async function loadCycleData() {
+      try {
+        const [cycleRows, investigationRows] = await Promise.all([
+          fetchSamplingCycles(request.id),
+          fetchSamplingInvestigations(request.id)
+        ]);
+        if (cancelled) return;
+        setCycles(cycleRows);
+        setInvestigations(investigationRows);
+        setResolveForms(Object.fromEntries(investigationRows.map((item) => [item.id, {
+          outcome: "RESUME_REVIEW",
+          phaseSummary: item.phase === "PHASE_II" ? (item.phaseTwoSummary ?? "") : (item.phaseOneSummary ?? ""),
+          rootCause: item.rootCause ?? "",
+          resolutionRemarks: item.resolutionRemarks ?? "",
+          capaRequired: item.capaRequired,
+          capaReference: item.capaReference ?? ""
+        }])));
+        setPhaseTwoForms(Object.fromEntries(investigationRows.map((item) => [item.id, {
+          phaseOneSummary: item.phaseOneSummary ?? "",
+          phaseTwoAssessment: item.phaseTwoAssessment ?? ""
+        }])));
+        setQaReviewForms(Object.fromEntries(investigationRows.map((item) => [item.id, {
+          approved: true,
+          qaReviewRemarks: item.qaReviewRemarks ?? "",
+          confirmedBy: item.qaReviewedBy ?? authenticatedUsername,
+          confirmationText: ""
+        }])));
+      } catch {
+        if (!cancelled) {
+          setCycles([]);
+          setInvestigations([]);
+          setResolveForms({});
+          setPhaseTwoForms({});
+          setQaReviewForms({});
+        }
+      }
+    }
+    void loadCycleData();
+    return () => { cancelled = true; };
+  }, [authenticatedUsername, selectedRequest]);
+
+  useEffect(() => {
     if (!selectedMaterial) return;
     const sel = specMap.get(planForm.specId);
-    const method =
-      selectedMaterial.materialType === "CRITICAL"
-        ? "HUNDRED_PERCENT"
-        : (sel?.samplingMethod ?? "SQRT_N_PLUS_1");
+    const method = sel?.samplingMethod ?? "SQRT_N_PLUS_1";
     const requiredContainers = computeRequiredContainers(method, planForm.totalContainers);
     const nextSamples =
       method === "COA_BASED_RELEASE"
@@ -334,9 +508,26 @@ export function SamplingPage() {
       containerSamples: nextSamples,
       individualSampleQuantity: method === "COA_BASED_RELEASE" ? 0 : c.individualSampleQuantity,
       compositeSampleQuantity: method === "COA_BASED_RELEASE" ? 0 : compositeSampleQuantity,
-      sampleType: method === "COA_BASED_RELEASE" ? "COMPOSITE" : c.sampleType
+      sampleType: method === "COA_BASED_RELEASE" ? "COMPOSITE" : c.sampleType,
+      photosensitiveHandlingRequired: selectedMaterial.photosensitive,
+      hygroscopicHandlingRequired: selectedMaterial.hygroscopic
     }));
   }, [planForm.specId, planForm.totalContainers, requestContainers, selectedMaterial, specMap]);
+
+  useEffect(() => {
+    if (!planForm.specId || selectedPlanMoaIds.length === 0) {
+      return;
+    }
+    setPlanForm((current) => {
+      if (selectedPlanMoaIds.includes(current.moaId)) {
+        return current;
+      }
+      return {
+        ...current,
+        moaId: selectedPlanMoaIds.length === 1 ? selectedPlanMoaIds[0] : ""
+      };
+    });
+  }, [planForm.specId, selectedPlanMoaIds]);
 
   const selectedMaterialSpec = useMemo(
     () => specs.find((spec) => spec.id === selectedMaterial?.specId) ?? null,
@@ -369,6 +560,48 @@ export function SamplingPage() {
   const worksheetPassCount = worksheet.filter((row) => row.mandatory && row.status === "PASS").length;
   const worksheetFailCount = worksheet.filter((row) => row.status === "FAIL" || row.status === "OOS").length;
   const worksheetReadyForApproval = worksheetMandatoryCount > 0 && worksheetPassCount === worksheetMandatoryCount;
+  const activeOrPendingInvestigationExists = investigations.some((item) => isActiveInvestigationStatus(item.status) || isPendingQaInvestigationStatus(item.status));
+  const completedInvestigationExists = investigations.some((item) => isClosedInvestigationStatus(item.status));
+  const canApproveQcDecision = Boolean(
+    canRecordQcDecision &&
+      !activeOrPendingInvestigationExists &&
+      (planForm.samplingMethod === "COA_BASED_RELEASE" || worksheetReadyForApproval)
+  );
+  const canRejectQcDecision = Boolean(
+    canRecordQcDecision &&
+      !activeOrPendingInvestigationExists &&
+      (planForm.samplingMethod === "COA_BASED_RELEASE" || (worksheetFailCount > 0 && completedInvestigationExists))
+  );
+  const canExecuteResample = selectedRequest?.requestStatus === "RESAMPLE_REQUIRED";
+  const hasRetainedSample = Boolean(
+    selectedRequest?.sample?.retainedFlag &&
+      !selectedRequest.sample?.destroyedFlag &&
+      (selectedRequest.sample?.retainedQuantity ?? 0) > 0
+  );
+  const selectedRequestChildCycle = selectedRequest
+    ? cycles.find((cycle) => cycle.parentSamplingRequestId === selectedRequest.id) ?? null
+    : null;
+  const retestBlockReason = !selectedRequest?.sample
+    ? "No QC sample is available for retest."
+    : selectedRequest.sample.destroyedFlag
+      ? "Retest is blocked because the retained sample was destroyed."
+      : selectedRequest.sample.consumedFlag
+        ? "Retest is blocked because the retained sample has already been consumed."
+        : selectedRequest.sample.retentionExpired
+          ? "Retest is blocked because the retained sample retention period has expired."
+          : !hasRetainedSample
+            ? "Retest requires a retained sample quantity to be available."
+            : null;
+  const canExecuteRetest = selectedRequest?.requestStatus === "RETEST_REQUIRED" && !retestBlockReason;
+  const canDestroyRetainedSample = Boolean(
+    selectedRequest?.sample &&
+      hasRetainedSample &&
+      selectedRequest.requestStatus !== "HANDED_TO_QC" &&
+      selectedRequest.requestStatus !== "SAMPLED" &&
+      selectedRequest.requestStatus !== "IN_PROGRESS" &&
+      selectedRequest.requestStatus !== "PLAN_DEFINED" &&
+      selectedRequest.requestStatus !== "REQUESTED"
+  );
 
   async function handlePlanSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -506,17 +739,214 @@ export function SamplingPage() {
   async function handleQcDecision(approved: boolean) {
     if (!selectedRequest) return;
     if (!qcRemarks.trim()) { setPlanError("QC remarks are required."); return; }
+    if (!qcDecisionSignoff.confirmedBy.trim()) { setPlanError("Final QC sign-off username is required."); return; }
+    const requiredConfirmation = approved ? qcDecisionApprovalConfirmation : qcDecisionRejectionConfirmation;
+    if (qcDecisionSignoff.confirmationText.trim() !== requiredConfirmation) {
+      setPlanError(`Type "${requiredConfirmation}" to confirm this QC decision.`);
+      return;
+    }
     setIsSubmitting(true); setPlanError(null);
     try {
-      const updatedRequest = await recordQcDecision(selectedRequest.id, {
+      const payload: QcDecisionRequest = {
         approved,
         remarks:   qcRemarks.trim(),
-        updatedBy: planForm.updatedBy ?? currentUserName
-      });
+        updatedBy: planForm.updatedBy ?? currentUserName,
+        confirmedBy: qcDecisionSignoff.confirmedBy.trim(),
+        confirmationText: qcDecisionSignoff.confirmationText.trim()
+      };
+      const updatedRequest = await recordQcDecision(selectedRequest.id, payload);
       setRequests((c) => c.map((r) => (r.id === updatedRequest.id ? updatedRequest : r)));
+      setQcDecisionSignoff({ confirmedBy: authenticatedUsername, confirmationText: "" });
       setSuccessMessage(approved ? "QC approved. Inventory moved to RELEASED." : "QC rejected. Inventory moved to REJECTED.");
     } catch (err) {
       setPlanError(err instanceof Error ? err.message : "Unknown error while recording QC decision");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleOpenInvestigation(rowId: string) {
+    if (!selectedRequest || !investigationForm.reason.trim()) {
+      setPlanError("Investigation reason is required.");
+      return;
+    }
+    setIsSubmitting(true); setPlanError(null);
+    try {
+      const created = await openSamplingInvestigation(selectedRequest.id, {
+        qcTestResultId: rowId,
+        reason: investigationForm.reason.trim(),
+        initialAssessment: investigationForm.initialAssessment?.trim() || undefined,
+        investigationType: investigationForm.investigationType
+      });
+      setInvestigations((current) => [...current, created]);
+      setRequests((current) => current.map((r) => r.id === selectedRequest.id ? { ...r, requestStatus: "UNDER_INVESTIGATION", qcDisposition: r.qcDisposition ? { ...r.qcDisposition, status: "UNDER_INVESTIGATION" } : r.qcDisposition } : r));
+      setResolveForms((current) => ({
+        ...current,
+        [created.id]: { outcome: "RESUME_REVIEW", phaseSummary: "", rootCause: "", resolutionRemarks: "", capaRequired: false, capaReference: "" }
+      }));
+      setPhaseTwoForms((current) => ({ ...current, [created.id]: { phaseOneSummary: "", phaseTwoAssessment: "" } }));
+      setQaReviewForms((current) => ({
+        ...current,
+        [created.id]: { approved: true, qaReviewRemarks: "", confirmedBy: authenticatedUsername, confirmationText: "" }
+      }));
+      setInvestigationForm({ qcTestResultId: "", reason: "", initialAssessment: "", investigationType: "OOS" });
+      setSuccessMessage("QC investigation opened.");
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : "Unknown error while opening investigation");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleEscalateInvestigationToPhaseTwo(investigationId: string) {
+    if (!selectedRequest) return;
+    const payload = phaseTwoForms[investigationId];
+    if (!payload?.phaseOneSummary.trim()) {
+      setPlanError("Phase I summary is required before escalation.");
+      return;
+    }
+    if (!payload?.phaseTwoAssessment.trim()) {
+      setPlanError("Phase II assessment is required.");
+      return;
+    }
+    setIsSubmitting(true); setPlanError(null);
+    try {
+      const escalated = await escalateSamplingInvestigationToPhaseTwo(selectedRequest.id, investigationId, {
+        phaseOneSummary: payload.phaseOneSummary.trim(),
+        phaseTwoAssessment: payload.phaseTwoAssessment.trim()
+      });
+      setInvestigations((current) => current.map((item) => item.id === escalated.id ? escalated : item));
+      setSuccessMessage("Investigation escalated to Phase II.");
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : "Unknown error while escalating investigation");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleResolveInvestigation(investigationId: string) {
+    if (!selectedRequest) return;
+    const payload = resolveForms[investigationId];
+    if (!payload?.phaseSummary.trim()) {
+      setPlanError("Phase summary is required.");
+      return;
+    }
+    if (!payload?.resolutionRemarks.trim()) {
+      setPlanError("Resolution remarks are required.");
+      return;
+    }
+    if (payload.capaRequired && !payload.capaReference?.trim()) {
+      setPlanError("CAPA reference is required when CAPA linkage is marked as required.");
+      return;
+    }
+    setIsSubmitting(true); setPlanError(null);
+    try {
+      const resolved = await resolveSamplingInvestigation(selectedRequest.id, investigationId, {
+        outcome: payload.outcome,
+        phaseSummary: payload.phaseSummary.trim(),
+        rootCause: payload.rootCause?.trim() || undefined,
+        resolutionRemarks: payload.resolutionRemarks.trim(),
+        capaRequired: payload.capaRequired,
+        capaReference: payload.capaReference?.trim() || undefined
+      });
+      setInvestigations((current) => current.map((item) => item.id === resolved.id ? resolved : item));
+      setSuccessMessage("Investigation submitted for QA review.");
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : "Unknown error while resolving investigation");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleCompleteQaReview(investigationId: string, approved: boolean) {
+    if (!selectedRequest) return;
+    const payload = qaReviewForms[investigationId];
+    if (!payload?.qaReviewRemarks.trim()) {
+      setPlanError("QA review remarks are required.");
+      return;
+    }
+    if (!payload.confirmedBy.trim()) {
+      setPlanError("QA sign-off username is required.");
+      return;
+    }
+    const requiredConfirmation = approved ? qaReviewApprovalConfirmation : qaReviewReturnConfirmation;
+    if (payload.confirmationText.trim() !== requiredConfirmation) {
+      setPlanError(`Type "${requiredConfirmation}" to confirm this QA review action.`);
+      return;
+    }
+    setIsSubmitting(true); setPlanError(null);
+    try {
+      const reviewed = await completeSamplingInvestigationQaReview(selectedRequest.id, investigationId, {
+        approved,
+        qaReviewRemarks: payload.qaReviewRemarks.trim(),
+        confirmedBy: payload.confirmedBy.trim(),
+        confirmationText: payload.confirmationText.trim()
+      });
+      setInvestigations((current) => current.map((item) => item.id === reviewed.id ? reviewed : item));
+      const refreshed = await fetchSamplingRequests();
+      setRequests(refreshed.content);
+      setSuccessMessage(approved ? "QA review approved and investigation closed." : "QA review returned the investigation to QC.");
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : "Unknown error while completing QA review");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleExecuteRetest() {
+    if (!selectedRequest || !retestForm.analystCode.trim()) {
+      setPlanError("Analyst code is required for retest.");
+      return;
+    }
+    setIsSubmitting(true); setPlanError(null);
+    try {
+      const updated = await executeSamplingRetest(selectedRequest.id, {
+        analystCode: retestForm.analystCode.trim(),
+        remarks: retestForm.remarks?.trim() || undefined
+      });
+      setRequests((current) => current.map((r) => r.id === updated.id ? updated : r));
+      setSuccessMessage("Retest started from retained sample.");
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : "Unknown error while starting retest");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleExecuteResample() {
+    if (!selectedRequest || !resampleForm.reason.trim()) {
+      setPlanError("Resample reason is required.");
+      return;
+    }
+    setIsSubmitting(true); setPlanError(null);
+    try {
+      const child = await executeSamplingResample(selectedRequest.id, { reason: resampleForm.reason.trim() });
+      const refreshed = await fetchSamplingRequests();
+      setRequests(refreshed.content);
+      setSelectedRequestId(child.id);
+      setSuccessMessage("Resample child cycle created.");
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : "Unknown error while creating resample cycle");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleDestroyRetainedSample() {
+    if (!selectedRequest || !destroyRetainedForm.remarks.trim()) {
+      setPlanError("Destruction remarks are required.");
+      return;
+    }
+    setIsSubmitting(true); setPlanError(null);
+    try {
+      const updated = await destroySamplingRetainedSample(selectedRequest.id, {
+        remarks: destroyRetainedForm.remarks.trim()
+      });
+      setRequests((current) => current.map((r) => r.id === updated.id ? updated : r));
+      setDestroyRetainedForm({ remarks: "" });
+      setSuccessMessage("Retained sample marked as destroyed.");
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : "Unknown error while destroying retained sample");
     } finally {
       setIsSubmitting(false);
     }
@@ -846,10 +1276,35 @@ export function SamplingPage() {
                       {selectedRequest.plan?.samplingLocation ?? "—"}
                     </div>
                   </div>
+                  <div className="rounded-xl bg-green-50 p-3">
+                    <div className="text-[10px] text-slate-500 mb-0.5">Cycle</div>
+                    <div className="text-xs font-bold text-slate-800">
+                      #{selectedRequest.cycleNumber}
+                      {selectedRequest.parentSamplingRequestId ? " · Child cycle" : " · Root cycle"}
+                    </div>
+                  </div>
+                  <div className="rounded-xl bg-green-50 p-3">
+                    <div className="text-[10px] text-slate-500 mb-0.5">Root Request</div>
+                    <div className="text-xs font-bold text-slate-800">{selectedRequest.rootSamplingRequestId.slice(0, 8).toUpperCase()}</div>
+                  </div>
                 </div>
 
                 {/* Sampling Checklist */}
                 <div className="border-t border-green-50 px-5 pb-5">
+                  {selectedRequest.requestStatus === "RESAMPLED" ? (
+                    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-700">
+                      This cycle is historical and has been superseded by a resample child cycle.
+                      {selectedRequestChildCycle ? (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedRequestId(selectedRequestChildCycle.id)}
+                          className="ml-2 font-semibold text-slate-800 underline"
+                        >
+                          Open cycle #{selectedRequestChildCycle.cycleNumber}
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <p className="mb-3 mt-4 text-xs font-semibold text-slate-700">Sampling Checklist</p>
                   <div className="space-y-1.5">
                     {getChecklist(selectedRequest.requestStatus, !!selectedRequest.plan).map((item) => (
@@ -879,6 +1334,49 @@ export function SamplingPage() {
                 </div>
               </div>
 
+              <div className="overflow-hidden rounded-2xl border border-green-100 bg-white shadow-sm">
+                <div className="border-b border-green-100 bg-gradient-to-r from-green-50 to-white px-5 py-3">
+                  <span className="text-sm font-semibold text-slate-700">Cycle History</span>
+                </div>
+                <div className="p-5">
+                  {cycles.length === 0 ? (
+                    <p className="text-xs text-slate-400">No cycle history available.</p>
+                  ) : (
+                    <div className="grid gap-2">
+                      {cycles.map((cycle) => (
+                        <button
+                          key={cycle.id}
+                          type="button"
+                          onClick={() => setSelectedRequestId(cycle.id)}
+                          className={[
+                            "flex items-center justify-between rounded-xl border px-3 py-3 text-left transition",
+                            cycle.id === selectedRequest.id ? "border-green-400 bg-green-50" : "border-green-100 hover:bg-green-50/40"
+                          ].join(" ")}
+                        >
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-800">
+                              <span>Cycle #{cycle.cycleNumber}</span>
+                              {cycle.id === selectedRequest.id ? (
+                                <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">Current</span>
+                              ) : null}
+                              {!cycle.parentSamplingRequestId ? (
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">Root</span>
+                              ) : null}
+                            </div>
+                            <div className="mt-0.5 text-[11px] text-slate-500">
+                              {cycle.resampleReason ? `Reason: ${cycle.resampleReason}` : "Original sampling cycle"}
+                            </div>
+                          </div>
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusPillCls(cycle.requestStatus)}`}>
+                            {statusLabel(cycle.requestStatus)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* ── Sampling Plan form ─────────────────────────────────── */}
               <div className="overflow-hidden rounded-2xl border border-green-100 bg-white shadow-sm">
                 <div className="flex items-center justify-between border-b border-green-100 bg-gradient-to-r from-green-50 to-white px-5 py-3">
@@ -903,16 +1401,47 @@ export function SamplingPage() {
                       <select required disabled={!canEditPlan || isSubmitting} value={planForm.moaId}
                         onChange={(e) => setPlanForm((c) => ({ ...c, moaId: e.target.value }))}
                         className={fieldCls}>
-                        <option value="">Select MoA</option>
-                        {moas.map((m) => (
+                        <option value="">{selectedPlanMoaIds.length > 1 ? "Select linked MoA" : "Select MoA"}</option>
+                        {selectedPlanMoas.map((m) => (
                           <option key={m.id} value={m.id}>{m.moaCode} - {m.moaName}</option>
                         ))}
                       </select>
+                      <span className="mt-1 block text-[11px] text-slate-400">
+                        {selectedPlanMoaIds.length === 0
+                          ? "No MoA is linked through the selected specification parameters yet."
+                          : selectedPlanMoaIds.length === 1
+                            ? "Auto-selected from the linked spec parameter."
+                            : "Only MoAs linked in the selected specification are available here."}
+                      </span>
                     </label>
                     <label className="block">
                       <span className={labelCls}>Sampling Method</span>
                       <input readOnly value={planForm.samplingMethod.replace(/_/g, " ")} className={readonlyCls} />
+                      <span className="mt-1 block text-[11px] text-slate-400">
+                        Driven by the approved specification linked in Material Master.
+                      </span>
                     </label>
+                  </div>
+
+                  <div className="grid gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs text-slate-700 md:grid-cols-3">
+                    <div>
+                      <div className="font-semibold text-slate-800">Material Rule</div>
+                      <div className="mt-1">{selectedMaterial?.materialType ?? "—"} material using spec method {selectedMaterialSpec?.samplingMethod?.replace(/_/g, " ") ?? "—"}.</div>
+                    </div>
+                    <div>
+                      <div className="font-semibold text-slate-800">Handling</div>
+                      <div className="mt-1">
+                        {selectedMaterial?.photosensitive ? "Photosensitive controls required" : "No light-protection rule"}
+                        {" · "}
+                        {selectedMaterial?.hygroscopic ? "Hygroscopic controls required" : "No desiccant rule"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="font-semibold text-slate-800">Release Basis</div>
+                      <div className="mt-1">
+                        {selectedMaterial?.vendorCoaReleaseAllowed ? "Vendor CoA release allowed when the spec uses CoA mode." : "Vendor CoA release is blocked by Material Master."}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-4">
@@ -1095,12 +1624,63 @@ export function SamplingPage() {
                         <span className={labelCls}>QC Storage Location</span>
                         <input value={qcReceiptForm.sampleStorageLocation} onChange={(e) => setQcReceiptForm((c) => ({ ...c, sampleStorageLocation: e.target.value }))} className={fieldCls} placeholder="e.g. QC Cold Room Shelf A2" disabled={!canReceiveInQc || isSubmitting} />
                       </label>
+                      <label className="flex items-center gap-2 rounded-xl border border-cyan-100 bg-cyan-50/50 px-3 py-2.5 text-xs text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(qcReceiptForm.retainedFlag)}
+                          onChange={(e) => setQcReceiptForm((current) => ({
+                            ...current,
+                            retainedFlag: e.target.checked,
+                            retainedQuantity: e.target.checked ? current.retainedQuantity : undefined,
+                            retainedUntil: e.target.checked ? current.retainedUntil : undefined
+                          }))}
+                          disabled={!canReceiveInQc || isSubmitting}
+                        />
+                        Retained sample required
+                      </label>
                       <div className="flex items-end">
                         <button type="button" onClick={handleQcReceipt} disabled={!canReceiveInQc || isSubmitting} className="w-full rounded-xl border border-cyan-200 px-4 py-2.5 text-xs font-semibold text-cyan-700 hover:bg-cyan-50 disabled:cursor-not-allowed disabled:text-slate-300">
                           Record QC Receipt
                         </button>
                       </div>
                     </div>
+
+                    {qcReceiptForm.retainedFlag ? (
+                      <div className="rounded-xl border border-cyan-100 bg-cyan-50/40 p-4">
+                        <div className="mb-3 text-xs font-semibold text-cyan-900">Retained Sample Details</div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <label className="block">
+                            <span className={labelCls}>Retained Quantity</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.001"
+                              value={qcReceiptForm.retainedQuantity ?? ""}
+                              onChange={(e) => setQcReceiptForm((current) => ({
+                                ...current,
+                                retainedQuantity: e.target.value ? Number(e.target.value) : undefined
+                              }))}
+                              className={fieldCls}
+                              placeholder={sampleQuantityUom ? `e.g. 0.050 ${sampleQuantityUom}` : "e.g. 0.050"}
+                              disabled={!canReceiveInQc || isSubmitting}
+                            />
+                          </label>
+                          <label className="block">
+                            <span className={labelCls}>Retained Until</span>
+                            <input
+                              type="date"
+                              value={qcReceiptForm.retainedUntil ?? ""}
+                              onChange={(e) => setQcReceiptForm((current) => ({ ...current, retainedUntil: e.target.value || undefined }))}
+                              className={fieldCls}
+                              disabled={!canReceiveInQc || isSubmitting}
+                            />
+                          </label>
+                        </div>
+                        <div className="mt-3 text-[11px] text-cyan-900">
+                          Capture retained details here during QC receipt. These values appear later in the retained-sample panel.
+                        </div>
+                      </div>
+                    ) : null}
 
                     <div className="grid gap-4 md:grid-cols-[1fr_auto]">
                       <label className="block">
@@ -1117,7 +1697,105 @@ export function SamplingPage() {
                 </div>
               ) : null}
 
-              {planForm.samplingMethod !== "COA_BASED_RELEASE" && (worksheet.length > 0 || ["RECEIVED", "UNDER_REVIEW", "COMPLETED", "APPROVED", "REJECTED"].includes(selectedRequest.requestStatus)) ? (
+              {planForm.samplingMethod !== "COA_BASED_RELEASE" && selectedRequest.sample ? (
+                <div className="overflow-hidden rounded-2xl border border-green-100 bg-white shadow-sm">
+                  <div className="border-b border-green-100 bg-gradient-to-r from-green-50 to-white px-5 py-3">
+                    <span className="text-sm font-semibold text-slate-700">Retained Sample</span>
+                  </div>
+                  <div className="space-y-4 p-5">
+                    <div className="grid gap-4 md:grid-cols-4">
+                      <div className="rounded-xl border border-green-100 bg-green-50/40 p-4">
+                        <div className="text-[10px] text-slate-500">Retention Status</div>
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${selectedRequest.sample.retainedFlag ? "bg-cyan-100 text-cyan-700" : "bg-slate-100 text-slate-600"}`}>
+                            {selectedRequest.sample.retainedFlag ? "Retained" : "Not Retained"}
+                          </span>
+                          {selectedRequest.sample.consumedFlag ? (
+                            <span className="rounded-full bg-yellow-100 px-2.5 py-1 text-[11px] font-semibold text-yellow-700">Consumed</span>
+                          ) : null}
+                          {selectedRequest.sample.destroyedFlag ? (
+                            <span className="rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-semibold text-rose-700">Destroyed</span>
+                          ) : null}
+                          {selectedRequest.sample.retentionExpired ? (
+                            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700">Expired</span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-green-100 bg-white p-4">
+                        <div className="text-[10px] text-slate-500">Retained Quantity</div>
+                        <div className="mt-1 text-sm font-semibold text-slate-800">
+                          {selectedRequest.sample.retainedQuantity != null
+                            ? `${selectedRequest.sample.retainedQuantity}${sampleQuantityUom ? ` ${sampleQuantityUom}` : ""}`
+                            : "—"}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-green-100 bg-white p-4">
+                        <div className="text-[10px] text-slate-500">Retained Until</div>
+                        <div className="mt-1 text-sm font-semibold text-slate-800">
+                          {selectedRequest.sample.retainedUntil ? new Date(selectedRequest.sample.retainedUntil).toLocaleDateString() : "—"}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-green-100 bg-white p-4">
+                        <div className="text-[10px] text-slate-500">QC Storage</div>
+                        <div className="mt-1 text-sm font-semibold text-slate-800">
+                          {selectedRequest.sample.qcStorageLocation ?? "—"}
+                        </div>
+                      </div>
+                    </div>
+
+                    {selectedRequest.sample.retentionExpired && !selectedRequest.sample.destroyedFlag ? (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                        The retention period has expired. Retest will be blocked until a new sampling cycle is created.
+                      </div>
+                    ) : null}
+
+                    {!canDestroyRetainedSample && selectedRequest.sample.retainedFlag && !selectedRequest.sample.destroyedFlag ? (
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                        Retained sample destruction is unavailable while the sample is still in warehouse transit or active sampling steps.
+                      </div>
+                    ) : null}
+
+                    {selectedRequest.sample.destroyedFlag ? (
+                      <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-800">
+                        This retained sample has already been destroyed. Retest is no longer possible for this cycle.
+                      </div>
+                    ) : null}
+
+                    {selectedRequest.sample.consumedFlag ? (
+                      <div className="rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 text-xs text-yellow-800">
+                        The retained sample was already consumed during retest execution. Additional retest attempts require a new sampling cycle.
+                      </div>
+                    ) : null}
+
+                    {canDestroyRetainedSample ? (
+                      <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+                        <label className="block">
+                          <span className={labelCls}>Destruction Remarks</span>
+                          <input
+                            value={destroyRetainedForm.remarks}
+                            onChange={(e) => setDestroyRetainedForm({ remarks: e.target.value })}
+                            className={fieldCls}
+                            placeholder="Reason for retained sample destruction"
+                            disabled={isSubmitting}
+                          />
+                        </label>
+                        <div className="flex items-end">
+                          <button
+                            type="button"
+                            onClick={() => void handleDestroyRetainedSample()}
+                            disabled={isSubmitting || !destroyRetainedForm.remarks.trim()}
+                            className="w-full rounded-xl border border-rose-200 px-4 py-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                          >
+                            Mark Retained Sample Destroyed
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
+              {planForm.samplingMethod !== "COA_BASED_RELEASE" && (worksheet.length > 0 || ["RECEIVED", "UNDER_REVIEW", "COMPLETED", "APPROVED", "REJECTED", "RESAMPLED"].includes(selectedRequest.requestStatus)) ? (
                 <div className="overflow-hidden rounded-2xl border border-green-100 bg-white shadow-sm">
                   <div className="flex items-center justify-between border-b border-green-100 bg-gradient-to-r from-green-50 to-white px-5 py-3">
                     <span className="text-sm font-semibold text-slate-700">QC Worksheet</span>
@@ -1172,9 +1850,16 @@ export function SamplingPage() {
                                 </span>
                               </td>
                               <td className="px-3 py-3 text-right">
-                                <button type="button" onClick={() => void handleWorksheetSave(row.id)} disabled={selectedRequest.requestStatus !== "UNDER_REVIEW" || isSubmitting} className="rounded-lg border border-green-200 px-3 py-1.5 text-[11px] font-semibold text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:text-slate-300">
-                                  Save Result
-                                </button>
+                                <div className="flex justify-end gap-2">
+                                  <button type="button" onClick={() => void handleWorksheetSave(row.id)} disabled={selectedRequest.requestStatus !== "UNDER_REVIEW" || isSubmitting} className="rounded-lg border border-green-200 px-3 py-1.5 text-[11px] font-semibold text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:text-slate-300">
+                                    Save Result
+                                  </button>
+                                  {(row.status === "FAIL" || row.status === "OOS" || row.status === "INCONCLUSIVE") ? (
+                                    <button type="button" onClick={() => setInvestigationForm((current) => ({ ...current, qcTestResultId: row.id }))} disabled={selectedRequest.requestStatus !== "UNDER_REVIEW" || isSubmitting} className="rounded-lg border border-fuchsia-200 px-3 py-1.5 text-[11px] font-semibold text-fuchsia-700 hover:bg-fuchsia-50 disabled:cursor-not-allowed disabled:text-slate-300">
+                                      Select for Investigation
+                                    </button>
+                                  ) : null}
+                                </div>
                               </td>
                             </tr>
                           );
@@ -1185,16 +1870,436 @@ export function SamplingPage() {
                 </div>
               ) : null}
 
+              {planForm.samplingMethod !== "COA_BASED_RELEASE" ? (
+                <div className="overflow-hidden rounded-2xl border border-green-100 bg-white shadow-sm">
+                  <div className="border-b border-green-100 bg-gradient-to-r from-green-50 to-white px-5 py-3">
+                    <span className="text-sm font-semibold text-slate-700">QC Investigation</span>
+                  </div>
+                  <div className="space-y-4 p-5">
+                    <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto]">
+                      <label className="block">
+                        <span className={labelCls}>Selected failing worksheet row</span>
+                        <select
+                          value={investigationForm.qcTestResultId}
+                          onChange={(e) => setInvestigationForm((current) => ({ ...current, qcTestResultId: e.target.value }))}
+                          className={fieldCls}
+                          disabled={selectedRequest.requestStatus !== "UNDER_REVIEW" || isSubmitting}
+                        >
+                          <option value="">Select failed row</option>
+                          {worksheet.filter((row) => row.status === "FAIL" || row.status === "OOS" || row.status === "INCONCLUSIVE").map((row) => (
+                            <option key={row.id} value={row.id}>{row.sequence}. {row.parameterName} ({row.status})</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className={labelCls}>Investigation Type</span>
+                        <select
+                          value={investigationForm.investigationType ?? "OOS"}
+                          onChange={(e) => setInvestigationForm((current) => ({ ...current, investigationType: e.target.value as OpenQcInvestigationRequest["investigationType"] }))}
+                          className={fieldCls}
+                          disabled={selectedRequest.requestStatus !== "UNDER_REVIEW" || isSubmitting}
+                        >
+                          <option value="OOS">OOS</option>
+                          <option value="OOT">OOT</option>
+                          <option value="GENERAL">General</option>
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className={labelCls}>Investigation reason</span>
+                        <input
+                          value={investigationForm.reason}
+                          onChange={(e) => setInvestigationForm((current) => ({ ...current, reason: e.target.value }))}
+                          className={fieldCls}
+                          disabled={selectedRequest.requestStatus !== "UNDER_REVIEW" || isSubmitting}
+                          placeholder="Why is this result being investigated?"
+                        />
+                      </label>
+                      <div className="flex items-end">
+                        <button
+                          type="button"
+                          onClick={() => void handleOpenInvestigation(investigationForm.qcTestResultId)}
+                          disabled={selectedRequest.requestStatus !== "UNDER_REVIEW" || isSubmitting || !investigationForm.qcTestResultId}
+                          className="w-full rounded-xl border border-fuchsia-200 px-4 py-2.5 text-xs font-semibold text-fuchsia-700 hover:bg-fuchsia-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                        >
+                          Open Investigation
+                        </button>
+                      </div>
+                    </div>
+                    <label className="block">
+                      <span className={labelCls}>Initial assessment</span>
+                      <textarea
+                        rows={2}
+                        value={investigationForm.initialAssessment ?? ""}
+                        onChange={(e) => setInvestigationForm((current) => ({ ...current, initialAssessment: e.target.value }))}
+                        className={fieldCls}
+                        disabled={selectedRequest.requestStatus !== "UNDER_REVIEW" || isSubmitting}
+                      />
+                    </label>
+
+                    {investigations.length > 0 ? (
+                      <div className="space-y-3">
+                        {investigations.map((item) => {
+                          const resolveForm = resolveForms[item.id] ?? { outcome: "RESUME_REVIEW", phaseSummary: "", rootCause: "", resolutionRemarks: "", capaRequired: false, capaReference: "" };
+                          const phaseTwoForm = phaseTwoForms[item.id] ?? { phaseOneSummary: "", phaseTwoAssessment: "" };
+                          const qaReviewForm = qaReviewForms[item.id] ?? { approved: true, qaReviewRemarks: "", confirmedBy: authenticatedUsername, confirmationText: "" };
+                          const qaReviewerIsSubmitter = item.outcomeSubmittedBy === authenticatedUsername;
+                          const canCompleteThisQaReview = canQaReviewInvestigations && !qaReviewerIsSubmitter;
+                          return (
+                            <div key={item.id} className="rounded-xl border border-green-100 p-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <div className="text-xs font-semibold text-slate-800">{item.reason}</div>
+                                  <div className="mt-1 flex flex-wrap gap-2">
+                                    <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">{item.investigationNumber}</span>
+                                    <span className="inline-flex rounded-full bg-fuchsia-50 px-2 py-0.5 text-[10px] font-semibold text-fuchsia-700">{item.investigationType}</span>
+                                    <span className="inline-flex rounded-full bg-cyan-50 px-2 py-0.5 text-[10px] font-semibold text-cyan-700">{item.phase.replace("_", " ")}</span>
+                                  </div>
+                                  <div className="mt-0.5 text-[11px] text-slate-500">Opened by {item.openedBy} · {new Date(item.openedAt).toLocaleString()}</div>
+                                </div>
+                                <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                  isActiveInvestigationStatus(item.status)
+                                    ? "bg-fuchsia-100 text-fuchsia-700"
+                                    : isPendingQaInvestigationStatus(item.status)
+                                      ? "bg-amber-100 text-amber-700"
+                                      : "bg-slate-100 text-slate-600"
+                                }`}>
+                                  {item.status}
+                                </span>
+                              </div>
+                              {isReturnedInvestigation(item) ? (
+                                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+                                  <div className="font-semibold">Returned by QA</div>
+                                  <div className="mt-1">
+                                    {item.returnedToQcRemarks ?? item.qaReviewRemarks ?? "QA returned this investigation for QC updates before final review."}
+                                  </div>
+                                </div>
+                              ) : null}
+                              {isActiveInvestigationStatus(item.status) ? (
+                                <>
+                                  <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-700">
+                                    {item.phase === "PHASE_I"
+                                      ? 'Use "Phase I summary" and "Phase II assessment" before escalation. After escalation or closure, enter the final phase summary, root cause, and resolution remarks in the QC outcome section below.'
+                                      : 'For Phase II investigations, enter the final phase summary, root cause, and resolution remarks in the QC outcome section below before submitting to QA.'}
+                                  </div>
+                                  <div className="mt-3 grid gap-4 md:grid-cols-3">
+                                    <label className="block">
+                                      <span className={labelCls}>Proposed outcome</span>
+                                      <select
+                                        value={resolveForm.outcome}
+                                        onChange={(e) => setResolveForms((current) => ({ ...current, [item.id]: { ...resolveForm, outcome: e.target.value as ResolveQcInvestigationRequest["outcome"] } }))}
+                                        className={fieldCls}
+                                        disabled={isSubmitting}
+                                      >
+                                        <option value="RESUME_REVIEW">Resume Review</option>
+                                        <option value="RETEST_REQUIRED">Retest Required</option>
+                                        <option value="RESAMPLE_REQUIRED">Resample Required</option>
+                                        <option value="REJECTED">Reject</option>
+                                      </select>
+                                    </label>
+                                    <label className="block md:col-span-2">
+                                      <span className={labelCls}>Root cause</span>
+                                      <input
+                                        value={resolveForm.rootCause ?? ""}
+                                        onChange={(e) => setResolveForms((current) => ({ ...current, [item.id]: { ...resolveForm, rootCause: e.target.value } }))}
+                                        className={fieldCls}
+                                        disabled={isSubmitting}
+                                        placeholder="e.g. Sampling or preparation variation suspected"
+                                      />
+                                    </label>
+                                  </div>
+                                  <label className="mt-3 block">
+                                    <span className={labelCls}>{phaseSummaryLabel(item.phase)}</span>
+                                    <textarea
+                                      rows={2}
+                                      value={resolveForm.phaseSummary}
+                                      onChange={(e) => setResolveForms((current) => ({ ...current, [item.id]: { ...resolveForm, phaseSummary: e.target.value } }))}
+                                      className={fieldCls}
+                                      disabled={isSubmitting}
+                                      placeholder={item.phase === "PHASE_II" ? "e.g. Phase II confirms retained-sample retest is required" : "e.g. No assignable lab error found in Phase I"}
+                                    />
+                                  </label>
+                                  <div className="mt-3 grid gap-4 md:grid-cols-[auto_1fr]">
+                                    <label className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-700">
+                                      <input
+                                        type="checkbox"
+                                        checked={Boolean(resolveForm.capaRequired)}
+                                        onChange={(e) => setResolveForms((current) => ({ ...current, [item.id]: { ...resolveForm, capaRequired: e.target.checked, capaReference: e.target.checked ? (resolveForm.capaReference ?? "") : "" } }))}
+                                        disabled={isSubmitting}
+                                      />
+                                      CAPA linkage required
+                                    </label>
+                                    <label className="block">
+                                      <span className={labelCls}>CAPA reference</span>
+                                      <input
+                                        value={resolveForm.capaReference ?? ""}
+                                        onChange={(e) => setResolveForms((current) => ({ ...current, [item.id]: { ...resolveForm, capaReference: e.target.value } }))}
+                                        className={fieldCls}
+                                        disabled={isSubmitting || !resolveForm.capaRequired}
+                                        placeholder="CAPA identifier or tracking reference"
+                                      />
+                                    </label>
+                                  </div>
+                                  <label className="mt-3 block">
+                                    <span className={labelCls}>Resolution remarks</span>
+                                    <textarea
+                                      rows={2}
+                                      value={resolveForm.resolutionRemarks}
+                                      onChange={(e) => setResolveForms((current) => ({ ...current, [item.id]: { ...resolveForm, resolutionRemarks: e.target.value } }))}
+                                      className={fieldCls}
+                                      disabled={isSubmitting}
+                                      placeholder="e.g. Move to retained-sample retest"
+                                    />
+                                  </label>
+                                </>
+                              ) : null}
+                              {isActiveInvestigationStatus(item.status) && item.phase === "PHASE_I" ? (
+                                <div className="mt-3 rounded-xl border border-cyan-100 bg-cyan-50/50 p-3">
+                                  <label className="block">
+                                    <span className={labelCls}>Phase I summary for escalation</span>
+                                    <textarea
+                                      rows={2}
+                                      value={phaseTwoForm.phaseOneSummary}
+                                      onChange={(e) => setPhaseTwoForms((current) => ({ ...current, [item.id]: { ...phaseTwoForm, phaseOneSummary: e.target.value } }))}
+                                      className={fieldCls}
+                                      disabled={isSubmitting}
+                                      placeholder="e.g. No assignable lab error found in Phase I"
+                                    />
+                                  </label>
+                                  <label className="block">
+                                    <span className={labelCls}>Phase II assessment</span>
+                                    <textarea
+                                      rows={2}
+                                      value={phaseTwoForm.phaseTwoAssessment}
+                                      onChange={(e) => setPhaseTwoForms((current) => ({ ...current, [item.id]: { ...phaseTwoForm, phaseTwoAssessment: e.target.value } }))}
+                                      className={fieldCls}
+                                      disabled={isSubmitting}
+                                      placeholder="e.g. Extend investigation to full batch and process review"
+                                    />
+                                  </label>
+                                  <div className="mt-3 flex justify-end">
+                                    <button
+                                      type="button"
+                                      onClick={() => void handleEscalateInvestigationToPhaseTwo(item.id)}
+                                      disabled={isSubmitting || !phaseTwoForm.phaseOneSummary.trim() || !phaseTwoForm.phaseTwoAssessment.trim()}
+                                      className="rounded-xl border border-cyan-200 px-4 py-2 text-xs font-semibold text-cyan-700 hover:bg-cyan-100 disabled:cursor-not-allowed disabled:text-slate-300"
+                                    >
+                                      Escalate to Phase II
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : null}
+                              {item.phaseOneSummary ? (
+                                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-700">
+                                  <span className="font-semibold">Phase I summary:</span> {item.phaseOneSummary}
+                                </div>
+                              ) : null}
+                              {item.phase === "PHASE_II" && item.phaseTwoAssessment ? (
+                                <div className="mt-3 rounded-xl border border-cyan-100 bg-cyan-50/50 px-4 py-3 text-xs text-cyan-900">
+                                  <span className="font-semibold">Phase II assessment:</span> {item.phaseTwoAssessment}
+                                </div>
+                              ) : null}
+                              {item.phaseTwoSummary ? (
+                                <div className="mt-3 rounded-xl border border-cyan-100 bg-cyan-50/50 px-4 py-3 text-xs text-cyan-900">
+                                  <span className="font-semibold">Phase II summary:</span> {item.phaseTwoSummary}
+                                </div>
+                              ) : null}
+                              {item.capaRequired ? (
+                                <div className="mt-3 rounded-xl border border-rose-100 bg-rose-50/60 px-4 py-3 text-xs text-rose-900">
+                                  <span className="font-semibold">CAPA linkage:</span> {item.capaReference ?? "Required"}
+                                </div>
+                              ) : null}
+                              {item.closureCategory ? (
+                                <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 text-xs text-emerald-900">
+                                  <span className="font-semibold">Closure classification:</span> {closureCategoryLabel(item.closureCategory)}
+                                </div>
+                              ) : null}
+                              <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                <div className="text-[11px] font-semibold text-slate-700">Audit Timeline</div>
+                                <div className="mt-2 space-y-2 text-[11px] text-slate-600">
+                                  <div>Opened by {item.openedBy} on {new Date(item.openedAt).toLocaleString()}</div>
+                                  {item.phaseTwoEscalatedAt ? (
+                                    <div>Escalated to Phase II by {item.phaseTwoEscalatedBy ?? "—"} on {new Date(item.phaseTwoEscalatedAt).toLocaleString()}</div>
+                                  ) : null}
+                                  {item.outcomeSubmittedAt ? (
+                                    <div>Submitted to QA by {item.outcomeSubmittedBy ?? "—"} on {new Date(item.outcomeSubmittedAt).toLocaleString()}</div>
+                                  ) : null}
+                                  {item.returnedToQcAt ? (
+                                    <div>Returned to QC by {item.returnedToQcBy ?? "—"} on {new Date(item.returnedToQcAt).toLocaleString()}</div>
+                                  ) : null}
+                                  {item.qaReviewedAt ? (
+                                    <div>
+                                      QA {item.qaReviewDecision === "RETURNED" ? "returned" : "approved"} by {item.qaReviewedBy ?? "—"} on {new Date(item.qaReviewedAt).toLocaleString()}
+                                    </div>
+                                  ) : null}
+                                  {item.qaReviewConfirmationAt ? (
+                                    <div>QA sign-off captured from {item.qaReviewConfirmedBy ?? "—"} on {new Date(item.qaReviewConfirmationAt).toLocaleString()}</div>
+                                  ) : null}
+                                  {item.closedAt ? (
+                                    <div>Closed by {item.closedBy ?? "—"} on {new Date(item.closedAt).toLocaleString()}</div>
+                                  ) : null}
+                                </div>
+                              </div>
+                              {isPendingQaInvestigationStatus(item.status) ? (
+                                <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50/70 p-3">
+                                  <div className="text-xs font-semibold text-amber-900">Pending QA review</div>
+                                  <div className="mt-1 text-[11px] text-amber-800">
+                                    QC submitted outcome <span className="font-semibold">{item.outcome ?? "—"}</span>. Final disposition stays blocked until QA review completes.
+                                  </div>
+                                  {canCompleteThisQaReview ? (
+                                    <>
+                                      <label className="mt-3 block">
+                                        <span className={labelCls}>QA review remarks</span>
+                                        <textarea
+                                          rows={2}
+                                          value={qaReviewForm.qaReviewRemarks}
+                                          onChange={(e) => setQaReviewForms((current) => ({ ...current, [item.id]: { ...qaReviewForm, qaReviewRemarks: e.target.value } }))}
+                                          className={fieldCls}
+                                          disabled={isSubmitting}
+                                          placeholder="Record QA approval or return comments"
+                                        />
+                                      </label>
+                                      <div className="mt-3 grid gap-4 md:grid-cols-2">
+                                        <label className="block">
+                                          <span className={labelCls}>QA sign-off username</span>
+                                          <input
+                                            value={qaReviewForm.confirmedBy}
+                                            readOnly
+                                            className={readonlyCls}
+                                            disabled
+                                          />
+                                        </label>
+                                        <label className="block">
+                                          <span className={labelCls}>Typed confirmation</span>
+                                          <input
+                                            value={qaReviewForm.confirmationText}
+                                            onChange={(e) => setQaReviewForms((current) => ({ ...current, [item.id]: { ...qaReviewForm, confirmationText: e.target.value } }))}
+                                            className={fieldCls}
+                                            disabled={isSubmitting}
+                                            placeholder={qaReviewApprovalConfirmation}
+                                          />
+                                        </label>
+                                      </div>
+                                      <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+                                        QA sign-off username is taken from the logged-in account. Approval phrase: "{qaReviewApprovalConfirmation}". Return phrase: "{qaReviewReturnConfirmation}".
+                                      </div>
+                                      <div className="mt-3 flex flex-wrap justify-end gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => void handleCompleteQaReview(item.id, false)}
+                                          disabled={isSubmitting || !qaReviewForm.qaReviewRemarks.trim()}
+                                          className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                                        >
+                                          Return to QC
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => void handleCompleteQaReview(item.id, true)}
+                                          disabled={isSubmitting || !qaReviewForm.qaReviewRemarks.trim()}
+                                          className="rounded-xl border border-amber-200 px-4 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100 disabled:cursor-not-allowed disabled:text-slate-300"
+                                        >
+                                          Approve QA Review
+                                        </button>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <div className="mt-3 rounded-xl border border-amber-200 bg-white px-4 py-3 text-xs text-amber-800">
+                                      {qaReviewerIsSubmitter
+                                        ? "Awaiting an independent QC manager or super admin review."
+                                        : "Awaiting QC manager or super admin review."}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : null}
+                              {isActiveInvestigationStatus(item.status) ? (
+                                <div className="mt-3 flex justify-end">
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleResolveInvestigation(item.id)}
+                                    disabled={isSubmitting}
+                                    className="rounded-xl border border-fuchsia-200 px-4 py-2 text-xs font-semibold text-fuchsia-700 hover:bg-fuchsia-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                                  >
+                                    Submit for QA Review
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="mt-3 text-[11px] text-slate-500">
+                                  {item.closedAt
+                                    ? `Closed by ${item.closedBy ?? "—"} · ${new Date(item.closedAt).toLocaleString()}`
+                                    : item.qaReviewedAt
+                                      ? `QA reviewed by ${item.qaReviewedBy ?? "—"} · ${new Date(item.qaReviewedAt).toLocaleString()}`
+                                      : "Closed"}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-400">No QC investigations recorded for this cycle.</p>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
+              {(selectedRequest.requestStatus === "RETEST_REQUIRED" || canExecuteResample) ? (
+                <div className="overflow-hidden rounded-2xl border border-green-100 bg-white shadow-sm">
+                  <div className="border-b border-green-100 bg-gradient-to-r from-green-50 to-white px-5 py-3">
+                    <span className="text-sm font-semibold text-slate-700">Exception Actions</span>
+                  </div>
+                  <div className="space-y-4 p-5">
+                    {selectedRequest.requestStatus === "RETEST_REQUIRED" ? (
+                      <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto]">
+                        <label className="block">
+                          <span className={labelCls}>Retest Analyst Code</span>
+                          <input value={retestForm.analystCode} onChange={(e) => setRetestForm((current) => ({ ...current, analystCode: e.target.value }))} className={fieldCls} disabled={isSubmitting || !canExecuteRetest} />
+                        </label>
+                        <label className="block">
+                          <span className={labelCls}>Retest Remarks</span>
+                          <input value={retestForm.remarks ?? ""} onChange={(e) => setRetestForm((current) => ({ ...current, remarks: e.target.value }))} className={fieldCls} disabled={isSubmitting || !canExecuteRetest} />
+                        </label>
+                        <div className="flex items-end">
+                          <button type="button" onClick={handleExecuteRetest} disabled={isSubmitting || !canExecuteRetest} className="w-full rounded-xl border border-yellow-200 px-4 py-2.5 text-xs font-semibold text-yellow-700 hover:bg-yellow-50 disabled:cursor-not-allowed disabled:text-slate-300">
+                            Start Retest
+                          </button>
+                        </div>
+                        {retestBlockReason ? (
+                          <div className="md:col-span-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                            {retestBlockReason}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {canExecuteResample ? (
+                      <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+                        <label className="block">
+                          <span className={labelCls}>Resample Reason</span>
+                          <input value={resampleForm.reason} onChange={(e) => setResampleForm({ reason: e.target.value })} className={fieldCls} disabled={isSubmitting} />
+                        </label>
+                        <div className="flex items-end">
+                          <button type="button" onClick={handleExecuteResample} disabled={isSubmitting} className="w-full rounded-xl border border-amber-200 px-4 py-2.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:cursor-not-allowed disabled:text-slate-300">
+                            Create Resample Cycle
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
               {/* ── QC Disposition Decision ────────────────────────────── */}
               <div className="overflow-hidden rounded-2xl border border-green-100 bg-white shadow-sm">
                 <div className="border-b border-green-100 bg-gradient-to-r from-green-50 to-white px-5 py-3">
                   <span className="text-sm font-semibold text-slate-700">QC Disposition Decision</span>
                 </div>
                 <div className="p-5 space-y-4">
-                  {!canRecordQcDecision && (
+                  {(!canRecordQcDecision || !canRecordFinalQcDecision || activeOrPendingInvestigationExists) && (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
                       {selectedRequest.requestStatus === "APPROVED" || selectedRequest.requestStatus === "REJECTED"
                         ? "QC decision already recorded for this request."
+                        : !canRecordFinalQcDecision
+                          ? "Only QC managers or super admins can record the final QC decision."
+                        : activeOrPendingInvestigationExists
+                          ? "QC decision is blocked until active and pending-QA investigations are complete."
                         : planForm.samplingMethod === "COA_BASED_RELEASE"
                           ? "CoA-based release can be decided once the sampling plan is defined."
                           : "Complete QC receipt, start review, and finish mandatory worksheet results before recording a QC decision."}
@@ -1207,13 +2312,47 @@ export function SamplingPage() {
                       value={qcRemarks}
                       onChange={(e) => setQcRemarks(e.target.value)}
                       className={fieldCls}
+                      disabled={!canRecordFinalQcDecision || isSubmitting}
                       placeholder="Enter QC remarks (required before approve / reject)"
                     />
                   </div>
+                  {canRecordFinalQcDecision ? (
+                    <>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <label className="block">
+                          <span className={labelCls}>Final QC sign-off username</span>
+                          <input
+                            value={qcDecisionSignoff.confirmedBy}
+                            readOnly
+                            className={readonlyCls}
+                            disabled
+                          />
+                        </label>
+                        <label className="block">
+                          <span className={labelCls}>Typed confirmation</span>
+                          <input
+                            value={qcDecisionSignoff.confirmationText}
+                            onChange={(e) => setQcDecisionSignoff((current) => ({ ...current, confirmationText: e.target.value }))}
+                            className={fieldCls}
+                            disabled={isSubmitting}
+                            placeholder={qcDecisionApprovalConfirmation}
+                          />
+                        </label>
+                      </div>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-700">
+                        Final QC sign-off username is taken from the logged-in account. Type "{qcDecisionApprovalConfirmation}" to confirm approval or "{qcDecisionRejectionConfirmation}" to confirm rejection.
+                      </div>
+                    </>
+                  ) : null}
+                  {selectedRequest.qcDecisionConfirmationAt ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                      Final QC sign-off captured from {selectedRequest.qcDecisionConfirmedBy ?? "—"} on {new Date(selectedRequest.qcDecisionConfirmationAt).toLocaleString()}.
+                    </div>
+                  ) : null}
                   <div className="flex gap-3">
                     <button
                       type="button"
-                      disabled={isSubmitting || !canRecordQcDecision}
+                      disabled={isSubmitting || !canRecordFinalQcDecision || !canApproveQcDecision}
                       onClick={() => void handleQcDecision(true)}
                       className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-green-600 py-3 text-sm font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-green-200"
                     >
@@ -1235,7 +2374,7 @@ export function SamplingPage() {
                     </button>
                     <button
                       type="button"
-                      disabled={isSubmitting || !canRecordQcDecision}
+                      disabled={isSubmitting || !canRecordFinalQcDecision || !canRejectQcDecision}
                       onClick={() => void handleQcDecision(false)}
                       className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 py-3 text-sm font-semibold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-200"
                     >

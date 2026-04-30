@@ -1277,12 +1277,12 @@ export default function SpecMoaPage({ initialTab }: SpecMoaPageProps) {
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-slate-400">{selectedSpecParameters.length} parameters</span>
                       <button type="button" className="rounded-lg border border-violet-200 px-3 py-1.5 text-[11px] font-semibold text-violet-700 hover:bg-violet-50" onClick={handleAddParameterClick}>
-                        + Add Parameter
+                        + Add Test Parameter
                       </button>
                     </div>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="min-w-[1100px] w-full text-xs">
+                    <table className="min-w-[960px] w-full text-xs">
                       <thead>
                         <tr className="border-b border-slate-100 bg-slate-50">
                           <th className="w-8 px-4 py-2.5 text-left text-[10px] font-bold uppercase tracking-wide text-slate-400">#</th>
@@ -1629,6 +1629,15 @@ export default function SpecMoaPage({ initialTab }: SpecMoaPageProps) {
                       </select>
                     </label>
                     <label>
+                      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Compendial Edition</span>
+                      <input
+                        value={specForm.compendialEdition ?? ""}
+                        onChange={(e) => setSpecForm({ ...specForm, compendialEdition: e.target.value })}
+                        className={fieldClassName()}
+                        placeholder="e.g. 2024 / 10th Edition"
+                      />
+                    </label>
+                    <label>
                       <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Sampling Method *</span>
                       <select value={specForm.samplingMethod} onChange={(e) => setSpecForm({ ...specForm, samplingMethod: e.target.value as CreateSpecRequest["samplingMethod"] })} className={fieldClassName()}>
                         {samplingMethods.map((value) => <option key={value} value={value}>{samplingMethodLabels[value]}</option>)}
@@ -1718,22 +1727,22 @@ export default function SpecMoaPage({ initialTab }: SpecMoaPageProps) {
                       onClick={addDraftParameterRow}
                       className="rounded-lg border border-[#c4b5fd] px-3 py-1.5 text-[11px] font-semibold text-[#7c3aed] hover:bg-[#ede9fe]"
                     >
-                      + Add Test
+                      + Add Test Parameter
                     </button>
                   </div>
                   <div className="overflow-hidden rounded-xl border border-slate-200">
                     <div className="overflow-x-auto">
-                    <table className="min-w-[1280px] w-full text-xs">
+                    <table className="min-w-[1080px] w-full text-xs">
                       <thead>
                         <tr className="border-b border-slate-200 bg-slate-50">
                           <th className="w-8 px-3 py-2.5 text-left text-[10px] font-bold text-slate-400">#</th>
-                          <th className="min-w-[220px] px-3 py-2.5 text-left text-[10px] font-bold text-slate-400">Test Name</th>
-                          <th className="min-w-[160px] px-3 py-2.5 text-left text-[10px] font-bold text-slate-400">Type</th>
-                          <th className="min-w-[260px] px-3 py-2.5 text-left text-[10px] font-bold text-slate-400">Method (MOA)</th>
-                          <th className="min-w-[250px] px-3 py-2.5 text-left text-[10px] font-bold text-slate-400">Acceptance Criteria</th>
+                          <th className="min-w-[180px] px-3 py-2.5 text-left text-[10px] font-bold text-slate-400">Test Name</th>
+                          <th className="min-w-[140px] px-3 py-2.5 text-left text-[10px] font-bold text-slate-400">Type</th>
+                          <th className="min-w-[220px] px-3 py-2.5 text-left text-[10px] font-bold text-slate-400">Method (MOA)</th>
+                          <th className="min-w-[220px] px-3 py-2.5 text-left text-[10px] font-bold text-slate-400">Acceptance Criteria</th>
                           <th className="w-32 px-3 py-2.5 text-left text-[10px] font-bold text-slate-400">Lower</th>
                           <th className="w-32 px-3 py-2.5 text-left text-[10px] font-bold text-slate-400">Upper</th>
-                          <th className="min-w-[240px] px-3 py-2.5 text-left text-[10px] font-bold text-slate-400">Text Criteria</th>
+                          <th className="min-w-[180px] px-3 py-2.5 text-left text-[10px] font-bold text-slate-400">Text Criteria</th>
                           <th className="w-24 px-3 py-2.5 text-left text-[10px] font-bold text-slate-400">Unit</th>
                           <th className="w-16 px-3 py-2.5 text-center text-[10px] font-bold text-slate-400">Req.</th>
                           <th className="w-40 px-3 py-2.5 text-right text-[10px] font-bold text-slate-400">Actions</th>

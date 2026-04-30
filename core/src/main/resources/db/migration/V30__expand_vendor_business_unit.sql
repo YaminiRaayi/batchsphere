@@ -1,18 +1,17 @@
-ALTER TABLE vendor_business_unit
-    ADD COLUMN bu_code                   VARCHAR(100),
-    ADD COLUMN site_type                 VARCHAR(50),
-    ADD COLUMN site_contact_person       VARCHAR(255),
-    ADD COLUMN site_email                VARCHAR(255),
-    ADD COLUMN site_phone                VARCHAR(50),
-    ADD COLUMN drug_license_number       VARCHAR(100),
-    ADD COLUMN drug_license_expiry       DATE,
-    ADD COLUMN gmp_cert_body             VARCHAR(100),
-    ADD COLUMN gmp_cert_number           VARCHAR(100),
-    ADD COLUMN gmp_cert_expiry           DATE,
-    ADD COLUMN is_who_gmp_certified      BOOLEAN NOT NULL DEFAULT FALSE,
-    ADD COLUMN is_usfda                  BOOLEAN NOT NULL DEFAULT FALSE,
-    ADD COLUMN is_eu_gmp                 BOOLEAN NOT NULL DEFAULT FALSE,
-    ADD COLUMN qualification_status      VARCHAR(50) NOT NULL DEFAULT 'NOT_STARTED',
-    ADD COLUMN qualified_date            DATE,
-    ADD COLUMN next_requalification_due  DATE,
-    ADD COLUMN is_approved               BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE vendor_business_unit ADD COLUMN bu_code VARCHAR(100);
+ALTER TABLE vendor_business_unit ADD COLUMN site_type VARCHAR(50);
+ALTER TABLE vendor_business_unit ADD COLUMN site_contact_person VARCHAR(255);
+ALTER TABLE vendor_business_unit ADD COLUMN site_email VARCHAR(255);
+ALTER TABLE vendor_business_unit ADD COLUMN site_phone VARCHAR(50);
+ALTER TABLE vendor_business_unit ADD COLUMN drug_license_number VARCHAR(100);
+ALTER TABLE vendor_business_unit ADD COLUMN drug_license_expiry DATE;
+ALTER TABLE vendor_business_unit ADD COLUMN gmp_cert_body VARCHAR(100);
+ALTER TABLE vendor_business_unit ADD COLUMN gmp_cert_number VARCHAR(100);
+ALTER TABLE vendor_business_unit ADD COLUMN gmp_cert_expiry DATE;
+ALTER TABLE vendor_business_unit ADD COLUMN is_who_gmp_certified BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE vendor_business_unit ADD COLUMN is_usfda BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE vendor_business_unit ADD COLUMN is_eu_gmp BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE vendor_business_unit ADD COLUMN qualification_status VARCHAR(50) NOT NULL DEFAULT 'NOT_STARTED';
+ALTER TABLE vendor_business_unit ADD COLUMN qualified_date DATE;
+ALTER TABLE vendor_business_unit ADD COLUMN next_requalification_due DATE;
+ALTER TABLE vendor_business_unit ADD COLUMN is_approved BOOLEAN NOT NULL DEFAULT FALSE;

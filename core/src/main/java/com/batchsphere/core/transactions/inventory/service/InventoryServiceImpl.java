@@ -70,10 +70,10 @@ public class InventoryServiceImpl implements InventoryService {
     private static final Map<InventoryStatus, EnumSet<InventoryStatus>> ALLOWED_TRANSITIONS = Map.of(
             InventoryStatus.QUARANTINE, EnumSet.of(InventoryStatus.SAMPLING),
             InventoryStatus.SAMPLING, EnumSet.of(InventoryStatus.UNDER_TEST),
-            InventoryStatus.UNDER_TEST, EnumSet.of(InventoryStatus.RELEASED, InventoryStatus.REJECTED, InventoryStatus.BLOCKED),
+            InventoryStatus.UNDER_TEST, EnumSet.of(InventoryStatus.SAMPLING, InventoryStatus.RELEASED, InventoryStatus.REJECTED, InventoryStatus.BLOCKED),
             InventoryStatus.RELEASED, EnumSet.noneOf(InventoryStatus.class),
             InventoryStatus.REJECTED, EnumSet.noneOf(InventoryStatus.class),
-            InventoryStatus.BLOCKED, EnumSet.noneOf(InventoryStatus.class)
+            InventoryStatus.BLOCKED, EnumSet.of(InventoryStatus.UNDER_TEST, InventoryStatus.SAMPLING, InventoryStatus.REJECTED)
     );
 
     @Override

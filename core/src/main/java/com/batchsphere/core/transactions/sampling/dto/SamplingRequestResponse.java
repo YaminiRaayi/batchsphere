@@ -13,9 +13,12 @@ public class SamplingRequestResponse {
     UUID id;
     UUID grnId;
     UUID grnItemId;
+    UUID parentSamplingRequestId;
+    UUID rootSamplingRequestId;
     UUID materialId;
     UUID batchId;
     UUID palletId;
+    Integer cycleNumber;
     SamplingRequestStatus requestStatus;
     Boolean warehouseLabelApplied;
     Boolean samplingLabelRequired;
@@ -25,10 +28,14 @@ public class SamplingRequestResponse {
     Boolean hazardousMaterial;
     Boolean selectiveMaterial;
     String remarks;
+    String resampleReason;
     Integer totalContainers;
     String qcDecisionRemarks;
     String qcDecidedBy;
     LocalDateTime qcDecidedAt;
+    String qcDecisionConfirmedBy;
+    String qcDecisionConfirmationText;
+    LocalDateTime qcDecisionConfirmationAt;
     Boolean isActive;
     String createdBy;
     LocalDateTime createdAt;

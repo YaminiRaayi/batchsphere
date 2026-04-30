@@ -1,10 +1,18 @@
 package com.batchsphere.core.transactions.sampling.controller;
 
 import com.batchsphere.core.transactions.sampling.dto.CreateSamplingPlanRequest;
+import com.batchsphere.core.transactions.sampling.dto.CompleteQaInvestigationReviewRequest;
+import com.batchsphere.core.transactions.sampling.dto.DestroyRetainedSampleRequest;
+import com.batchsphere.core.transactions.sampling.dto.EscalateQcInvestigationRequest;
+import com.batchsphere.core.transactions.sampling.dto.ExecuteResampleRequest;
+import com.batchsphere.core.transactions.sampling.dto.ExecuteRetestRequest;
+import com.batchsphere.core.transactions.sampling.dto.OpenQcInvestigationRequest;
 import com.batchsphere.core.transactions.sampling.dto.QcReceiptRequest;
 import com.batchsphere.core.transactions.sampling.dto.QcDecisionRequest;
+import com.batchsphere.core.transactions.sampling.dto.QcInvestigationResponse;
 import com.batchsphere.core.transactions.sampling.dto.QcTestResultResponse;
 import com.batchsphere.core.transactions.sampling.dto.RecordQcTestResultRequest;
+import com.batchsphere.core.transactions.sampling.dto.ResolveQcInvestigationRequest;
 import com.batchsphere.core.transactions.sampling.dto.SamplingLabelUpdateRequest;
 import com.batchsphere.core.transactions.sampling.dto.SamplingCompletionRequest;
 import com.batchsphere.core.transactions.sampling.dto.SamplingHandoffRequest;
@@ -49,6 +57,11 @@ public class SamplingController {
     @GetMapping("/{id}")
     public ResponseEntity<SamplingRequestResponse> getSamplingRequestById(@PathVariable UUID id) {
         return ResponseEntity.ok(samplingService.getSamplingRequestById(id));
+    }
+
+    @GetMapping("/{id}/cycles")
+    public ResponseEntity<java.util.List<SamplingRequestResponse>> getSamplingCycles(@PathVariable UUID id) {
+        return ResponseEntity.ok(samplingService.getSamplingCycles(id));
     }
 
     @PostMapping("/{id}/plans")
@@ -109,6 +122,56 @@ public class SamplingController {
                                                                       @PathVariable UUID testResultId,
                                                                       @Valid @RequestBody RecordQcTestResultRequest request) {
         return ResponseEntity.ok(samplingService.recordWorksheetResult(id, testResultId, request));
+    }
+
+    @GetMapping("/{id}/investigations")
+    public ResponseEntity<java.util.List<QcInvestigationResponse>> getInvestigations(@PathVariable UUID id) {
+        return ResponseEntity.ok(samplingService.getInvestigations(id));
+    }
+
+    @PostMapping("/{id}/investigations")
+    public ResponseEntity<QcInvestigationResponse> openInvestigation(@PathVariable UUID id,
+                                                                     @Valid @RequestBody OpenQcInvestigationRequest request) {
+        return ResponseEntity.ok(samplingService.openInvestigation(id, request));
+    }
+
+    @PostMapping("/{id}/investigations/{investigationId}/phase-ii")
+    public ResponseEntity<QcInvestigationResponse> escalateInvestigationToPhaseTwo(@PathVariable UUID id,
+                                                                                   @PathVariable UUID investigationId,
+                                                                                   @Valid @RequestBody EscalateQcInvestigationRequest request) {
+        return ResponseEntity.ok(samplingService.escalateInvestigationToPhaseTwo(id, investigationId, request));
+    }
+
+    @PostMapping("/{id}/investigations/{investigationId}/resolve")
+    public ResponseEntity<QcInvestigationResponse> resolveInvestigation(@PathVariable UUID id,
+                                                                        @PathVariable UUID investigationId,
+                                                                        @Valid @RequestBody ResolveQcInvestigationRequest request) {
+        return ResponseEntity.ok(samplingService.resolveInvestigation(id, investigationId, request));
+    }
+
+    @PostMapping("/{id}/investigations/{investigationId}/qa-review")
+    public ResponseEntity<QcInvestigationResponse> completeQaInvestigationReview(@PathVariable UUID id,
+                                                                                 @PathVariable UUID investigationId,
+                                                                                 @Valid @RequestBody CompleteQaInvestigationReviewRequest request) {
+        return ResponseEntity.ok(samplingService.completeQaInvestigationReview(id, investigationId, request));
+    }
+
+    @PostMapping("/{id}/retest")
+    public ResponseEntity<SamplingRequestResponse> executeRetest(@PathVariable UUID id,
+                                                                 @Valid @RequestBody ExecuteRetestRequest request) {
+        return ResponseEntity.ok(samplingService.executeRetest(id, request));
+    }
+
+    @PostMapping("/{id}/retained-sample/destroy")
+    public ResponseEntity<SamplingRequestResponse> destroyRetainedSample(@PathVariable UUID id,
+                                                                         @Valid @RequestBody DestroyRetainedSampleRequest request) {
+        return ResponseEntity.ok(samplingService.destroyRetainedSample(id, request));
+    }
+
+    @PostMapping("/{id}/resample")
+    public ResponseEntity<SamplingRequestResponse> executeResample(@PathVariable UUID id,
+                                                                   @Valid @RequestBody ExecuteResampleRequest request) {
+        return ResponseEntity.ok(samplingService.executeResample(id, request));
     }
 
     @PostMapping("/{id}/qc-decision")

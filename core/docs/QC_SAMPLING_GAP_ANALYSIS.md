@@ -1,6 +1,6 @@
 # QC And Sampling Gap Analysis
 
-Last updated: 2026-04-24
+Last updated: 2026-04-30
 
 ## Purpose
 
@@ -14,6 +14,21 @@ The goal is to decide now, while the flow is still mid-stream, whether BatchSphe
 - strengthen the design now before more features accumulate on top of weak workflow assumptions
 
 This document is analysis only.
+
+## Recently Closed Gaps
+
+The following gaps mentioned during the UAT pass are now closed in the current branch:
+
+- QC analyst sampling-page access to dependent batch and GRN-container reads
+- visible header sign-out action
+- retained-sample receipt inputs in QC sampling
+- clearer investigation field placement and sign-off autofill
+- sampling-plan update duplicate-key failure on container resave
+- material master persistence for storage, handling, and planning attributes
+- spec editor `compendialEdition`
+- sampling method now follows the approved spec instead of forcing `HUNDRED_PERCENT` for all critical materials
+- sampling MoA now narrows to spec-linked MoAs and auto-selects when only one is valid
+- GRN supporting documents now target a selected line item with explicit type and size guidance
 
 ## Short Answer
 
@@ -218,6 +233,81 @@ Recommended distinction:
 
 - `inventory status`
   physical stock condition in warehouse
+
+## Additional Confirmed UAT Gaps
+
+### Sampling plan quantity field semantics are unclear
+
+Observed in UAT on 2026-04-28:
+
+- a `CRITICAL` material correctly forced `HUNDRED_PERCENT`
+- with `10` containers and `COMPOSITE` sample type, the user entered `0.5` expecting final composite quantity
+- the system stored `0.500` as `individualSampleQuantity` for every container
+- resulting persisted total became `5.000` composite quantity instead of intended `0.500`
+
+Confirmed behavior:
+
+- UI treats `individualSampleQuantity` as the editable quantity field
+- backend interprets `individualSampleQuantity` and each `containerSamples[].sampledQuantity` as per-container quantity
+- `compositeSampleQuantity` is derived as the sum across selected containers
+
+Practical gap:
+
+- the field naming and UX are easy to misread
+- users can interpret the editable quantity as total composite quantity instead of per-container quantity
+- this creates valid but unintended sampling plans
+
+Recommended fix:
+
+1. rename or relabel the editable field in UI to `Quantity Per Container`
+2. show an explicit formula beside it:
+   `containers to sample x per-container quantity = composite quantity`
+3. keep `compositeSampleQuantity` read-only
+4. add helper text for `COMPOSITE` plans clarifying that the entered quantity is applied to every selected container
+5. consider rejecting suspicious entries when total composite becomes unusually large relative to expected workflow norms
+
+UAT note until fixed:
+
+- for `COMPOSITE` sampling, enter the quantity to be withdrawn from each selected container
+- do not enter the final desired composite quantity in the editable field unless the UI is changed
+
+### QC analyst is blocked by GRN container read security during sampling
+
+Observed in UAT on 2026-04-28:
+
+- user `qc.analyst` receives `403 Forbidden` while using the QC Sampling page
+- sampling APIs themselves allow `QC_ANALYST`
+- but the sampling page also loads container details through the GRN endpoint
+
+Confirmed cause:
+
+- sampling page calls `fetchGrnItemContainers(grnItemId)`
+- that calls `/api/grns/items/{grnItemId}/containers`
+- security currently allows `/api/grns/**` only for `SUPER_ADMIN` and `WAREHOUSE_OP`
+- security allows `/api/sampling-requests/**` for `SUPER_ADMIN`, `QC_ANALYST`, and `QC_MANAGER`
+- sampling page initial load also calls `fetchBatches()`
+- security currently allows `/api/batches/**` only for `SUPER_ADMIN` and `WAREHOUSE_OP`
+
+Practical gap:
+
+- `QC_ANALYST` can open the sampling workflow in principle
+- but cannot complete the page flow because required container and batch reads are blocked by route security
+- this creates a broken role experience for QC users
+
+Recommended fix:
+
+1. allow read-only GRN container and batch access needed by QC sampling for `QC_ANALYST` and `QC_MANAGER`, or
+2. expose required container and batch detail through `/api/sampling-requests/**` instead of `/api/grns/**` and `/api/batches/**`
+
+Preferred direction:
+
+- move QC-facing container reads behind sampling APIs
+- keep GRN write operations restricted to warehouse roles
+
+UAT note until fixed:
+
+- use `SUPER_ADMIN` for end-to-end sampling tests that require container detail loading
+- do not treat `qc.analyst` sampling-page access as fully working yet
 - `sampling request status`
   operational progress of sample planning and collection
 - `QC disposition`

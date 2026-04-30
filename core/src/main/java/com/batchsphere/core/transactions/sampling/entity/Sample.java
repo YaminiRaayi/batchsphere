@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -81,6 +82,21 @@ public class Sample {
 
     @Column(name = "qc_storage_location", length = 150)
     private String qcStorageLocation;
+
+    @Column(name = "retained_flag", nullable = false)
+    private Boolean retainedFlag;
+
+    @Column(name = "consumed_flag", nullable = false)
+    private Boolean consumedFlag;
+
+    @Column(name = "destroyed_flag", nullable = false)
+    private Boolean destroyedFlag;
+
+    @Column(name = "retained_quantity", precision = 18, scale = 3)
+    private BigDecimal retainedQuantity;
+
+    @Column(name = "retained_until")
+    private LocalDate retainedUntil;
 
     @Column(length = 500)
     private String remarks;
