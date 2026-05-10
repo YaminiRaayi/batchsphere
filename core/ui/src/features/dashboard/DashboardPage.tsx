@@ -7,12 +7,15 @@ import {
   fetchInventorySummary,
   fetchMaterials,
   fetchSamplingSummary,
-  fetchSuppliers
+  fetchSuppliers,
+  fetchWmsSummary
 } from "../../lib/api";
+import { useAuthStore } from "../../stores/authStore";
 import { useAppShellStore } from "../../stores/appShellStore";
 import type { Batch } from "../../types/batch";
 import type { Grn, GrnSummary } from "../../types/grn";
 import type { InventorySummary } from "../../types/inventory";
+import type { WmsSummary } from "../../types/location";
 import type { Material } from "../../types/material";
 import type { SamplingSummary } from "../../types/sampling";
 import type { Supplier } from "../../types/supplier";
@@ -79,55 +82,102 @@ type ModuleCard = {
 
 export function DashboardPage() {
   const currentUser = useAppShellStore((state) => state.currentUser);
+  const authUser = useAuthStore((state) => state.user);
   const [grnSummary, setGrnSummary] = useState<GrnSummary | null>(null);
   const [inventorySummary, setInventorySummary] = useState<InventorySummary | null>(null);
   const [samplingSummary, setSamplingSummary] = useState<SamplingSummary | null>(null);
+  const [wmsSummary, setWmsSummary] = useState<WmsSummary | null>(null);
   const [recentGrns, setRecentGrns] = useState<Grn[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const canViewWarehouse = authUser?.role === "SUPER_ADMIN" || authUser?.role === "WAREHOUSE_OP";
+  const canViewQc = authUser?.role === "SUPER_ADMIN" || authUser?.role === "QC_ANALYST" || authUser?.role === "QC_MANAGER";
+  const canViewProcurement = authUser?.role === "SUPER_ADMIN" || authUser?.role === "PROCUREMENT";
+  const canViewMaterials = canViewWarehouse || canViewQc || canViewProcurement;
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadDashboard() {
       setIsLoading(true);
-      setError(null);
+      setWarnings([]);
 
       try {
-        const [
-          grnSummaryData,
-          inventorySummaryData,
-          samplingSummaryData,
-          recentGrnPage,
-          batchPage,
-          materialPage,
-          supplierData
-        ] =
-          await Promise.all([
-            fetchGrnSummary(),
-            fetchInventorySummary(),
-            fetchSamplingSummary(),
-            fetchGrns(0, 5),
-            fetchBatches(0, 50),
-            fetchMaterials(0, 100),
-            fetchSuppliers()
-          ]);
+        const loaders: Array<{
+          label: string;
+          run: () => Promise<void>;
+        }> = [];
+
+        if (canViewWarehouse) {
+          loaders.push(
+            {
+              label: "GRN summary",
+              run: async () => setGrnSummary(await fetchGrnSummary())
+            },
+            {
+              label: "Inventory summary",
+              run: async () => setInventorySummary(await fetchInventorySummary())
+            },
+            {
+              label: "Recent GRNs",
+              run: async () => setRecentGrns((await fetchGrns(0, 5)).content)
+            },
+            {
+              label: "WMS summary",
+              run: async () => setWmsSummary(await fetchWmsSummary())
+            }
+          );
+        }
+
+        if (canViewQc) {
+          loaders.push({
+            label: "Sampling summary",
+            run: async () => setSamplingSummary(await fetchSamplingSummary())
+          });
+        }
+
+        if (canViewWarehouse || canViewQc) {
+          loaders.push({
+            label: "Batches",
+            run: async () => setBatches((await fetchBatches(0, 50)).content)
+          });
+        }
+
+        if (canViewMaterials) {
+          loaders.push({
+            label: "Materials",
+            run: async () => setMaterials((await fetchMaterials(0, 100)).content)
+          });
+        }
+
+        if (canViewProcurement) {
+          loaders.push({
+            label: "Suppliers",
+            run: async () => setSuppliers(await fetchSuppliers())
+          });
+        }
+
+        const settled = await Promise.allSettled(loaders.map((loader) => loader.run()));
 
         if (!cancelled) {
-          setGrnSummary(grnSummaryData);
-          setInventorySummary(inventorySummaryData);
-          setSamplingSummary(samplingSummaryData);
-          setRecentGrns(recentGrnPage.content);
-          setBatches(batchPage.content);
-          setMaterials(materialPage.content);
-          setSuppliers(supplierData);
+          const loadWarnings = settled.flatMap((result, index) => {
+            if (result.status === "fulfilled") {
+              return [];
+            }
+            const reason = result.reason instanceof Error ? result.reason.message : "Request failed";
+            return `${loaders[index].label} unavailable: ${reason}`;
+          });
+          setWarnings(loadWarnings);
         }
       } catch (loadError) {
         if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : "Unknown error while loading dashboard");
+          setWarnings([
+            loadError instanceof Error ? loadError.message : "Unknown error while loading dashboard"
+          ]);
         }
       } finally {
         if (!cancelled) {
@@ -154,6 +204,13 @@ export function DashboardPage() {
     : 0;
 
   const todayGrns = grnSummary ? grnSummary.countsByStatus.DRAFT + grnSummary.countsByStatus.RECEIVED : 0;
+  const warehouseCount = wmsSummary?.warehouses.length ?? 0;
+  const averageOccupancy = wmsSummary && wmsSummary.rooms.length > 0
+    ? Math.round(
+        wmsSummary.rooms.reduce((total, room) => total + room.occupancyPercent, 0) / wmsSummary.rooms.length
+      )
+    : 0;
+  const activeSuppliers = suppliers.filter((supplier) => supplier.isActive).length;
 
   const expiringBatches = useMemo(() => {
     return batches
@@ -173,33 +230,66 @@ export function DashboardPage() {
       .sort((left, right) => left.daysUntilExpiry - right.daysUntilExpiry)
       .slice(0, 3);
   }, [batches]);
+  const expiringDocumentLikeBatches = expiringBatches.filter((batch) => batch.daysUntilExpiry <= 30);
 
   const moduleCards: ModuleCard[] = [
+    ...(canViewWarehouse
+      ? [
+          {
+            title: "Warehouse",
+            subtitle: `${warehouseCount} warehouse${warehouseCount === 1 ? "" : "s"} in network`,
+            status: "Live" as const,
+            metricLabel: "Avg Occupancy",
+            metricValue: `${averageOccupancy}%`,
+            accentClass: "bg-indigo-100 text-indigo-700",
+            progressClass: "bg-indigo-500",
+            href: "/warehouse"
+          }
+        ]
+      : []),
+    ...(canViewProcurement
+      ? [
+          {
+            title: "Procurement",
+            subtitle: `${activeSuppliers} active supplier${activeSuppliers === 1 ? "" : "s"}`,
+            status: "Live" as const,
+            metricLabel: "Material Catalog",
+            metricValue: String(materials.length),
+            accentClass: "bg-orange-100 text-orange-700",
+            progressClass: "bg-orange-500",
+            href: "/master-data/partners/suppliers"
+          }
+        ]
+      : []),
+    ...(canViewQc
+      ? [
+          {
+            title: "Quality",
+            subtitle: `${pendingSampling} sampling item${pendingSampling === 1 ? "" : "s"} in queue`,
+            status: "Live" as const,
+            metricLabel: "Expiry Alerts",
+            metricValue: `${expiringBatches.length}`,
+            accentClass: "bg-teal-100 text-teal-700",
+            progressClass: "bg-teal-500",
+            href: "/qc/sampling"
+          }
+        ]
+      : []),
     {
       title: "QMS",
-      subtitle: "7 open CAPAs",
+      subtitle: "CAPA dashboard pending",
       status: "Coming Soon",
       metricLabel: "Closure Rate",
-      metricValue: "68%",
+      metricValue: "0%",
       accentClass: "bg-amber-100 text-amber-700",
       progressClass: "bg-amber-400"
     },
     {
-      title: "Warehouse",
-      subtitle: "3 locations active",
-      status: "Live",
-      metricLabel: "Occupancy",
-      metricValue: "74%",
-      accentClass: "bg-indigo-100 text-indigo-700",
-      progressClass: "bg-indigo-500",
-      href: "/master-data"
-    },
-    {
       title: "Documents",
-      subtitle: "5 expiring soon",
-      status: "Coming Soon",
-      metricLabel: "SOP Compliance",
-      metricValue: "91%",
+      subtitle: `${expiringDocumentLikeBatches.length} expiry alert${expiringDocumentLikeBatches.length === 1 ? "" : "s"} in 30 days`,
+      status: "Live",
+      metricLabel: "Tracked Batches",
+      metricValue: `${batches.length}`,
       accentClass: "bg-violet-100 text-violet-700",
       progressClass: "bg-violet-500"
     }
@@ -260,7 +350,7 @@ export function DashboardPage() {
     <div className="space-y-5">
       <section className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Command Center</h1>
+          <h1 data-testid="dashboard-heading" className="text-xl font-bold text-slate-800">Command Center</h1>
           <p className="mt-0.5 text-sm text-slate-500">
             Good morning, {currentUser.name.split(" ")[0]}. Here&apos;s your operational overview.
           </p>
@@ -274,7 +364,7 @@ export function DashboardPage() {
         </div>
       </section>
 
-      {pendingSampling > 0 ? (
+      {canViewQc && pendingSampling > 0 ? (
         <section className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
           <span className="text-sm text-amber-800">
             <strong>{pendingSampling} Sampling Decisions Pending</strong> across the current QC queue.
@@ -285,9 +375,9 @@ export function DashboardPage() {
         </section>
       ) : null}
 
-      {error ? (
-        <section className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+      {warnings.length > 0 ? (
+        <section className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {warnings[0]}
         </section>
       ) : null}
 
@@ -295,14 +385,14 @@ export function DashboardPage() {
         {[
           {
             label: "GRNs Today",
-            value: todayGrns || "--",
+            value: canViewWarehouse ? todayGrns || "--" : "—",
             note: `↑ ${grnSummary?.countsByStatus.RECEIVED ?? 0} vs yesterday`,
             border: "border-l-blue-500",
             noteClass: "text-green-600"
           },
           {
             label: "Pending QC",
-            value: pendingSampling || "--",
+            value: canViewQc ? pendingSampling || "--" : "—",
             note: "Awaiting decision",
             border: "border-l-amber-400",
             noteClass: "text-slate-500"
@@ -316,15 +406,15 @@ export function DashboardPage() {
           },
           {
             label: "Inventory Lots",
-            value: inventoryLots || "--",
-            note: "Active",
+            value: canViewWarehouse ? inventoryLots || "--" : "—",
+            note: canViewWarehouse ? "Active operational lots" : "Warehouse role only",
             border: "border-l-indigo-400",
             noteClass: "text-slate-500"
           },
           {
             label: "Docs Expiring",
-            value: expiringBatches.length > 0 ? expiringBatches.length : "Soon",
-            note: expiringBatches.length > 0 ? "Next 30 days" : "Coming soon",
+            value: expiringBatches.length > 0 ? expiringBatches.length : "--",
+            note: expiringBatches.length > 0 ? "Next 30 days" : "No current alerts",
             border: "border-l-orange-400",
             noteClass: "text-orange-500"
           }
@@ -345,55 +435,63 @@ export function DashboardPage() {
                 <span className="h-2 w-2 rounded-full bg-blue-500" />
                 <span className="text-sm font-semibold text-slate-700">Recent GRNs</span>
               </div>
-              <Link to="/inbound/grn" className="text-xs font-medium text-blue-600">
-                View All →
-              </Link>
+              {canViewWarehouse ? (
+                <Link to="/inbound/grn" className="text-xs font-medium text-blue-600">
+                  View All →
+                </Link>
+              ) : null}
             </div>
-            <div className="overflow-auto">
-              <table className="min-w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-blue-50 bg-blue-50/50 text-slate-500">
-                    <th className="px-5 py-3 font-semibold">GRN No.</th>
-                    <th className="px-3 py-3 font-semibold">Supplier</th>
-                    <th className="px-3 py-3 font-semibold">Material</th>
-                    <th className="px-3 py-3 font-semibold">Date</th>
-                    <th className="px-3 py-3 font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentGrns.map((grn) => {
-                    const pill = dashboardStatusPill(grn.status);
-                    return (
-                      <tr key={grn.id} className="border-b border-slate-50">
-                        <td className="px-5 py-3 font-mono font-semibold text-blue-600">{grn.grnNumber}</td>
-                        <td className="px-3 py-3 text-slate-700">
-                          {supplierById.get(grn.supplierId)?.supplierName ?? "Supplier linked"}
-                        </td>
-                        <td className="px-3 py-3 text-slate-700">
-                          {grn.items[0]
-                            ? materialById.get(grn.items[0].materialId)?.materialName ??
-                              `${grn.items.length} line items`
-                            : "Pending"}
-                        </td>
-                        <td className="px-3 py-3 text-slate-400">{formatDisplayDate(grn.receiptDate)}</td>
-                        <td className="px-3 py-3">
-                          <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-semibold ${pill.className}`}>
-                            {pill.label}
-                          </span>
+            {canViewWarehouse ? (
+              <div className="overflow-auto">
+                <table className="min-w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-blue-50 bg-blue-50/50 text-slate-500">
+                      <th className="px-5 py-3 font-semibold">GRN No.</th>
+                      <th className="px-3 py-3 font-semibold">Supplier</th>
+                      <th className="px-3 py-3 font-semibold">Material</th>
+                      <th className="px-3 py-3 font-semibold">Date</th>
+                      <th className="px-3 py-3 font-semibold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentGrns.map((grn) => {
+                      const pill = dashboardStatusPill(grn.status);
+                      return (
+                        <tr key={grn.id} className="border-b border-slate-50">
+                          <td className="px-5 py-3 font-mono font-semibold text-blue-600">{grn.grnNumber}</td>
+                          <td className="px-3 py-3 text-slate-700">
+                            {supplierById.get(grn.supplierId)?.supplierName ?? "Supplier linked"}
+                          </td>
+                          <td className="px-3 py-3 text-slate-700">
+                            {grn.items[0]
+                              ? materialById.get(grn.items[0].materialId)?.materialName ??
+                                `${grn.items.length} line items`
+                              : "Pending"}
+                          </td>
+                          <td className="px-3 py-3 text-slate-400">{formatDisplayDate(grn.receiptDate)}</td>
+                          <td className="px-3 py-3">
+                            <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-semibold ${pill.className}`}>
+                              {pill.label}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {!isLoading && recentGrns.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-5 py-6 text-sm text-slate-500">
+                          No GRNs found yet.
                         </td>
                       </tr>
-                    );
-                  })}
-                  {!isLoading && recentGrns.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-5 py-6 text-sm text-slate-500">
-                        No GRNs found yet.
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="px-5 py-6 text-sm text-slate-500">
+                GRN activity is available to warehouse operations and system administrators.
+              </div>
+            )}
           </article>
 
           <article className="rounded-2xl border border-blue-100 bg-white shadow-sm">
@@ -401,7 +499,9 @@ export function DashboardPage() {
               <p className="text-sm font-semibold text-slate-700">Activity Feed</p>
             </div>
             <div className="space-y-1 px-5 py-4">
-              {activityItems.map((item) => (
+              {activityItems.length === 0 ? (
+                <div className="py-2 text-sm text-slate-500">No recent activity available for your role.</div>
+              ) : activityItems.map((item) => (
                 <div key={item.id} className="flex gap-3 py-2">
                   <span className={`mt-2 h-2 w-2 rounded-full ${item.dotClass}`} />
                   <div>
@@ -416,9 +516,9 @@ export function DashboardPage() {
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,2.3fr)_minmax(280px,1fr)]">
           <div className="grid gap-4 md:grid-cols-3">
-            {moduleCards.map((card) => {
-              const body = (
-                <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5">
+              {moduleCards.map((card) => {
+                const body = (
+                  <div className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5">
                   <div className="flex items-start justify-between gap-3">
                     <span className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl font-semibold ${card.accentClass}`}>
                       {card.title.slice(0, 1)}
@@ -431,16 +531,19 @@ export function DashboardPage() {
                   </div>
                   <p className="mt-4 text-sm font-semibold text-slate-800">{card.title}</p>
                   <p className="mt-1 text-sm text-slate-500">{card.subtitle}</p>
-                  <div className="mt-5">
-                    <div className="flex items-center justify-between text-[11px] text-slate-500">
-                      <span>{card.metricLabel}</span>
-                      <span className="font-semibold">{card.metricValue}</span>
-                    </div>
-                    <div className="mt-2 h-1.5 rounded-full bg-slate-100">
-                      <div className={`h-full rounded-full ${card.progressClass}`} style={{ width: card.metricValue }} />
+                    <div className="mt-5">
+                      <div className="flex items-center justify-between text-[11px] text-slate-500">
+                        <span>{card.metricLabel}</span>
+                        <span className="font-semibold">{card.metricValue}</span>
+                      </div>
+                      <div className="mt-2 h-1.5 rounded-full bg-slate-100">
+                      <div
+                        className={`h-full rounded-full ${card.progressClass}`}
+                        style={{ width: /^\d+%$/.test(card.metricValue) ? card.metricValue : "100%" }}
+                      />
+                      </div>
                     </div>
                   </div>
-                </div>
               );
 
               return card.href ? (

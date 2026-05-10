@@ -35,6 +35,9 @@ const MaterialCreatePage = lazy(() => import("./features/master-data/materials/M
 const SpecsPage = lazy(() => import("./features/master-data/qc-refs/SpecsPage"));
 const MoaPage = lazy(() => import("./features/master-data/qc-refs/MoaPage"));
 const SamplingToolsPage = lazy(() => import("./features/master-data/qc-refs/SamplingToolsPage"));
+const UserManagementPage = lazy(() =>
+  import("./features/admin/UserManagementPage").then((module) => ({ default: module.UserManagementPage }))
+);
 
 function renderLazyRoute(element: ReactNode) {
   return (
@@ -74,6 +77,7 @@ export const router = createBrowserRouter([
                 children: [
                   { path: "suppliers", element: renderLazyRoute(<SuppliersPage />), handle: { breadcrumb: "Suppliers" } },
                   { path: "vendors", element: renderLazyRoute(<VendorsPage />), handle: { breadcrumb: "Vendors" } },
+                  { path: "vendors/:vendorId", element: renderLazyRoute(<VendorsPage />), handle: { breadcrumb: "Vendor Details" } },
                   {
                     path: "vendor-business-units",
                     element: renderLazyRoute(<VendorBUsPage />),
@@ -82,12 +86,17 @@ export const router = createBrowserRouter([
                 ]
               },
               {
-                element: <ProtectedRoute allowedRoles={["SUPER_ADMIN", "WAREHOUSE_OP", "QC_ANALYST", "QC_MANAGER"]} />,
+                element: <ProtectedRoute allowedRoles={["SUPER_ADMIN", "WAREHOUSE_OP", "QC_ANALYST", "QC_MANAGER", "PROCUREMENT"]} />,
                 path: "materials",
                 handle: { breadcrumb: "Materials" },
                 children: [
                   { path: "materials", element: renderLazyRoute(<MaterialsPage />), handle: { breadcrumb: "Materials" } },
-                  { path: "new", element: renderLazyRoute(<MaterialCreatePage />), handle: { breadcrumb: "New Material" } }
+                  {
+                    element: <ProtectedRoute allowedRoles={["SUPER_ADMIN", "WAREHOUSE_OP", "QC_ANALYST", "QC_MANAGER"]} />,
+                    children: [
+                      { path: "new", element: renderLazyRoute(<MaterialCreatePage />), handle: { breadcrumb: "New Material" } }
+                    ]
+                  }
                 ]
               },
               {
@@ -99,7 +108,7 @@ export const router = createBrowserRouter([
                 ]
               },
               {
-                element: <ProtectedRoute allowedRoles={["SUPER_ADMIN", "QC_ANALYST", "QC_MANAGER"]} />,
+                element: <ProtectedRoute allowedRoles={["SUPER_ADMIN", "QC_ANALYST", "QC_MANAGER", "PROCUREMENT"]} />,
                 path: "qc-refs",
                 handle: { breadcrumb: "QC Refs" },
                 children: [
@@ -126,6 +135,12 @@ export const router = createBrowserRouter([
             element: <ProtectedRoute allowedRoles={["SUPER_ADMIN", "QC_ANALYST", "QC_MANAGER"]} />,
             children: [
               { path: "qc/sampling", element: renderLazyRoute(<SamplingPage />), handle: { breadcrumb: "Sampling & QC" } }
+            ]
+          },
+          {
+            element: <ProtectedRoute allowedRoles={["SUPER_ADMIN"]} />,
+            children: [
+              { path: "admin/users", element: renderLazyRoute(<UserManagementPage />), handle: { breadcrumb: "User Management" } }
             ]
           },
           {

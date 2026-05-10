@@ -126,6 +126,14 @@ const NAV_GROUPS: NavGroup[] = [
         lightBg: "#F1F5F9",
         dimBorder: "#CBD5E1",
       },
+      {
+        to: "/admin/users",
+        label: "User Management",
+        abbr: "UM",
+        color: "#0F766E",
+        lightBg: "#F0FDFA",
+        dimBorder: "#99F6E4",
+      },
     ],
   },
 ];
@@ -143,6 +151,16 @@ function findActiveItem(pathname: string): NavItem | null {
     }
   }
   return null;
+}
+
+function navItemTestId(path: string) {
+  const slug = path
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/[^a-zA-Z0-9/]+/g, "-")
+    .replace(/\//g, "-")
+    .replace(/-+/g, "-")
+    .toLowerCase();
+  return `nav-item-${slug || "root"}`;
 }
 
 // ─── Chevron icon (collapse / expand) ────────────────────────────────────────
@@ -360,6 +378,7 @@ export function AppShell() {
                     to={item.to}
                     end={item.end}
                     title={collapsed ? item.label : undefined}
+                    data-testid={navItemTestId(item.to)}
                     className="relative block rounded-xl outline-none transition-colors
                                focus-visible:ring-2 focus-visible:ring-blue-500"
                     style={({ isActive }) => ({
@@ -416,6 +435,7 @@ export function AppShell() {
             </p>
             <p className="mt-0.5 text-sm font-medium text-white">Hyderabad</p>
             <button
+              data-testid="btn-logout"
               type="button"
               onClick={() => {
                 void handleSignOut();

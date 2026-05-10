@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   deleteVendorDocument,
   fetchVendorBusinessUnits,
@@ -97,6 +97,8 @@ const CATEGORY_TABS: { key: TabKey; label: string }[] = [
 
 export default function VendorsPage() {
   const navigate = useNavigate();
+  const { vendorId } = useParams<{ vendorId: string }>();
+  const isDetailRoute = Boolean(vendorId);
 
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [businessUnits, setBusinessUnits] = useState<VendorBusinessUnit[]>([]);
@@ -116,13 +118,13 @@ export default function VendorsPage() {
       .then(([vendorRes, businessUnitRes]: [PageResponse<Vendor>, PageResponse<VendorBusinessUnit>]) => {
         setVendors(vendorRes.content);
         setBusinessUnits(businessUnitRes.content);
-        setSelectedVendorId((current) => current ?? vendorRes.content[0]?.id ?? null);
+        setSelectedVendorId((current) => vendorId ?? current ?? vendorRes.content[0]?.id ?? null);
       })
       .catch((error) => {
         setPageError(error instanceof Error ? error.message : "Failed to load vendors");
       })
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [vendorId]);
 
   const filtered = useMemo(() => vendors.filter((vendor) => {
     const query = search.toLowerCase();
@@ -134,6 +136,12 @@ export default function VendorsPage() {
   }), [search, tabFilter, vendors]);
 
   useEffect(() => {
+    if (isDetailRoute) {
+      if (vendorId) {
+        setSelectedVendorId(vendorId);
+      }
+      return;
+    }
     if (filtered.length === 0) {
       setSelectedVendorId(null);
       return;
@@ -141,7 +149,7 @@ export default function VendorsPage() {
     if (!selectedVendorId || !filtered.some((vendor) => vendor.id === selectedVendorId)) {
       setSelectedVendorId(filtered[0].id);
     }
-  }, [filtered, selectedVendorId]);
+  }, [filtered, isDetailRoute, selectedVendorId, vendorId]);
 
   useEffect(() => {
     if (!selectedVendorId) {
@@ -273,10 +281,25 @@ export default function VendorsPage() {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Vendor Management System</h1>
-          <p className="mt-0.5 text-sm text-slate-500">Vendor qualification · performance · audit tracking</p>
+          <h1 className="text-xl font-bold text-slate-800">
+            {isDetailRoute ? selectedVendor?.vendorName ?? "Vendor Details" : "Vendor Management System"}
+          </h1>
+          <p className="mt-0.5 text-sm text-slate-500">
+            {isDetailRoute
+              ? "Vendor qualification, profile, sites, and document details"
+              : "Vendor qualification · performance · audit tracking"}
+          </p>
         </div>
         <div className="flex gap-2">
+          {isDetailRoute ? (
+            <button
+              type="button"
+              className="flex items-center gap-2 rounded-xl border border-orange-200 bg-white px-4 py-2 text-xs font-semibold text-orange-700 hover:bg-orange-50"
+              onClick={() => navigate("/master-data/partners/vendors")}
+            >
+              ← Back to Vendors
+            </button>
+          ) : null}
           <button
             type="button"
             className="flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-xs font-semibold text-white hover:bg-orange-700"
@@ -299,7 +322,7 @@ export default function VendorsPage() {
         </div>
       </div>
 
-      {reviewCount > 0 && (
+      {!isDetailRoute && reviewCount > 0 && (
         <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-[#fff8e8] px-4 py-3">
           <svg className="h-4 w-4 shrink-0 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
@@ -312,6 +335,7 @@ export default function VendorsPage() {
         </div>
       )}
 
+      {!isDetailRoute ? (
       <div className="grid grid-cols-5 gap-4">
         {([
           { label: "Total Vendors", value: vendors.length, sub: "Active suppliers", accent: "border-l-orange-500", valCls: "text-slate-800" },
@@ -329,7 +353,9 @@ export default function VendorsPage() {
           </div>
         ))}
       </div>
+      ) : null}
 
+      {!isDetailRoute ? (
       <div className="space-y-5">
         <div className="overflow-hidden rounded-2xl border border-orange-200 bg-white shadow-sm">
           <div className="border-b border-orange-100 bg-gradient-to-r from-orange-50 to-white px-4 py-3">
@@ -373,12 +399,12 @@ export default function VendorsPage() {
             <div className="divide-y divide-[#fff7ed]">
               {filtered.map((vendor) => {
                 const siteCount = siteCountByVendorId.get(vendor.id) ?? 0;
-                const selected = vendor.id === selectedVendorId;
+                const selected = isDetailRoute && vendor.id === selectedVendorId;
                 return (
                   <button
                     key={vendor.id}
                     type="button"
-                    onClick={() => setSelectedVendorId(vendor.id)}
+                    onClick={() => navigate(`/master-data/partners/vendors/${vendor.id}`)}
                     className={[
                       "w-full px-4 py-3 text-left transition hover:bg-[#fff7ed]",
                       selected ? "border-l-4 border-l-orange-500 bg-[#ffedd5]" : ""
@@ -420,8 +446,10 @@ export default function VendorsPage() {
             </div>
           )}
         </div>
+      </div>
+      ) : null}
 
-        {selectedVendor ? (
+        {isDetailRoute && selectedVendor ? (
           <div className="space-y-4">
               <div className="rounded-2xl border border-orange-200 bg-white p-5 shadow-sm">
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
@@ -615,12 +643,11 @@ export default function VendorsPage() {
                 </div>
               </div>
           </div>
-        ) : (
+        ) : isDetailRoute ? (
           <div className="flex min-h-[320px] items-center justify-center rounded-2xl border border-dashed border-orange-200 bg-white text-sm text-slate-400">
             Select a vendor to view qualification and document details.
           </div>
-        )}
-      </div>
+        ) : null}
 
       <VendorFormDrawer
         open={drawerOpen}

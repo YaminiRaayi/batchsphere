@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>BatchSphere — LIMS Mockup</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>.screen-label{background:#1e293b;color:#94a3b8;font-family:monospace;font-size:11px;padding:6px 16px;letter-spacing:.05em}</style>
+</head>
+<body class="bg-slate-200">
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 1 — /lims/instruments  (Instrument List)               -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="screen-label">SCREEN 1 / 3 — /lims/instruments — Lab Instrument Management</div>
+<div class="flex h-screen bg-slate-50 overflow-hidden">
+    <aside class="w-64 shrink-0 flex flex-col bg-blue-900 border-r border-blue-800 overflow-y-auto">
+    <!-- Logo -->
+    <div class="flex h-16 shrink-0 items-center border-b border-blue-800 px-4 gap-3">
+      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">BS</div>
+      <div>
+        <p class="text-[10px] font-bold uppercase tracking-widest text-blue-200">BatchSphere</p>
+        <p class="text-sm font-semibold text-white leading-none">Core ERP</p>
+      </div>
+    </div>
+    <!-- User -->
+    <div class="border-b border-blue-800 p-3">
+      <div class="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">YR</div>
+        <div class="min-w-0">
+          <div class="truncate text-xs font-semibold text-white">Yamini Raayi</div>
+          <div class="text-[10px] text-blue-200">QC_MANAGER</div>
+        </div>
+        <div class="ml-auto h-2 w-2 rounded-full bg-green-400 shrink-0"></div>
+      </div>
+    </div>
+    <!-- Nav -->
+    <nav class="flex-1 overflow-y-auto p-3 space-y-3">
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Main</p>
+        <a href="01-dashboard.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⊞ Command Center</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Master Data</p>
+        <a href="07-vms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏢 Partners</a>
+        <a href="08-materials.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Materials</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏭 Locations</a>
+        <a href="11-spec-moa.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📋 QC Refs</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Operations</p>
+        <a href="02-grn.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📦 Inbound GRN</a>
+        <a href="09-inventory.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 Inventory</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏬 Warehouse</a>
+        <a href="06-sampling.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚗ QC Sampling</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Quality</p>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚠ Deviations</a>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✔ CAPAs</a>
+        <a href="05-documents.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📄 Documents</a>
+        <a href="05-coa-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📜 CoA</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Manufacturing</p>
+        <a href="02-bpr-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚙ Batch Records</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Laboratory</p>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-white/10 font-semibold text-white">🔬 Instruments</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📈 Stability</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚡ OOS</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">HR</p>
+        <a href="03-hrms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">👤 Employees</a>
+      </div>
+    </nav>
+    <div class="border-t border-blue-800 p-3 text-center text-[10px] text-blue-400">BatchSphere © 2026</div>
+  </aside>
+
+  <div class="flex flex-1 flex-col overflow-hidden">
+    <header class="sticky top-0 z-20 flex h-14 items-center gap-4 border-b border-blue-100 bg-white px-6 shadow-sm">
+      <div class="text-xs text-slate-400">Home / Laboratory / <span class="font-medium text-blue-700">Instruments</span></div>
+      <span class="ml-auto rounded-xl border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs text-slate-500">2026-05-08</span>
+    </header>
+
+    <main class="flex-1 overflow-y-auto p-6">
+      <div class="mb-5 flex items-start justify-between">
+        <div>
+          <h1 class="text-xl font-bold text-slate-800">Lab Instruments</h1>
+          <p class="mt-0.5 text-sm text-slate-500">Calibration schedule · Qualification status · Maintenance log</p>
+        </div>
+        <button class="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700">+ Add Instrument</button>
+      </div>
+
+      <!-- KPI cards -->
+      <div class="mb-5 grid grid-cols-4 gap-4">
+        <div class="rounded-xl border bg-white p-4 shadow-sm border-l-4 border-l-green-500">
+          <div class="text-xs text-slate-500 mb-1">Qualified & Active</div>
+          <div class="text-2xl font-bold text-green-600">11</div>
+        </div>
+        <div class="rounded-xl border bg-white p-4 shadow-sm border-l-4 border-l-yellow-400">
+          <div class="text-xs text-slate-500 mb-1">Calibration Due (30d)</div>
+          <div class="text-2xl font-bold text-yellow-600">2</div>
+        </div>
+        <div class="rounded-xl border bg-white p-4 shadow-sm border-l-4 border-l-orange-400">
+          <div class="text-xs text-slate-500 mb-1">Under Calibration</div>
+          <div class="text-2xl font-bold text-orange-600">1</div>
+        </div>
+        <div class="rounded-xl border bg-white p-4 shadow-sm border-l-4 border-l-red-500">
+          <div class="text-xs text-slate-500 mb-1">Out of Service</div>
+          <div class="text-2xl font-bold text-red-600">0</div>
+        </div>
+      </div>
+
+      <!-- Calibration due alert -->
+      <div class="mb-4 flex items-center gap-3 rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3">
+        <span class="text-yellow-600 text-base">⚠</span>
+        <p class="text-xs text-yellow-800"><strong>UV Spectrophotometer (INST-0002)</strong> calibration is due in <strong>12 days</strong> (2026-05-20). Schedule with Shimadzu service team.</p>
+        <button class="ml-auto rounded-xl bg-yellow-500 px-3 py-1.5 text-[10px] font-semibold text-white whitespace-nowrap">Add Calibration</button>
+      </div>
+
+      <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <table class="w-full text-xs">
+          <thead class="bg-slate-50 border-b border-slate-200">
+            <tr>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Code</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Instrument</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Make / Model</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Serial #</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Location</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Status</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Qualification</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Next Cal. Due</th>
+              <th class="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr class="hover:bg-slate-50">
+              <td class="px-4 py-3 font-mono font-semibold text-slate-600">INST-0001</td>
+              <td class="px-4 py-3"><div class="font-medium text-slate-800">HPLC System 1</div></td>
+              <td class="px-4 py-3 text-slate-600">Waters Alliance e2695</td>
+              <td class="px-4 py-3 font-mono text-slate-500">WAT-E2695-4821</td>
+              <td class="px-4 py-3 text-slate-600">Lab A — Bench 3</td>
+              <td class="px-4 py-3"><span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">ACTIVE</span></td>
+              <td class="px-4 py-3"><span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">QUALIFIED</span></td>
+              <td class="px-4 py-3 text-slate-600">2026-06-01</td>
+              <td class="px-4 py-3 text-right"><a class="text-blue-600 hover:underline font-medium">View</a></td>
+            </tr>
+            <tr class="hover:bg-yellow-50/30 bg-yellow-50/20">
+              <td class="px-4 py-3 font-mono font-semibold text-slate-600">INST-0002</td>
+              <td class="px-4 py-3"><div class="font-medium text-slate-800">UV Spectrophotometer</div></td>
+              <td class="px-4 py-3 text-slate-600">Shimadzu UV-1900i</td>
+              <td class="px-4 py-3 font-mono text-slate-500">SHI-UV1900-0092</td>
+              <td class="px-4 py-3 text-slate-600">Lab A — Bench 1</td>
+              <td class="px-4 py-3"><span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">ACTIVE</span></td>
+              <td class="px-4 py-3"><span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">QUALIFIED</span></td>
+              <td class="px-4 py-3 font-medium text-yellow-700">2026-05-20 ⚠</td>
+              <td class="px-4 py-3 text-right"><a class="text-blue-600 hover:underline font-medium">View</a></td>
+            </tr>
+            <tr class="hover:bg-orange-50/30 bg-orange-50/10">
+              <td class="px-4 py-3 font-mono font-semibold text-slate-600">INST-0003</td>
+              <td class="px-4 py-3"><div class="font-medium text-slate-800">Karl Fischer Titrator</div></td>
+              <td class="px-4 py-3 text-slate-600">Metrohm 870 KF Titrino Plus</td>
+              <td class="px-4 py-3 font-mono text-slate-500">MET-870KF-3310</td>
+              <td class="px-4 py-3 text-slate-600">Lab B — Wet Zone</td>
+              <td class="px-4 py-3"><span class="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-700">UNDER_CALIBRATION</span></td>
+              <td class="px-4 py-3"><span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">OQ_DONE</span></td>
+              <td class="px-4 py-3 font-medium text-orange-700">2026-05-10 ⚠</td>
+              <td class="px-4 py-3 text-right"><a class="text-blue-600 hover:underline font-medium">View</a></td>
+            </tr>
+            <tr class="hover:bg-slate-50">
+              <td class="px-4 py-3 font-mono font-semibold text-slate-600">INST-0004</td>
+              <td class="px-4 py-3"><div class="font-medium text-slate-800">Analytical Balance 1</div></td>
+              <td class="px-4 py-3 text-slate-600">Mettler Toledo XPE204</td>
+              <td class="px-4 py-3 font-mono text-slate-500">MT-XPE204-7714</td>
+              <td class="px-4 py-3 text-slate-600">Lab A — Balance Room</td>
+              <td class="px-4 py-3"><span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">ACTIVE</span></td>
+              <td class="px-4 py-3"><span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">QUALIFIED</span></td>
+              <td class="px-4 py-3 text-slate-600">2026-07-15</td>
+              <td class="px-4 py-3 text-right"><a class="text-blue-600 hover:underline font-medium">View</a></td>
+            </tr>
+            <tr class="hover:bg-slate-50">
+              <td class="px-4 py-3 font-mono font-semibold text-slate-600">INST-0005</td>
+              <td class="px-4 py-3"><div class="font-medium text-slate-800">Dissolution Tester</div></td>
+              <td class="px-4 py-3 text-slate-600">Electrolab TDT-08L</td>
+              <td class="px-4 py-3 font-mono text-slate-500">EL-TDT08-5501</td>
+              <td class="px-4 py-3 text-slate-600">Lab C — Dissolution Bay</td>
+              <td class="px-4 py-3"><span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">ACTIVE</span></td>
+              <td class="px-4 py-3"><span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">QUALIFIED</span></td>
+              <td class="px-4 py-3 text-slate-600">2026-09-01</td>
+              <td class="px-4 py-3 text-right"><a class="text-blue-600 hover:underline font-medium">View</a></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="border-t border-slate-100 px-4 py-2 text-xs text-slate-400">5 of 13 instruments</div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="h-8 bg-slate-300 flex items-center justify-center text-xs text-slate-500 font-mono">▼ NEXT SCREEN ▼</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 2 — /lims/stability/STAB-001 (Stability Study Detail)  -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="screen-label">SCREEN 2 / 3 — /lims/stability/STAB-20260101-001 — Stability Study Detail</div>
+<div class="flex h-screen bg-slate-50 overflow-hidden">
+    <aside class="w-64 shrink-0 flex flex-col bg-blue-900 border-r border-blue-800 overflow-y-auto">
+    <!-- Logo -->
+    <div class="flex h-16 shrink-0 items-center border-b border-blue-800 px-4 gap-3">
+      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">BS</div>
+      <div>
+        <p class="text-[10px] font-bold uppercase tracking-widest text-blue-200">BatchSphere</p>
+        <p class="text-sm font-semibold text-white leading-none">Core ERP</p>
+      </div>
+    </div>
+    <!-- User -->
+    <div class="border-b border-blue-800 p-3">
+      <div class="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">YR</div>
+        <div class="min-w-0">
+          <div class="truncate text-xs font-semibold text-white">Yamini Raayi</div>
+          <div class="text-[10px] text-blue-200">QC_MANAGER</div>
+        </div>
+        <div class="ml-auto h-2 w-2 rounded-full bg-green-400 shrink-0"></div>
+      </div>
+    </div>
+    <!-- Nav -->
+    <nav class="flex-1 overflow-y-auto p-3 space-y-3">
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Main</p>
+        <a href="01-dashboard.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⊞ Command Center</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Master Data</p>
+        <a href="07-vms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏢 Partners</a>
+        <a href="08-materials.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Materials</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏭 Locations</a>
+        <a href="11-spec-moa.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📋 QC Refs</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Operations</p>
+        <a href="02-grn.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📦 Inbound GRN</a>
+        <a href="09-inventory.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 Inventory</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏬 Warehouse</a>
+        <a href="06-sampling.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚗ QC Sampling</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Quality</p>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚠ Deviations</a>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✔ CAPAs</a>
+        <a href="05-documents.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📄 Documents</a>
+        <a href="05-coa-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📜 CoA</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Manufacturing</p>
+        <a href="02-bpr-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚙ Batch Records</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Laboratory</p>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-white/10 font-semibold text-white">🔬 Instruments</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📈 Stability</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚡ OOS</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">HR</p>
+        <a href="03-hrms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">👤 Employees</a>
+      </div>
+    </nav>
+    <div class="border-t border-blue-800 p-3 text-center text-[10px] text-blue-400">BatchSphere © 2026</div>
+  </aside>
+
+  <div class="flex flex-1 flex-col overflow-hidden">
+    <header class="sticky top-0 z-20 flex h-14 items-center gap-4 border-b border-blue-100 bg-white px-6 shadow-sm">
+      <div class="text-xs text-slate-400">Home / Laboratory / <a class="text-blue-700 font-medium">Stability Studies</a> / STAB-20260101-001</div>
+      <div class="ml-auto flex gap-2">
+        <button class="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600">← Back</button>
+        <button class="rounded-xl bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white">+ Add Timepoint</button>
+      </div>
+    </header>
+
+    <main class="flex-1 overflow-y-auto p-6 space-y-5">
+      <!-- Title -->
+      <div class="flex items-start justify-between">
+        <div>
+          <div class="flex items-center gap-3 mb-1">
+            <span class="font-mono text-sm font-bold text-blue-700">STAB-20260101-001</span>
+            <span class="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-700">ACTIVE</span>
+          </div>
+          <h1 class="text-lg font-bold text-slate-800">Paracetamol API — Long-term Stability Study</h1>
+          <p class="text-xs text-slate-500 mt-0.5">Batch: BT-2026-001 · Storage: 25°C / 60% RH · Duration: 24 months · Linked Spec: SPEC-PCM-API-V3</p>
+        </div>
+      </div>
+
+      <!-- Study info + timeline -->
+      <div class="grid grid-cols-3 gap-5">
+        <div class="col-span-2">
+          <!-- Timepoints table -->
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div class="border-b border-slate-100 px-5 py-3">
+              <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">Stability Timepoints</h2>
+            </div>
+            <table class="w-full text-xs">
+              <thead class="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th class="px-4 py-3 text-left font-semibold text-slate-600">Timepoint</th>
+                  <th class="px-4 py-3 text-left font-semibold text-slate-600">Scheduled</th>
+                  <th class="px-4 py-3 text-left font-semibold text-slate-600">Actual</th>
+                  <th class="px-4 py-3 text-left font-semibold text-slate-600">Status</th>
+                  <th class="px-4 py-3 text-left font-semibold text-slate-600">Overall Result</th>
+                  <th class="px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr class="hover:bg-slate-50">
+                  <td class="px-4 py-3 font-bold text-slate-700">T = 0</td>
+                  <td class="px-4 py-3 text-slate-600">2026-01-01</td>
+                  <td class="px-4 py-3 text-slate-600">2026-01-03</td>
+                  <td class="px-4 py-3"><span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">COMPLETED</span></td>
+                  <td class="px-4 py-3"><span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">ALL PASS</span></td>
+                  <td class="px-4 py-3 text-right"><a class="text-blue-600 hover:underline">Results</a></td>
+                </tr>
+                <tr class="hover:bg-slate-50">
+                  <td class="px-4 py-3 font-bold text-slate-700">T = 3M</td>
+                  <td class="px-4 py-3 text-slate-600">2026-04-01</td>
+                  <td class="px-4 py-3 text-slate-600">2026-04-04</td>
+                  <td class="px-4 py-3"><span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">COMPLETED</span></td>
+                  <td class="px-4 py-3"><span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">ALL PASS</span></td>
+                  <td class="px-4 py-3 text-right"><a class="text-blue-600 hover:underline">Results</a></td>
+                </tr>
+                <tr class="hover:bg-yellow-50/30 bg-yellow-50/10">
+                  <td class="px-4 py-3 font-bold text-orange-700">T = 6M</td>
+                  <td class="px-4 py-3 text-slate-600">2026-07-01</td>
+                  <td class="px-4 py-3 text-slate-400">—</td>
+                  <td class="px-4 py-3"><span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">PENDING</span></td>
+                  <td class="px-4 py-3 text-slate-400">—</td>
+                  <td class="px-4 py-3 text-right"><a class="text-blue-600 hover:underline">Enter Results</a></td>
+                </tr>
+                <tr class="hover:bg-slate-50">
+                  <td class="px-4 py-3 font-bold text-slate-500">T = 9M</td>
+                  <td class="px-4 py-3 text-slate-500">2026-10-01</td>
+                  <td class="px-4 py-3 text-slate-400">—</td>
+                  <td class="px-4 py-3"><span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">PENDING</span></td>
+                  <td class="px-4 py-3 text-slate-400">—</td>
+                  <td class="px-4 py-3"></td>
+                </tr>
+                <tr class="hover:bg-slate-50">
+                  <td class="px-4 py-3 font-bold text-slate-500">T = 12M</td>
+                  <td class="px-4 py-3 text-slate-500">2027-01-01</td>
+                  <td class="px-4 py-3 text-slate-400">—</td>
+                  <td class="px-4 py-3"><span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">PENDING</span></td>
+                  <td class="px-4 py-3 text-slate-400">—</td>
+                  <td class="px-4 py-3"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Detailed results for T=3M -->
+          <div class="mt-4 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div class="border-b border-slate-100 px-5 py-3 flex items-center justify-between">
+              <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">T = 3M Results (2026-04-04)</h2>
+              <span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">ALL PASS · Tested by: qc.analyst</span>
+            </div>
+            <table class="w-full text-xs">
+              <thead class="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th class="px-4 py-3 text-left font-semibold text-slate-600">Parameter</th>
+                  <th class="px-4 py-3 text-left font-semibold text-slate-600">Spec Limit</th>
+                  <th class="px-4 py-3 text-left font-semibold text-slate-600">T=0 Value</th>
+                  <th class="px-4 py-3 text-left font-semibold text-slate-600">T=3M Value</th>
+                  <th class="px-4 py-3 text-left font-semibold text-slate-600">Trend</th>
+                  <th class="px-4 py-3 text-left font-semibold text-slate-600">Result</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr><td class="px-4 py-3 font-medium text-slate-700">Assay (HPLC)</td><td class="px-4 py-3 text-slate-500">98.0 – 102.0 %</td><td class="px-4 py-3 text-slate-600">99.8 %</td><td class="px-4 py-3 font-medium text-slate-700">99.5 %</td><td class="px-4 py-3 text-slate-500">↘ −0.3</td><td class="px-4 py-3"><span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">PASS</span></td></tr>
+                <tr><td class="px-4 py-3 font-medium text-slate-700">Moisture Content (KF)</td><td class="px-4 py-3 text-slate-500">≤ 4.0 %</td><td class="px-4 py-3 text-slate-600">1.2 %</td><td class="px-4 py-3 font-medium text-slate-700">1.5 %</td><td class="px-4 py-3 text-slate-500">↗ +0.3</td><td class="px-4 py-3"><span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">PASS</span></td></tr>
+                <tr><td class="px-4 py-3 font-medium text-slate-700">Related Substances</td><td class="px-4 py-3 text-slate-500">≤ 0.5 % any impurity</td><td class="px-4 py-3 text-slate-600">0.08 %</td><td class="px-4 py-3 font-medium text-slate-700">0.10 %</td><td class="px-4 py-3 text-slate-500">↗ +0.02</td><td class="px-4 py-3"><span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">PASS</span></td></tr>
+                <tr><td class="px-4 py-3 font-medium text-slate-700">Appearance</td><td class="px-4 py-3 text-slate-500">White crystalline powder</td><td class="px-4 py-3 text-slate-600">Conforms</td><td class="px-4 py-3 font-medium text-slate-700">Conforms</td><td class="px-4 py-3 text-slate-500">—</td><td class="px-4 py-3"><span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">PASS</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Side info -->
+        <div class="space-y-4">
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5 text-xs space-y-3">
+            <h3 class="font-bold uppercase tracking-wider text-slate-500 text-[10px]">Study Details</h3>
+            <div class="flex justify-between"><span class="text-slate-500">Material</span><span class="font-medium text-slate-700">Paracetamol API</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Batch</span><span class="font-mono font-medium text-slate-700">BT-2026-001</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Condition</span><span class="font-medium text-slate-700">25°C / 60% RH</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Started</span><span class="text-slate-700">2026-01-01</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Duration</span><span class="text-slate-700">24 months</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">End Date</span><span class="text-slate-700">2027-12-31</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Linked Spec</span><span class="font-mono text-blue-700">SPEC-PCM-API-V3</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Progress</span>
+              <div class="flex items-center gap-1.5"><div class="w-16 h-1.5 rounded-full bg-slate-100 overflow-hidden"><div class="h-full bg-blue-500 rounded-full" style="width:25%"></div></div><span>25%</span></div>
+            </div>
+          </div>
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5 text-xs">
+            <h3 class="font-bold uppercase tracking-wider text-slate-500 text-[10px] mb-3">Next Timepoint</h3>
+            <div class="text-center py-2">
+              <div class="text-2xl font-bold text-slate-700">T = 6M</div>
+              <div class="text-slate-500 mt-1">Scheduled: 2026-07-01</div>
+              <div class="text-blue-600 font-medium mt-1">54 days from today</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="h-8 bg-slate-300 flex items-center justify-center text-xs text-slate-500 font-mono">▼ NEXT SCREEN ▼</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 3 — /lims/oos/OOS-20260508-001 (OOS Investigation)     -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="screen-label">SCREEN 3 / 3 — /lims/oos/OOS-20260508-001 — OOS Investigation (Phase I → Phase II)</div>
+<div class="flex h-screen bg-slate-50 overflow-hidden">
+    <aside class="w-64 shrink-0 flex flex-col bg-blue-900 border-r border-blue-800 overflow-y-auto">
+    <!-- Logo -->
+    <div class="flex h-16 shrink-0 items-center border-b border-blue-800 px-4 gap-3">
+      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">BS</div>
+      <div>
+        <p class="text-[10px] font-bold uppercase tracking-widest text-blue-200">BatchSphere</p>
+        <p class="text-sm font-semibold text-white leading-none">Core ERP</p>
+      </div>
+    </div>
+    <!-- User -->
+    <div class="border-b border-blue-800 p-3">
+      <div class="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">YR</div>
+        <div class="min-w-0">
+          <div class="truncate text-xs font-semibold text-white">Yamini Raayi</div>
+          <div class="text-[10px] text-blue-200">QC_MANAGER</div>
+        </div>
+        <div class="ml-auto h-2 w-2 rounded-full bg-green-400 shrink-0"></div>
+      </div>
+    </div>
+    <!-- Nav -->
+    <nav class="flex-1 overflow-y-auto p-3 space-y-3">
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Main</p>
+        <a href="01-dashboard.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⊞ Command Center</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Master Data</p>
+        <a href="07-vms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏢 Partners</a>
+        <a href="08-materials.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Materials</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏭 Locations</a>
+        <a href="11-spec-moa.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📋 QC Refs</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Operations</p>
+        <a href="02-grn.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📦 Inbound GRN</a>
+        <a href="09-inventory.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 Inventory</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏬 Warehouse</a>
+        <a href="06-sampling.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚗ QC Sampling</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Quality</p>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚠ Deviations</a>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✔ CAPAs</a>
+        <a href="05-documents.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📄 Documents</a>
+        <a href="05-coa-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📜 CoA</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Manufacturing</p>
+        <a href="02-bpr-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚙ Batch Records</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Laboratory</p>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-white/10 font-semibold text-white">🔬 Instruments</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📈 Stability</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚡ OOS</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">HR</p>
+        <a href="03-hrms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">👤 Employees</a>
+      </div>
+    </nav>
+    <div class="border-t border-blue-800 p-3 text-center text-[10px] text-blue-400">BatchSphere © 2026</div>
+  </aside>
+
+  <div class="flex flex-1 flex-col overflow-hidden">
+    <header class="sticky top-0 z-20 flex h-14 items-center gap-4 border-b border-blue-100 bg-white px-6 shadow-sm">
+      <div class="text-xs text-slate-400">Home / Laboratory / <a class="text-blue-700 font-medium">OOS Investigations</a> / OOS-20260508-001</div>
+      <div class="ml-auto flex gap-2">
+        <button class="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600">← Back</button>
+        <button class="rounded-xl bg-fuchsia-600 px-4 py-1.5 text-xs font-semibold text-white">Escalate to Deviation</button>
+      </div>
+    </header>
+
+    <main class="flex-1 overflow-y-auto p-6 space-y-5">
+      <!-- Title -->
+      <div>
+        <div class="flex items-center gap-3 mb-1">
+          <span class="font-mono text-sm font-bold text-blue-700">OOS-20260508-001</span>
+          <span class="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-700">PHASE_II_IN_PROGRESS</span>
+        </div>
+        <h1 class="text-lg font-bold text-slate-800">OOS: Moisture Content — Paracetamol API</h1>
+        <p class="text-xs text-slate-500 mt-0.5">Triggered from Sampling Request SR-20260508-017 · Affected parameter: Moisture Content · OOS result: 6.8% (spec: 2.0–4.0%)</p>
+      </div>
+
+      <!-- OOS result banner -->
+      <div class="rounded-xl border border-red-200 bg-red-50 px-5 py-4">
+        <div class="grid grid-cols-4 gap-4 text-xs">
+          <div><p class="text-red-500 mb-1 font-semibold uppercase tracking-wider text-[10px]">Parameter</p><p class="font-bold text-red-800 text-base">Moisture Content</p></div>
+          <div><p class="text-red-500 mb-1 font-semibold uppercase tracking-wider text-[10px]">Specification</p><p class="font-bold text-red-800 text-base">2.0 – 4.0 %</p></div>
+          <div><p class="text-red-500 mb-1 font-semibold uppercase tracking-wider text-[10px]">OOS Result</p><p class="font-bold text-red-800 text-2xl">6.8 %</p></div>
+          <div><p class="text-red-500 mb-1 font-semibold uppercase tracking-wider text-[10px]">Deviation from USL</p><p class="font-bold text-red-800 text-base">+2.8% above limit</p></div>
+        </div>
+      </div>
+
+      <!-- Phase I -->
+      <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+          <div class="flex items-center gap-2">
+            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-xs font-bold text-green-700">1</span>
+            <h2 class="text-xs font-bold text-slate-700">Phase I — Laboratory Error Investigation</h2>
+            <span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">COMPLETE</span>
+          </div>
+          <span class="text-xs text-slate-400">Completed: 2026-05-08 · qc.analyst</span>
+        </div>
+        <div class="p-5 grid grid-cols-2 gap-4 text-xs">
+          <div>
+            <p class="text-slate-500 mb-2 font-semibold uppercase tracking-wider text-[10px]">Checklist</p>
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2"><span class="text-green-600">✓</span><span class="text-slate-700">Calculation error check — <strong>No error found</strong></span></div>
+              <div class="flex items-center gap-2"><span class="text-green-600">✓</span><span class="text-slate-700">Instrument calibration status — <strong>INST-0003 calibration valid (last: 2026-05-01)</strong></span></div>
+              <div class="flex items-center gap-2"><span class="text-green-600">✓</span><span class="text-slate-700">Reagent expiry check — <strong>Karl Fischer reagent valid (exp: 2026-08-01)</strong></span></div>
+              <div class="flex items-center gap-2"><span class="text-green-600">✓</span><span class="text-slate-700">Analyst competency — <strong>Rajesh Kumar — KF titration training valid</strong></span></div>
+              <div class="flex items-center gap-2"><span class="text-green-600">✓</span><span class="text-slate-700">Triplicate reproducibility — <strong>6.7%, 6.8%, 6.9% — consistent</strong></span></div>
+            </div>
+          </div>
+          <div>
+            <p class="text-slate-500 mb-2 font-semibold uppercase tracking-wider text-[10px]">Phase I Findings</p>
+            <p class="text-slate-700 leading-relaxed">All laboratory error sources ruled out. Instrument calibration verified valid. Calculation checked by second analyst (Kiran Babu) and confirmed accurate. Triplicate results are reproducible and consistent. No assignable lab error identified.</p>
+            <div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+              <p class="text-amber-700 font-semibold">Conclusion: ESCALATE TO PHASE II</p>
+              <p class="text-amber-600 text-[10px] mt-0.5">OOS result is reproducible and not attributable to laboratory error. Full investigation required.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase II -->
+      <div class="rounded-xl border border-orange-200 bg-white shadow-sm">
+        <div class="flex items-center justify-between border-b border-orange-100 px-5 py-3">
+          <div class="flex items-center gap-2">
+            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-orange-100 text-xs font-bold text-orange-700">2</span>
+            <h2 class="text-xs font-bold text-slate-700">Phase II — Full Investigation</h2>
+            <span class="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-700">IN_PROGRESS</span>
+          </div>
+          <span class="text-xs text-slate-400">Assigned: qc.manager</span>
+        </div>
+        <div class="p-5 space-y-4 text-xs">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <p class="text-slate-500 mb-1 font-semibold uppercase tracking-wider text-[10px]">Working Hypothesis</p>
+              <p class="text-slate-700 leading-relaxed">Moisture uptake occurred during transit or storage due to a packaging breach or inadequate humidity control in the supplier's warehouse. The API received under GRN-2026-042 may have been exposed to elevated humidity (>60% RH) prior to delivery.</p>
+            </div>
+            <div>
+              <p class="text-slate-500 mb-1 font-semibold uppercase tracking-wider text-[10px]">Retest Protocol</p>
+              <p class="text-slate-700 leading-relaxed">Resample from 3 additional containers from the same GRN (containers 3, 7, and 12 of 20). Test in duplicate using Karl Fischer titration on INST-0003 and confirm on INST-0007. Compare with T=0 moisture from vendor CoA (reported: 1.8%).</p>
+            </div>
+          </div>
+          <div>
+            <p class="text-slate-500 mb-2 font-semibold uppercase tracking-wider text-[10px]">Investigation Actions</p>
+            <div class="space-y-2">
+              <div class="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <span class="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700">DONE</span>
+                <span class="text-slate-700">Request vendor CoA and transport log from Cipla Ltd (Vendor BU: Cipla-API-HYD)</span>
+              </div>
+              <div class="flex items-center gap-3 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2">
+                <span class="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-700">IN_PROGRESS</span>
+                <span class="text-slate-700">Retest moisture on 3 additional containers per retest protocol above</span>
+              </div>
+              <div class="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">PENDING</span>
+                <span class="text-slate-700">Inspect secondary packaging integrity of remaining containers from GRN-2026-042</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex gap-2 pt-2">
+            <button class="rounded-xl bg-orange-500 px-4 py-2 text-xs font-semibold text-white hover:bg-orange-600">Update Investigation</button>
+            <button class="rounded-xl bg-slate-800 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-700">Close Investigation</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 4 / 5 — /lims/instruments/new — Add Lab Instrument     -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="screen-label">SCREEN 4 / 5 — /lims/instruments/new — Add Lab Instrument</div>
+<div class="flex h-screen bg-slate-50 overflow-hidden">
+  <aside class="w-64 shrink-0 flex flex-col bg-blue-900 border-r border-blue-800 overflow-y-auto">
+    <div class="flex h-16 shrink-0 items-center border-b border-blue-800 px-4 gap-3">
+      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">BS</div>
+      <div><p class="text-[10px] font-bold uppercase tracking-widest text-blue-200">BatchSphere</p><p class="text-sm font-semibold text-white leading-none">Core ERP</p></div>
+    </div>
+    <div class="border-b border-blue-800 p-3">
+      <div class="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">YR</div>
+        <div class="min-w-0"><div class="truncate text-xs font-semibold text-white">Yamini Raayi</div><div class="text-[10px] text-blue-200">QC_MANAGER</div></div>
+        <div class="ml-auto h-2 w-2 rounded-full bg-green-400 shrink-0"></div>
+      </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto p-3 space-y-3">
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Main</p>
+        <a href="01-dashboard.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⊞ Command Center</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Master Data</p>
+        <a href="07-vms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏢 Partners</a>
+        <a href="08-materials.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Materials</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏭 Locations</a>
+        <a href="11-spec-moa.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📋 QC Refs</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Operations</p>
+        <a href="02-grn.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📦 Inbound GRN</a>
+        <a href="09-inventory.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 Inventory</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏬 Warehouse</a>
+        <a href="06-sampling.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚗ QC Sampling</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Quality</p>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚠ Deviations</a>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✔ CAPAs</a>
+        <a href="05-documents.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📄 Documents</a>
+        <a href="05-coa-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📜 CoA</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Manufacturing</p>
+        <a href="02-bpr-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚙ Batch Records</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Laboratory</p>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-white/10 font-semibold text-white">🔬 Instruments</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📈 Stability</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚡ OOS</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">HR</p>
+        <a href="03-hrms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">👤 Employees</a></div>
+    </nav>
+    <div class="border-t border-blue-800 p-3 text-center text-[10px] text-blue-400">BatchSphere © 2026</div>
+  </aside>
+  <div class="flex flex-1 flex-col overflow-hidden">
+    <header class="sticky top-0 z-20 flex h-14 items-center gap-4 border-b border-blue-100 bg-white px-6 shadow-sm">
+      <div class="text-xs text-slate-400">Home / Laboratory / <a href="04-lims-mockup.html" class="text-blue-600 hover:underline">Instruments</a> / <span class="font-medium text-blue-700">Add Instrument</span></div>
+      <span class="ml-auto text-xs text-slate-400 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100">2026-05-08</span>
+    </header>
+    <main class="flex-1 overflow-y-auto p-6">
+      <div class="mb-5 flex items-center justify-between">
+        <div>
+          <h1 class="text-xl font-bold text-slate-800">Add Lab Instrument</h1>
+          <p class="mt-0.5 text-sm text-slate-500">Register new equipment · Set calibration schedule · Assign qualification status</p>
+        </div>
+        <div class="flex gap-2">
+          <a href="04-lims-mockup.html" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">Cancel</a>
+          <button class="rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700">Register Instrument</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-6">
+        <div class="col-span-2 space-y-5">
+
+          <!-- Instrument Info -->
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
+            <h2 class="mb-4 text-xs font-bold uppercase tracking-wider text-slate-500">Instrument Identification</h2>
+            <div class="space-y-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Instrument Code</label>
+                  <input class="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs font-mono text-blue-700 cursor-not-allowed" value="INST-0014 (auto)" readonly />
+                </div>
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Instrument Type <span class="text-red-500">*</span></label>
+                  <select class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400">
+                    <option>— Select Type —</option>
+                    <option>HPLC System</option>
+                    <option>GC System</option>
+                    <option selected>UV-Vis Spectrophotometer</option>
+                    <option>FTIR Spectrometer</option>
+                    <option>Karl Fischer Titrator</option>
+                    <option>Analytical Balance</option>
+                    <option>pH Meter</option>
+                    <option>Dissolution Apparatus</option>
+                    <option>Particle Size Analyzer</option>
+                    <option>Melting Point Apparatus</option>
+                    <option>Viscometer</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-slate-600">Instrument Name <span class="text-red-500">*</span></label>
+                <input class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400" placeholder="Descriptive name, e.g., UV Spectrophotometer 2 — Lab B" />
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Manufacturer <span class="text-red-500">*</span></label>
+                  <input class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400" placeholder="e.g., Shimadzu, Waters, Agilent" value="Perkin Elmer" />
+                </div>
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Model <span class="text-red-500">*</span></label>
+                  <input class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400" value="Lambda 365" />
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Serial Number <span class="text-red-500">*</span></label>
+                  <input class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-mono outline-none focus:border-blue-400" placeholder="Manufacturer serial number" />
+                </div>
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Asset Tag / Fixed Asset No.</label>
+                  <input class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-mono outline-none focus:border-blue-400" placeholder="Internal asset number" />
+                </div>
+              </div>
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-slate-600">Lab Location <span class="text-red-500">*</span></label>
+                <select class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400">
+                  <option>Lab A — Bench 1</option><option>Lab A — Bench 2</option><option>Lab A — Bench 3</option>
+                  <option selected>Lab B — Bench 1</option><option>Lab B — Bench 2</option>
+                  <option>Microbiology Lab — Bench 1</option><option>Instrument Room — Bay 1</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Qualification & Calibration -->
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
+            <h2 class="mb-4 text-xs font-bold uppercase tracking-wider text-slate-500">Qualification &amp; Calibration</h2>
+            <div class="space-y-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Initial Qualification Status <span class="text-red-500">*</span></label>
+                  <select class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400">
+                    <option selected>IQ Pending (Installation Qualification)</option>
+                    <option>OQ Pending (Operational Qualification)</option>
+                    <option>PQ Pending (Performance Qualification)</option>
+                    <option>QUALIFIED (fully qualified)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Calibration Frequency <span class="text-red-500">*</span></label>
+                  <select class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400">
+                    <option>Monthly</option>
+                    <option selected>Quarterly</option>
+                    <option>Semi-Annual</option>
+                    <option>Annual</option>
+                    <option>Per Use</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Purchase Date</label>
+                  <input type="date" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400" value="2026-04-15" />
+                </div>
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Warranty Expiry</label>
+                  <input type="date" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400" value="2029-04-14" />
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">First Calibration Due <span class="text-red-500">*</span></label>
+                  <input type="date" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400" value="2026-08-15" />
+                </div>
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Responsible Analyst</label>
+                  <select class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400">
+                    <option selected>Ravi Shankar (QC Analyst)</option>
+                    <option>Priya Kumar (QC Analyst)</option>
+                    <option>Dr. Yamini Raayi (QC Manager)</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-slate-600">SOP Reference</label>
+                <input class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400" placeholder="e.g., SOP-LIMS-007 — UV Spectrophotometer Operation" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Summary -->
+        <div class="space-y-4">
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5 text-xs space-y-3">
+            <h3 class="font-bold uppercase tracking-wider text-slate-500 text-[10px]">Instrument Card Preview</h3>
+            <div class="space-y-2">
+              <div class="flex justify-between"><span class="text-slate-500">Code</span><span class="font-mono font-semibold text-blue-700">INST-0014</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Type</span><span class="font-medium text-slate-700">UV-Vis Spectrophotometer</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Make</span><span class="font-medium text-slate-700">Perkin Elmer Lambda 365</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Location</span><span class="font-medium text-slate-700">Lab B — Bench 1</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Status</span><span class="rounded-full bg-yellow-100 px-2 py-0.5 font-semibold text-yellow-700">IQ_PENDING</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Cal. Due</span><span class="font-medium text-slate-700">2026-08-15</span></div>
+            </div>
+          </div>
+          <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-800">
+            <p class="font-semibold mb-1">IQ/OQ/PQ Required</p>
+            <p>New instruments must complete Installation Qualification (IQ), Operational Qualification (OQ), and Performance Qualification (PQ) before routine use per SOP-LIMS-001.</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 5 / 5 — /lims/stability/new — New Stability Study      -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="screen-label">SCREEN 5 / 5 — /lims/stability/new — Create Stability Study</div>
+<div class="flex h-screen bg-slate-50 overflow-hidden">
+  <aside class="w-64 shrink-0 flex flex-col bg-blue-900 border-r border-blue-800 overflow-y-auto">
+    <div class="flex h-16 shrink-0 items-center border-b border-blue-800 px-4 gap-3">
+      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">BS</div>
+      <div><p class="text-[10px] font-bold uppercase tracking-widest text-blue-200">BatchSphere</p><p class="text-sm font-semibold text-white leading-none">Core ERP</p></div>
+    </div>
+    <div class="border-b border-blue-800 p-3">
+      <div class="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">YR</div>
+        <div class="min-w-0"><div class="truncate text-xs font-semibold text-white">Yamini Raayi</div><div class="text-[10px] text-blue-200">QC_MANAGER</div></div>
+        <div class="ml-auto h-2 w-2 rounded-full bg-green-400 shrink-0"></div>
+      </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto p-3 space-y-3">
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Main</p>
+        <a href="01-dashboard.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⊞ Command Center</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Master Data</p>
+        <a href="07-vms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏢 Partners</a>
+        <a href="08-materials.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Materials</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏭 Locations</a>
+        <a href="11-spec-moa.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📋 QC Refs</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Operations</p>
+        <a href="02-grn.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📦 Inbound GRN</a>
+        <a href="09-inventory.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 Inventory</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏬 Warehouse</a>
+        <a href="06-sampling.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚗ QC Sampling</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Quality</p>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚠ Deviations</a>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✔ CAPAs</a>
+        <a href="05-documents.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📄 Documents</a>
+        <a href="05-coa-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📜 CoA</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Manufacturing</p>
+        <a href="02-bpr-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚙ Batch Records</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Laboratory</p>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-white/10 font-semibold text-white">🔬 Instruments</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📈 Stability</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚡ OOS</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">HR</p>
+        <a href="03-hrms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">👤 Employees</a></div>
+    </nav>
+    <div class="border-t border-blue-800 p-3 text-center text-[10px] text-blue-400">BatchSphere © 2026</div>
+  </aside>
+  <div class="flex flex-1 flex-col overflow-hidden">
+    <header class="sticky top-0 z-20 flex h-14 items-center gap-4 border-b border-blue-100 bg-white px-6 shadow-sm">
+      <div class="text-xs text-slate-400">Home / Laboratory / <a href="04-lims-mockup.html" class="text-blue-600 hover:underline">Stability</a> / <span class="font-medium text-blue-700">New Study</span></div>
+      <span class="ml-auto text-xs text-slate-400 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100">2026-05-08</span>
+    </header>
+    <main class="flex-1 overflow-y-auto p-6">
+      <div class="mb-5 flex items-center justify-between">
+        <div>
+          <h1 class="text-xl font-bold text-slate-800">Create Stability Study</h1>
+          <p class="mt-0.5 text-sm text-slate-500">ICH Q1A-compliant stability protocol · Timepoint scheduling · Shelf-life determination</p>
+        </div>
+        <div class="flex gap-2">
+          <a href="04-lims-mockup.html" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">Cancel</a>
+          <button class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">Save as Draft</button>
+          <button class="rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700">Initiate Study</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-6">
+        <div class="col-span-2 space-y-5">
+
+          <!-- Material & Protocol -->
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
+            <h2 class="mb-4 text-xs font-bold uppercase tracking-wider text-slate-500">Study Identification &amp; Material</h2>
+            <div class="space-y-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Study Code</label>
+                  <input class="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs font-mono text-blue-700 cursor-not-allowed" value="STAB-20260508-002 (auto)" readonly />
+                </div>
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Study Type <span class="text-red-500">*</span></label>
+                  <select class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400">
+                    <option selected>Long-Term (25°C / 60% RH — ICH Zone IVb)</option>
+                    <option>Accelerated (40°C / 75% RH)</option>
+                    <option>Intermediate (30°C / 65% RH)</option>
+                    <option>Stress / Forced Degradation</option>
+                    <option>In-Use Stability</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Material <span class="text-red-500">*</span></label>
+                  <select class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400">
+                    <option>— Select Material —</option>
+                    <option selected>Ibuprofen API (MAT-0031)</option>
+                    <option>Paracetamol API (MAT-0001)</option>
+                    <option>Amoxicillin Trihydrate (MAT-0015)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Batch / Lot Number <span class="text-red-500">*</span></label>
+                  <input class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-mono outline-none focus:border-blue-400" value="INV-2026-0851" />
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Specification Reference <span class="text-red-500">*</span></label>
+                  <select class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400">
+                    <option>— Select Spec —</option>
+                    <option selected>SPEC-MAT-0031-v2 (Ibuprofen API — IP 2022)</option>
+                    <option>SPEC-MAT-0001-v3 (Paracetamol — IP 2022)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Protocol Reference</label>
+                  <input class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400" placeholder="e.g., PROT-STAB-IBU-2026-01" value="PROT-STAB-IBU-2026-01" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Storage & Timepoints -->
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
+            <h2 class="mb-4 text-xs font-bold uppercase tracking-wider text-slate-500">Storage Condition &amp; Timepoints</h2>
+            <div class="space-y-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Storage Condition <span class="text-red-500">*</span></label>
+                  <select class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400">
+                    <option selected>25°C ± 2°C / 60% RH ± 5% (Long-Term)</option>
+                    <option>40°C ± 2°C / 75% RH ± 5% (Accelerated)</option>
+                    <option>30°C ± 2°C / 65% RH ± 5% (Intermediate)</option>
+                    <option>-20°C ± 5°C (Frozen)</option>
+                    <option>2–8°C (Refrigerated)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Chamber / Equipment</label>
+                  <select class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400">
+                    <option selected>Stability Chamber SC-01 (25°C/60%RH)</option>
+                    <option>Stability Chamber SC-02 (40°C/75%RH)</option>
+                    <option>Walk-in Chamber WC-01</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Study Start Date <span class="text-red-500">*</span></label>
+                  <input type="date" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400" value="2026-05-10" />
+                </div>
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Planned Study Duration</label>
+                  <select class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400">
+                    <option>6 months</option><option>12 months</option><option selected>24 months</option><option>36 months</option><option>48 months</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label class="block mb-2 text-xs font-semibold text-slate-600">Planned Timepoints <span class="text-red-500">*</span></label>
+                <div class="grid grid-cols-5 gap-2">
+                  <label class="flex items-center gap-1.5 rounded-xl border-2 border-blue-300 bg-blue-50 px-3 py-2 cursor-pointer">
+                    <input type="checkbox" checked class="accent-blue-600" /><span class="text-xs font-semibold text-blue-700">T = 0</span>
+                  </label>
+                  <label class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 cursor-pointer hover:border-blue-200">
+                    <input type="checkbox" class="accent-blue-600" /><span class="text-xs text-slate-600">T = 1M</span>
+                  </label>
+                  <label class="flex items-center gap-1.5 rounded-xl border-2 border-blue-300 bg-blue-50 px-3 py-2 cursor-pointer">
+                    <input type="checkbox" checked class="accent-blue-600" /><span class="text-xs font-semibold text-blue-700">T = 3M</span>
+                  </label>
+                  <label class="flex items-center gap-1.5 rounded-xl border-2 border-blue-300 bg-blue-50 px-3 py-2 cursor-pointer">
+                    <input type="checkbox" checked class="accent-blue-600" /><span class="text-xs font-semibold text-blue-700">T = 6M</span>
+                  </label>
+                  <label class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 cursor-pointer hover:border-blue-200">
+                    <input type="checkbox" class="accent-blue-600" /><span class="text-xs text-slate-600">T = 9M</span>
+                  </label>
+                  <label class="flex items-center gap-1.5 rounded-xl border-2 border-blue-300 bg-blue-50 px-3 py-2 cursor-pointer">
+                    <input type="checkbox" checked class="accent-blue-600" /><span class="text-xs font-semibold text-blue-700">T = 12M</span>
+                  </label>
+                  <label class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 cursor-pointer hover:border-blue-200">
+                    <input type="checkbox" class="accent-blue-600" /><span class="text-xs text-slate-600">T = 18M</span>
+                  </label>
+                  <label class="flex items-center gap-1.5 rounded-xl border-2 border-blue-300 bg-blue-50 px-3 py-2 cursor-pointer">
+                    <input type="checkbox" checked class="accent-blue-600" /><span class="text-xs font-semibold text-blue-700">T = 24M</span>
+                  </label>
+                  <label class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 cursor-pointer hover:border-blue-200">
+                    <input type="checkbox" class="accent-blue-600" /><span class="text-xs text-slate-600">T = 36M</span>
+                  </label>
+                  <label class="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 cursor-pointer hover:border-blue-200">
+                    <input type="checkbox" class="accent-blue-600" /><span class="text-xs text-slate-600">T = 48M</span>
+                  </label>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-2">Selected: T=0, T=3M, T=6M, T=12M, T=24M · Dates auto-calculated from start date · Alerts sent 7 days before each timepoint</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Analyst -->
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
+            <h2 class="mb-4 text-xs font-bold uppercase tracking-wider text-slate-500">Responsibility &amp; Sign-off</h2>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-slate-600">Responsible Analyst <span class="text-red-500">*</span></label>
+                <select class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400">
+                  <option selected>Ravi Shankar (QC Analyst)</option>
+                  <option>Anitha Reddy (QC Analyst)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-slate-600">Approved By (QC Manager)</label>
+                <input class="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs cursor-not-allowed" value="Dr. Yamini Raayi (QC_MANAGER)" readonly />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Summary -->
+        <div class="space-y-4">
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5 text-xs space-y-3">
+            <h3 class="font-bold uppercase tracking-wider text-slate-500 text-[10px]">Study Summary</h3>
+            <div class="space-y-2">
+              <div class="flex justify-between"><span class="text-slate-500">Study #</span><span class="font-mono font-semibold text-blue-700">STAB-20260508-002</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Type</span><span class="rounded-full bg-blue-100 px-2 py-0.5 font-semibold text-blue-700">Long-Term</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Material</span><span class="font-medium text-slate-700">Ibuprofen API</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Lot</span><span class="font-mono text-slate-700">INV-2026-0851</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Condition</span><span class="font-medium text-slate-700">25°C/60%RH</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Duration</span><span class="font-medium text-slate-700">24 months</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Timepoints</span><span class="font-medium text-slate-700">5 (T0→T24M)</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Start</span><span class="font-medium text-slate-700">2026-05-10</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">End</span><span class="font-medium text-slate-700">2028-05-10</span></div>
+            </div>
+          </div>
+          <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-800">
+            <p class="font-semibold mb-1">ICH Q1A(R2)</p>
+            <p>Study follows ICH Q1A(R2) — Stability Testing of New Drug Substances and Products for Zone IVb (India).</p>
+          </div>
+          <div class="rounded-xl border border-green-200 bg-green-50 p-4 text-xs text-green-800">
+            <p class="font-semibold mb-1">Auto-Scheduling</p>
+            <p>Test due-date alerts will be sent to Ravi Shankar 7 days before each timepoint. Overdue timepoints escalate to QC Manager.</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+
+</body>
+</html>

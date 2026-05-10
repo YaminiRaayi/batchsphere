@@ -22,6 +22,7 @@ import com.batchsphere.core.masterdata.warehouselocation.repository.WarehouseRep
 import com.batchsphere.core.masterdata.warehouselocation.repository.WarehouseZoneRuleRepository;
 import com.batchsphere.core.transactions.grn.entity.GrnItem;
 import com.batchsphere.core.transactions.inventory.dto.InventoryAdjustmentRequest;
+import com.batchsphere.core.transactions.inventory.dto.InventoryIssueRequest;
 import com.batchsphere.core.transactions.inventory.dto.InventoryResponse;
 import com.batchsphere.core.transactions.inventory.dto.InventorySummaryResponse;
 import com.batchsphere.core.transactions.inventory.dto.InventoryStatusUpdateRequest;
@@ -55,6 +56,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class InventoryServiceImpl implements InventoryService {
 
+    private static final BigDecimal ZERO = BigDecimal.ZERO;
+
     private final InventoryRepository inventoryRepository;
     private final InventoryTransactionRepository inventoryTransactionRepository;
     private final AuthenticatedActorService authenticatedActorService;
@@ -79,7 +82,7 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional(readOnly = true)
     public Page<InventoryResponse> getAllInventory(Pageable pageable) {
-        return inventoryRepository.findByIsActiveTrue(pageable).map(this::toResponse);
+        return inventoryRepository.findByIsActiveTrueAndQuantityOnHandGreaterThan(ZERO, pageable).map(this::toResponse);
     }
 
     @Override
@@ -144,12 +147,11 @@ public class InventoryServiceImpl implements InventoryService {
         String actor = authenticatedActorService.currentActor();
         Inventory inventory = getActiveInventory(id);
         validateFefoReduction(inventory, request);
-        BigDecimal signedDelta = Boolean.TRUE.equals(request.getIncrease())
-                ? request.getQuantityDelta()
-                : request.getQuantityDelta().negate();
-        BigDecimal updatedQuantity = inventory.getQuantityOnHand().add(signedDelta);
+        BigDecimal beforeQuantity = inventory.getQuantityOnHand();
+        BigDecimal signedDelta = request.getQuantityDelta();
+        BigDecimal updatedQuantity = beforeQuantity.add(signedDelta);
 
-        if (updatedQuantity.compareTo(BigDecimal.ZERO) < 0) {
+        if (updatedQuantity.compareTo(ZERO) < 0) {
             throw new BusinessConflictException("Inventory adjustment cannot reduce quantity below zero");
         }
 
@@ -164,8 +166,45 @@ public class InventoryServiceImpl implements InventoryService {
                 InventoryTransactionType.ADJUSTMENT,
                 InventoryReferenceType.INVENTORY,
                 savedInventory.getId(),
+                null,
                 signedDelta,
+                beforeQuantity,
+                updatedQuantity,
                 "Inventory adjusted - " + request.getReason().trim(),
+                actor,
+                now
+        ));
+
+        return toResponse(savedInventory);
+    }
+
+    @Override
+    @Transactional
+    public InventoryResponse issueInventory(UUID id, InventoryIssueRequest request) {
+        String actor = authenticatedActorService.currentActor();
+        Inventory inventory = getActiveInventory(id);
+        validateIssueRequest(inventory, request);
+        validateFefoReduction(inventory, request.getQuantity().negate());
+
+        BigDecimal beforeQuantity = inventory.getQuantityOnHand();
+        BigDecimal updatedQuantity = beforeQuantity.subtract(request.getQuantity());
+        LocalDateTime now = LocalDateTime.now();
+
+        inventory.setQuantityOnHand(updatedQuantity);
+        inventory.setUpdatedBy(actor);
+        inventory.setUpdatedAt(now);
+        Inventory savedInventory = inventoryRepository.save(inventory);
+
+        inventoryTransactionRepository.save(buildTransaction(
+                savedInventory,
+                InventoryTransactionType.OUTBOUND,
+                request.getReferenceType(),
+                savedInventory.getId(),
+                normalizeReferenceNumber(request.getReferenceNumber()),
+                request.getQuantity().negate(),
+                beforeQuantity,
+                updatedQuantity,
+                buildIssueRemarks(request),
                 actor,
                 now
         ));
@@ -225,12 +264,19 @@ public class InventoryServiceImpl implements InventoryService {
         Inventory savedDestinationInventory = inventoryRepository.save(destinationInventory);
 
         String remarks = buildTransferRemarks(sourcePallet, destinationPallet, request.getRemarks());
+        BigDecimal sourceAfterQuantity = sourceInventory.getQuantityOnHand();
+        BigDecimal sourceBeforeQuantity = sourceAfterQuantity.add(request.getQuantity());
+        BigDecimal destinationAfterQuantity = savedDestinationInventory.getQuantityOnHand();
+        BigDecimal destinationBeforeQuantity = destinationAfterQuantity.subtract(request.getQuantity());
         inventoryTransactionRepository.save(buildTransaction(
                 sourceInventory,
                 InventoryTransactionType.TRANSFER,
                 InventoryReferenceType.INVENTORY,
                 savedDestinationInventory.getId(),
+                null,
                 request.getQuantity().negate(),
+                sourceBeforeQuantity,
+                sourceAfterQuantity,
                 remarks,
                 actor,
                 now
@@ -240,7 +286,10 @@ public class InventoryServiceImpl implements InventoryService {
                 InventoryTransactionType.TRANSFER,
                 InventoryReferenceType.INVENTORY,
                 sourceInventory.getId(),
+                null,
                 request.getQuantity(),
+                destinationBeforeQuantity,
+                destinationAfterQuantity,
                 remarks,
                 actor,
                 now
@@ -299,7 +348,10 @@ public class InventoryServiceImpl implements InventoryService {
                     .transactionType(InventoryTransactionType.INBOUND)
                     .referenceType(InventoryReferenceType.GRN)
                     .referenceId(grnId)
+                    .referenceNumber(null)
                     .quantity(item.getAcceptedQuantity())
+                    .beforeQuantity(savedInventory.getQuantityOnHand().subtract(item.getAcceptedQuantity()))
+                    .afterQuantity(savedInventory.getQuantityOnHand())
                     .uom(item.getUom())
                     .remarks("Inventory added from GRN receipt")
                     .createdBy(actor)
@@ -379,7 +431,10 @@ public class InventoryServiceImpl implements InventoryService {
                 .transactionType(InventoryTransactionType.STATUS_CHANGE)
                 .referenceType(referenceType != null ? referenceType : InventoryReferenceType.INVENTORY)
                 .referenceId(referenceId != null ? referenceId : savedInventory.getId())
+                .referenceNumber(null)
                 .quantity(savedInventory.getQuantityOnHand())
+                .beforeQuantity(null)
+                .afterQuantity(savedInventory.getQuantityOnHand())
                 .uom(savedInventory.getUom())
                 .remarks(buildStatusChangeRemarks(previousStatus, targetStatus, remarks))
                 .createdBy(actor)
@@ -481,9 +536,13 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     private void validateFefoReduction(Inventory inventory, InventoryAdjustmentRequest request) {
-        if (Boolean.TRUE.equals(request.getIncrease())
-                || inventory.getStatus() != InventoryStatus.RELEASED
-                || request.getQuantityDelta().compareTo(BigDecimal.ZERO) <= 0) {
+        validateFefoReduction(inventory, request.getQuantityDelta());
+    }
+
+    private void validateFefoReduction(Inventory inventory, BigDecimal signedDelta) {
+        if (signedDelta == null
+                || signedDelta.compareTo(ZERO) >= 0
+                || inventory.getStatus() != InventoryStatus.RELEASED) {
             return;
         }
 
@@ -491,7 +550,7 @@ public class InventoryServiceImpl implements InventoryService {
                 inventory.getMaterialId(),
                 InventoryStatus.RELEASED
         ).stream()
-                .filter(candidate -> candidate.getQuantityOnHand() != null && candidate.getQuantityOnHand().compareTo(BigDecimal.ZERO) > 0)
+                .filter(candidate -> candidate.getQuantityOnHand() != null && candidate.getQuantityOnHand().compareTo(ZERO) > 0)
                 .toList();
 
         if (releasedLots.size() <= 1) {
@@ -589,7 +648,10 @@ public class InventoryServiceImpl implements InventoryService {
                                                  InventoryTransactionType type,
                                                  InventoryReferenceType referenceType,
                                                  UUID referenceId,
+                                                 String referenceNumber,
                                                  BigDecimal quantity,
+                                                 BigDecimal beforeQuantity,
+                                                 BigDecimal afterQuantity,
                                                  String remarks,
                                                  String actor,
                                                  LocalDateTime now) {
@@ -603,12 +665,43 @@ public class InventoryServiceImpl implements InventoryService {
                 .transactionType(type)
                 .referenceType(referenceType)
                 .referenceId(referenceId)
+                .referenceNumber(referenceNumber)
                 .quantity(quantity)
+                .beforeQuantity(beforeQuantity)
+                .afterQuantity(afterQuantity)
                 .uom(inventory.getUom())
                 .remarks(remarks)
                 .createdBy(actor)
                 .createdAt(now)
                 .build();
+    }
+
+    private void validateIssueRequest(Inventory inventory, InventoryIssueRequest request) {
+        if (inventory.getStatus() != InventoryStatus.RELEASED) {
+            throw new BusinessConflictException("Only released inventory can be issued");
+        }
+        if (request.getReferenceType() == InventoryReferenceType.GRN
+                || request.getReferenceType() == InventoryReferenceType.INVENTORY) {
+            throw new BusinessConflictException("Issue reference type must be production, dispensing, sampling request, or other");
+        }
+        if (request.getQuantity().compareTo(inventory.getQuantityOnHand()) > 0) {
+            throw new BusinessConflictException("Issue quantity cannot exceed available inventory");
+        }
+    }
+
+    private String buildIssueRemarks(InventoryIssueRequest request) {
+        String base = "Inventory issued - " + request.getReason().trim();
+        if (request.getRemarks() == null || request.getRemarks().isBlank()) {
+            return base;
+        }
+        return base + " - " + request.getRemarks().trim();
+    }
+
+    private String normalizeReferenceNumber(String referenceNumber) {
+        if (referenceNumber == null || referenceNumber.isBlank()) {
+            return null;
+        }
+        return referenceNumber.trim();
     }
 
     private void validateReceivableItem(GrnItem item) {
@@ -662,10 +755,14 @@ public class InventoryServiceImpl implements InventoryService {
                 .materialId(transaction.getMaterialId())
                 .batchId(transaction.getBatchId())
                 .palletId(transaction.getPalletId())
+                .warehouseLocation(transaction.getWarehouseLocation())
                 .transactionType(transaction.getTransactionType())
                 .referenceType(transaction.getReferenceType())
                 .referenceId(transaction.getReferenceId())
+                .referenceNumber(transaction.getReferenceNumber())
                 .quantity(transaction.getQuantity())
+                .beforeQuantity(transaction.getBeforeQuantity())
+                .afterQuantity(transaction.getAfterQuantity())
                 .uom(transaction.getUom())
                 .remarks(transaction.getRemarks())
                 .createdBy(transaction.getCreatedBy())

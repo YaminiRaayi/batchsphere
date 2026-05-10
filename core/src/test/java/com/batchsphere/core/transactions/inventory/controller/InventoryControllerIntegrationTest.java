@@ -7,6 +7,8 @@ import com.batchsphere.core.batch.entity.Batch;
 import com.batchsphere.core.batch.entity.BatchStatus;
 import com.batchsphere.core.batch.entity.BatchType;
 import com.batchsphere.core.batch.repository.BatchRepository;
+import com.batchsphere.core.masterdata.businessunit.entity.BusinessUnit;
+import com.batchsphere.core.masterdata.businessunit.repository.BusinessUnitRepository;
 import com.batchsphere.core.masterdata.material.entity.Material;
 import com.batchsphere.core.masterdata.material.entity.StorageCondition;
 import com.batchsphere.core.masterdata.material.repository.MaterialRepository;
@@ -76,6 +78,9 @@ class InventoryControllerIntegrationTest {
 
     @Autowired
     private WarehouseLocationService warehouseLocationService;
+
+    @Autowired
+    private BusinessUnitRepository businessUnitRepository;
 
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -177,8 +182,7 @@ class InventoryControllerIntegrationTest {
                         .content("""
                                 {
                                   "quantityDelta": 5.000,
-                                  "reason": "Cycle count correction",
-                                  "increase": true
+                                  "reason": "Cycle count correction"
                                 }
                                 """))
                 .andReturn();
@@ -191,7 +195,44 @@ class InventoryControllerIntegrationTest {
         assertEquals(new BigDecimal("30.000"), savedInventory.getQuantityOnHand());
         assertTrue(inventoryTransactionRepository.findAll().stream()
                 .anyMatch(transaction -> transaction.getInventoryId().equals(inventory.getId())
-                        && transaction.getTransactionType() == InventoryTransactionType.ADJUSTMENT));
+                        && transaction.getTransactionType() == InventoryTransactionType.ADJUSTMENT
+                        && new BigDecimal("25.000").compareTo(transaction.getBeforeQuantity()) == 0
+                        && new BigDecimal("30.000").compareTo(transaction.getAfterQuantity()) == 0));
+    }
+
+    @Test
+    void issueReducesReleasedInventoryAndWritesOutboundTransaction() throws Exception {
+        Inventory inventory = inventoryRepository.save(buildInventory(InventoryStatus.RELEASED));
+        SecurityContextHolder.clearContext();
+        String token = loginAsAdmin();
+
+        MvcResult result = mockMvc.perform(post("/api/inventory/{id}/issue", inventory.getId())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "quantity": 5.000,
+                                  "referenceType": "PRODUCTION",
+                                  "referenceNumber": "PRD-001",
+                                  "reason": "Issued to production",
+                                  "remarks": "Line 1 staging"
+                                }
+                                """))
+                .andReturn();
+
+        assertEquals(200, result.getResponse().getStatus(), result.getResponse().getContentAsString());
+        JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertEquals(new BigDecimal("20.0"), root.get("quantityOnHand").decimalValue());
+
+        Inventory savedInventory = inventoryRepository.findById(inventory.getId()).orElseThrow();
+        assertEquals(new BigDecimal("20.000"), savedInventory.getQuantityOnHand());
+        assertTrue(inventoryTransactionRepository.findAll().stream()
+                .anyMatch(transaction -> transaction.getInventoryId().equals(inventory.getId())
+                        && transaction.getTransactionType() == InventoryTransactionType.OUTBOUND
+                        && "PRD-001".equals(transaction.getReferenceNumber())
+                        && new BigDecimal("-5.000").compareTo(transaction.getQuantity()) == 0
+                        && new BigDecimal("25.000").compareTo(transaction.getBeforeQuantity()) == 0
+                        && new BigDecimal("20.000").compareTo(transaction.getAfterQuantity()) == 0));
     }
 
     @Test
@@ -260,6 +301,31 @@ class InventoryControllerIntegrationTest {
         JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
         assertEquals(baselineQuarantine + 1, root.get("countsByStatus").get("QUARANTINE").asInt());
         assertEquals(baselineUnderTest + 1, root.get("countsByStatus").get("UNDER_TEST").asInt());
+    }
+
+    @Test
+    void zeroQuantityInventoryIsExcludedFromActiveSummary() throws Exception {
+        SecurityContextHolder.clearContext();
+        String token = loginAsAdmin();
+        MvcResult baselineResult = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/inventory/summary")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn();
+        JsonNode baselineRoot = objectMapper.readTree(baselineResult.getResponse().getContentAsString());
+        int baselineReleased = baselineRoot.get("countsByStatus").get("RELEASED").asInt();
+
+        setFixtureAuthentication();
+        Inventory inventory = inventoryRepository.save(buildInventory(InventoryStatus.RELEASED));
+        inventory.setQuantityOnHand(BigDecimal.ZERO);
+        inventoryRepository.save(inventory);
+        SecurityContextHolder.clearContext();
+
+        MvcResult result = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/inventory/summary")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn();
+
+        assertEquals(200, result.getResponse().getStatus(), result.getResponse().getContentAsString());
+        JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertEquals(baselineReleased, root.get("countsByStatus").get("RELEASED").asInt());
     }
 
     private String loginAsAdmin() throws Exception {
@@ -331,10 +397,19 @@ class InventoryControllerIntegrationTest {
 
     private Pallet createPalletHierarchy() {
         String suffix = UUID.randomUUID().toString().substring(0, 8);
+        BusinessUnit businessUnit = businessUnitRepository.save(BusinessUnit.builder()
+                .id(UUID.randomUUID())
+                .unitCode("BU-" + suffix)
+                .unitName("Business Unit " + suffix)
+                .isActive(true)
+                .createdBy("seed-user")
+                .createdAt(LocalDateTime.now())
+                .build());
 
         CreateWarehouseRequest warehouseRequest = new CreateWarehouseRequest();
         warehouseRequest.setWarehouseCode("WH-" + suffix);
         warehouseRequest.setWarehouseName("Warehouse " + suffix);
+        warehouseRequest.setBusinessUnitId(businessUnit.getId());
         warehouseRequest.setCreatedBy("seed-user");
         Warehouse warehouse = warehouseLocationService.createWarehouse(warehouseRequest);
 

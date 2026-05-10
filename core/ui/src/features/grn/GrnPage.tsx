@@ -512,12 +512,9 @@ export function GrnPage() {
           : `GRN ${refreshedGrn.grnNumber} created successfully.`
       );
       setQueueMessage(null);
-      setSelectedGrn(refreshedGrn);
       setIsCreateMode(false);
-      setIsQueueVisible(false);
-      setItemContainers({});
-      setContainerLabels({});
       await loadGrns(currentPage);
+      await handleSelectGrn(refreshedGrn.id);
     } catch (submitError) {
       const message =
         submitError instanceof Error ? submitError.message : "Unknown error while creating GRN";

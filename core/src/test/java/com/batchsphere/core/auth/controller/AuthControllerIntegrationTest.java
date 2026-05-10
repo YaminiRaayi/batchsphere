@@ -109,6 +109,38 @@ class AuthControllerIntegrationTest {
     }
 
     @Test
+    void seededWarehouseAndProcurementUsersCanLogin() throws Exception {
+        assertTrue(userRepository.existsByUsername("warehouse.op"));
+        assertTrue(userRepository.existsByUsername("procurement.user"));
+
+        MvcResult warehouseLoginResult = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                          "username": "warehouse.op",
+                          "password": "Admin@123"
+                        }
+                        """))
+                .andReturn();
+        assertEquals(200, warehouseLoginResult.getResponse().getStatus(), warehouseLoginResult.getResponse().getContentAsString());
+        JsonNode warehouseRoot = objectMapper.readTree(warehouseLoginResult.getResponse().getContentAsString());
+        assertEquals("WAREHOUSE_OP", warehouseRoot.get("user").get("role").asText());
+
+        MvcResult procurementLoginResult = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                          "username": "procurement.user",
+                          "password": "Admin@123"
+                        }
+                        """))
+                .andReturn();
+        assertEquals(200, procurementLoginResult.getResponse().getStatus(), procurementLoginResult.getResponse().getContentAsString());
+        JsonNode procurementRoot = objectMapper.readTree(procurementLoginResult.getResponse().getContentAsString());
+        assertEquals("PROCUREMENT", procurementRoot.get("user").get("role").asText());
+    }
+
+    @Test
     void logoutRequiresAuthenticationAndReturnsNoContentForAuthenticatedUser() throws Exception {
         MvcResult unauthenticatedLogout = mockMvc.perform(post("/api/auth/logout")).andReturn();
         assertEquals(403, unauthenticatedLogout.getResponse().getStatus(), unauthenticatedLogout.getResponse().getContentAsString());

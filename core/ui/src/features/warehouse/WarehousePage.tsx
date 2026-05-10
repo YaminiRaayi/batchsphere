@@ -895,8 +895,114 @@ export function WarehousePage() {
         ) : null}
 
         {activeTab === "map" ? (
-          <div className="grid min-h-[720px] gap-0 lg:grid-cols-[minmax(0,1fr)_340px]">
-            <section className="bg-[#eef2ff] p-5">
+          <div className="flex min-h-[720px] overflow-hidden">
+            <aside className="hidden w-56 shrink-0 flex-col overflow-hidden border-r border-indigo-100 bg-white lg:flex">
+              <div className="border-b border-indigo-100 p-3">
+                <div className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Locations</div>
+              </div>
+              <div className="flex-1 overflow-y-auto p-2 text-sm">
+                {warehouseTree.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-indigo-200 px-3 py-5 text-center text-xs text-slate-400">
+                    No locations configured yet.
+                  </div>
+                ) : (
+                  warehouseTree.map((warehouse) => {
+                    const isWarehouseActive = activeWarehouse?.id === warehouse.id;
+                    return (
+                      <div key={warehouse.id} className="mb-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedWarehouseId(warehouse.id);
+                            setSelectedRoomId(warehouse.rooms[0]?.id ?? "");
+                            setSelectedRackId(warehouse.rooms[0]?.racks[0]?.id ?? "");
+                          }}
+                          className={[
+                            "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition",
+                            isWarehouseActive
+                              ? "bg-indigo-100 font-semibold text-indigo-700"
+                              : "text-slate-600 hover:bg-indigo-50"
+                          ].join(" ")}
+                        >
+                          <span className="text-indigo-600">⌂</span>
+                          <span className="min-w-0 truncate">
+                            {warehouse.warehouseCode}: {warehouse.warehouseName}
+                          </span>
+                          <span className="sr-only">{warehouse.rooms.length} rooms</span>
+                        </button>
+                        {isWarehouseActive ? (
+                          <div className="ml-4 mt-0.5 space-y-0.5">
+                            {warehouse.rooms.map((room) => {
+                              const isRoomActive = activeRoom?.id === room.id;
+                              return (
+                                <div key={room.id}>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedRoomId(room.id);
+                                      setSelectedRackId(room.racks[0]?.id ?? "");
+                                    }}
+                                    className={[
+                                      "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition",
+                                      isRoomActive
+                                        ? "bg-indigo-50 font-semibold text-indigo-600"
+                                        : "text-slate-600 hover:bg-indigo-50"
+                                    ].join(" ")}
+                                  >
+                                    <span className={isRoomActive ? "text-indigo-500" : "text-slate-400"}>□</span>
+                                    <span className="min-w-0 truncate">
+                                      {room.roomCode} {isRoomActive ? "(Active)" : ""}
+                                    </span>
+                                    <span className="sr-only">{room.racks.length} racks</span>
+                                  </button>
+                                  {isRoomActive ? (
+                                    <div className="ml-5 mt-0.5 space-y-0.5">
+                                      {room.racks.map((rack) => (
+                                        <button
+                                          key={rack.id}
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedRackId(rack.id);
+                                            setSelectedPalletId(rack.shelves[0]?.pallets[0]?.id ?? "");
+                                          }}
+                                          className={[
+                                            "flex w-full items-center justify-between rounded-md px-2 py-1 text-left text-[11px] transition",
+                                            activeRack?.id === rack.id
+                                              ? "bg-indigo-100 font-semibold text-indigo-700"
+                                              : "text-slate-500 hover:bg-indigo-50"
+                                          ].join(" ")}
+                                        >
+                                          <span className="truncate">{rack.rackCode}</span>
+                                          <span className="text-[10px] text-slate-400">{rack.shelves.length}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="border-t border-indigo-100 p-3">
+                <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Legend</div>
+                <div className="space-y-1.5">
+                  {legendItems().map((item) => (
+                    <div key={item.label} className="flex items-center gap-2">
+                      <span className={`h-4 w-4 rounded border ${item.swatch}`} />
+                      <span className={`text-[10px] font-semibold ${item.text}`}>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </aside>
+
+            <section className="flex-1 overflow-y-auto bg-[#eef2ff] p-5">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-bold text-slate-800">
@@ -991,7 +1097,7 @@ export function WarehousePage() {
                   </article>
                 ) : (
                   <div className="rounded-[22px] border border-dashed border-indigo-200 bg-white px-5 py-16 text-center text-sm text-slate-400 shadow-sm">
-                    Select a warehouse, room, and rack from the right-side panel.
+                    Select a warehouse, room, and rack from the Locations panel.
                   </div>
                 )}
               </div>
@@ -1011,110 +1117,7 @@ export function WarehousePage() {
               </div>
             </section>
 
-            <aside className="border-l border-indigo-100 bg-white">
-              <div className="border-b border-indigo-100 px-4 py-4">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">Hierarchy Selection</p>
-                <p className="mt-1 text-[11px] text-slate-400">Choose warehouse, room, and rack directly instead of scrolling through the map.</p>
-              </div>
-
-              <div className="space-y-4 border-b border-indigo-100 p-4">
-                <div>
-                  <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Warehouse</div>
-                  <div className="space-y-2">
-                    {warehouseTree.map((warehouse) => (
-                      <button
-                        key={warehouse.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedWarehouseId(warehouse.id);
-                          setSelectedRoomId(warehouse.rooms[0]?.id ?? "");
-                          setSelectedRackId(warehouse.rooms[0]?.racks[0]?.id ?? "");
-                        }}
-                        className={[
-                          "flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-sm transition",
-                          activeWarehouse?.id === warehouse.id
-                            ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                            : "border-indigo-100 text-slate-600 hover:bg-indigo-50"
-                        ].join(" ")}
-                      >
-                        <span className="font-semibold">{warehouse.warehouseCode}</span>
-                        <span className="text-[11px] text-slate-400">{warehouse.rooms.length} rooms</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Room</div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {(activeWarehouse?.rooms ?? []).map((room) => (
-                      <button
-                        key={room.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedRoomId(room.id);
-                          setSelectedRackId(room.racks[0]?.id ?? "");
-                        }}
-                        className={[
-                          "flex items-center justify-between rounded-xl border px-3 py-2 text-left text-sm transition",
-                          activeRoom?.id === room.id
-                            ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                            : "border-indigo-100 text-slate-600 hover:bg-indigo-50"
-                        ].join(" ")}
-                      >
-                        <span className="font-semibold">{room.roomCode}</span>
-                        <span className="text-[11px] text-slate-400">{room.racks.length} racks</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Rack</div>
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {(activeRoom?.racks ?? []).map((rack) => (
-                      <label
-                        key={rack.id}
-                        className={[
-                          "flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 text-sm transition",
-                          activeRack?.id === rack.id
-                            ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                            : "border-indigo-100 text-slate-600 hover:bg-indigo-50"
-                        ].join(" ")}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={activeRack?.id === rack.id}
-                          onChange={() => {
-                            setSelectedRackId(rack.id);
-                            setSelectedPalletId(rack.shelves[0]?.pallets[0]?.id ?? "");
-                          }}
-                          className="h-4 w-4 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-400"
-                        />
-                        <div className="min-w-0">
-                          <div className="font-semibold">{rack.rackCode}</div>
-                          <div className="text-[11px] text-slate-400">{rack.shelves.length} shelves</div>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Legend</p>
-                  <div className="mt-3 grid gap-2">
-                    {legendItems().map((item) => (
-                      <div key={item.label} className="flex items-center justify-between rounded-lg border border-indigo-100 bg-slate-50/70 px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <span className={`h-4 w-4 rounded border ${item.swatch}`} />
-                          <span className={`text-[11px] font-semibold ${item.text}`}>{item.label}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
+            <aside className="hidden w-64 shrink-0 overflow-y-auto border-l border-indigo-100 bg-white xl:block">
               <div className="border-b border-indigo-100 bg-indigo-50 px-4 py-5">
                 <div className="text-xs font-bold uppercase tracking-[0.16em] text-indigo-700">Pallet Detail</div>
                 <div className="mt-1 font-mono text-[28px] font-bold text-slate-800">{activePalletNode?.palletCode ?? "—"}</div>

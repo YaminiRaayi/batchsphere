@@ -28,38 +28,70 @@
 </head>
 <body class="flex h-screen overflow-hidden">
 
-<aside class="sidebar w-60 flex-shrink-0 flex flex-col overflow-y-auto">
-  <div class="p-4 border-b border-blue-700">
-    <div class="flex items-center gap-3">
-      <div class="w-9 h-9 rounded-xl bg-white flex items-center justify-center font-bold text-blue-700 text-sm shadow">BS</div>
-      <div><div class="font-bold text-white text-sm">BatchSphere</div><div class="text-[10px] text-blue-300">Pharma ERP v2.1</div></div>
+  <aside class="w-64 shrink-0 flex flex-col bg-blue-900 border-r border-blue-800 overflow-y-auto">
+    <!-- Logo -->
+    <div class="flex h-16 shrink-0 items-center border-b border-blue-800 px-4 gap-3">
+      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">BS</div>
+      <div>
+        <p class="text-[10px] font-bold uppercase tracking-widest text-blue-200">BatchSphere</p>
+        <p class="text-sm font-semibold text-white leading-none">Core ERP</p>
+      </div>
     </div>
-  </div>
-  <nav class="flex-1 p-3 space-y-0.5">
-    <div class="nav-section">Master Data</div>
-    <a href="10-masterdata.html" class="nav-item">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7C5 4 4 5 4 7z"/></svg>
-      Master Data Hub
-    </a>
-    <div class="nav-item active">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-width="2"/><path stroke-linecap="round" stroke-width="2" d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
-      Materials
+    <!-- User -->
+    <div class="border-b border-blue-800 p-3">
+      <div class="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">YR</div>
+        <div class="min-w-0">
+          <div class="truncate text-xs font-semibold text-white">Yamini Raayi</div>
+          <div class="text-[10px] text-blue-200">QC_MANAGER</div>
+        </div>
+        <div class="ml-auto h-2 w-2 rounded-full bg-green-400 shrink-0"></div>
+      </div>
     </div>
-    <a href="07-vms.html" class="nav-item">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16"/></svg>
-      Vendors
-    </a>
-    <a href="04b-wms-setup.html" class="nav-item">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4"/></svg>
-      Locations
-    </a>
-    <div class="nav-section">Navigate</div>
-    <a href="01-dashboard.html" class="nav-item">← Dashboard</a>
-    <a href="06-sampling.html" class="nav-item" style="color:#93c5fd">→ Sampling</a>
-    <a href="09-inventory.html" class="nav-item" style="color:#93c5fd">→ Inventory</a>
-  </nav>
-  <div class="p-3 border-t border-blue-800 text-[10px] text-blue-400 text-center">BatchSphere © 2026</div>
-</aside>
+    <!-- Nav -->
+    <nav class="flex-1 overflow-y-auto p-3 space-y-3">
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Main</p>
+        <a href="01-dashboard.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⊞ Command Center</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Master Data</p>
+        <a href="07-vms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏢 Partners</a>
+        <a href="08-materials.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-white/10 font-semibold text-white">🧪 Materials</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏭 Locations</a>
+        <a href="11-spec-moa.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📋 QC Refs</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Operations</p>
+        <a href="02-grn.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📦 Inbound GRN</a>
+        <a href="09-inventory.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 Inventory</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏬 Warehouse</a>
+        <a href="06-sampling.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚗ QC Sampling</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Quality</p>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚠ Deviations</a>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✔ CAPAs</a>
+        <a href="05-documents.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📄 Documents</a>
+        <a href="05-coa-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📜 CoA</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Manufacturing</p>
+        <a href="02-bpr-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚙ Batch Records</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Laboratory</p>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🔬 Instruments</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📈 Stability</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚡ OOS</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">HR</p>
+        <a href="03-hrms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">👤 Employees</a>
+      </div>
+    </nav>
+    <div class="border-t border-blue-800 p-3 text-center text-[10px] text-blue-400">BatchSphere © 2026</div>
+  </aside>
 
 <main class="flex-1 flex flex-col overflow-hidden">
   <header class="h-14 bg-white border-b border-sky-100 flex items-center px-6 gap-4 flex-shrink-0 shadow-sm">

@@ -14,9 +14,11 @@ import java.util.UUID;
 
 public interface InventoryRepository extends JpaRepository<Inventory, UUID> {
 
-    Page<Inventory> findByIsActiveTrue(Pageable pageable);
+    Page<Inventory> findByIsActiveTrueAndQuantityOnHandGreaterThan(java.math.BigDecimal quantityOnHand, Pageable pageable);
 
     List<Inventory> findByIsActiveTrue();
+
+    List<Inventory> findByIsActiveTrueAndQuantityOnHandGreaterThan(java.math.BigDecimal quantityOnHand);
 
     boolean existsByPalletIdAndIsActiveTrue(UUID palletId);
 
@@ -37,6 +39,6 @@ public interface InventoryRepository extends JpaRepository<Inventory, UUID> {
     @Query("select distinct i.palletId from Inventory i where i.isActive = true and i.palletId in :palletIds")
     List<UUID> findDistinctActivePalletIdsByPalletIdIn(@Param("palletIds") List<UUID> palletIds);
 
-    @Query("select i.status, count(i) from Inventory i where i.isActive = true group by i.status")
+    @Query("select i.status, count(i) from Inventory i where i.isActive = true and i.quantityOnHand > 0 group by i.status")
     List<Object[]> countActiveByStatus();
 }

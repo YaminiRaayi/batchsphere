@@ -335,11 +335,14 @@ export default function MaterialCreatePage() {
     if (!form.specId) {
       return;
     }
+    if (specs.length === 0) {
+      return;
+    }
     const stillValid = filteredSpecs.some((spec) => spec.id === form.specId);
     if (!stillValid) {
       setForm((current) => ({ ...current, specId: "" }));
     }
-  }, [filteredSpecs, form.specId]);
+  }, [filteredSpecs, form.specId, specs.length]);
 
   function setStorageField<K extends keyof StorageAssignmentDraft>(key: K, value: StorageAssignmentDraft[K]) {
     setStorageAssignment((current) => {
@@ -510,6 +513,7 @@ export default function MaterialCreatePage() {
               <label className="block">
                 <FieldLabel label="Material Type" required />
                 <select
+                  data-testid="material-type"
                   required
                   className={selectCls}
                   value={form.materialType}
@@ -525,6 +529,7 @@ export default function MaterialCreatePage() {
               <label className="block">
                 <FieldLabel label="Material Name" required hint="Use the INN / IUPAC name. Avoid brand names." />
                 <input
+                  data-testid="material-name"
                   required
                   className={inputCls}
                   placeholder="e.g. Paracetamol"
@@ -555,6 +560,7 @@ export default function MaterialCreatePage() {
               <label className="block">
                 <FieldLabel label="Material Category" required />
                 <select
+                  data-testid="material-category"
                   required
                   className={selectCls}
                   value={form.materialCategory ?? ""}
@@ -570,6 +576,7 @@ export default function MaterialCreatePage() {
               <label className="block">
                 <FieldLabel label="Unit of Measure (UOM)" required />
                 <select
+                  data-testid="material-uom"
                   required
                   className={selectCls}
                   value={form.uom}
@@ -618,6 +625,7 @@ export default function MaterialCreatePage() {
               <div className="col-span-2">
                 <FieldLabel label="Description / Remarks" />
                 <textarea
+                  data-testid="material-description"
                   className={textareaCls}
                   placeholder="Additional notes, physical description, special handling instructions…"
                   value={form.description ?? ""}
@@ -643,6 +651,7 @@ export default function MaterialCreatePage() {
               <label className="block">
                 <FieldLabel label="Storage Condition" required />
                 <select
+                  data-testid="material-storage-condition"
                   required
                   className={selectCls}
                   value={form.storageCondition}
@@ -693,6 +702,7 @@ export default function MaterialCreatePage() {
               <label className="block">
                 <FieldLabel label="Shelf Life (months)" required />
                 <input
+                  data-testid="material-shelf-life-months"
                   required
                   type="number"
                   min={0}
@@ -889,6 +899,7 @@ export default function MaterialCreatePage() {
                   }
                 />
                 <select
+                  data-testid="material-spec-select"
                   required
                   className={selectCls}
                   value={form.specId ?? ""}
@@ -927,7 +938,7 @@ export default function MaterialCreatePage() {
 
           {/* Error */}
           {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div data-testid="material-form-error" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </div>
           )}
@@ -1000,6 +1011,7 @@ export default function MaterialCreatePage() {
           {/* Action buttons */}
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-2">
             <button
+              data-testid="btn-save-material"
               type="submit"
               form="material-form"
               disabled={isSubmitting}

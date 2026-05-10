@@ -6,12 +6,14 @@ import {
   fetchInventory,
   fetchInventoryTransactions,
   fetchMaterials,
-  fetchPallets
+  fetchPallets,
+  issueInventory
 } from "../../lib/api";
 import type { InventoryRecord, InventoryTransaction } from "../../types/inventory";
 import type { Batch } from "../../types/batch";
 
 type StatusFilter = "ALL" | InventoryRecord["status"];
+type IssueReferenceType = "PRODUCTION" | "DISPENSING" | "SAMPLING_REQUEST" | "OTHER";
 
 function statusConfig(status: InventoryRecord["status"]) {
   switch (status) {
@@ -47,7 +49,8 @@ function txTypeLabel(type: string) {
     QC_RELEASE: "QC Release",
     QC_REJECT: "QC Reject",
     TRANSFER: "Transfer",
-    ADJUSTMENT: "Adjustment"
+    ADJUSTMENT: "Adjustment",
+    OUTBOUND: "Issue"
   };
   return map[type] ?? type.replace(/_/g, " ");
 }
@@ -92,11 +95,19 @@ export function InventoryPage() {
   const [inventoryPage, setInventoryPage] = useState(0);
   const [selectedInventoryId, setSelectedInventoryId] = useState<string>("");
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
+  const [isIssueOpen, setIsIssueOpen] = useState(false);
   const [adjustQuantity, setAdjustQuantity] = useState("");
   const [adjustReason, setAdjustReason] = useState("");
   const [adjustMode, setAdjustMode] = useState<"DECREASE" | "INCREASE">("DECREASE");
   const [adjustError, setAdjustError] = useState<string | null>(null);
   const [isAdjusting, setIsAdjusting] = useState(false);
+  const [issueQuantity, setIssueQuantity] = useState("");
+  const [issueReferenceType, setIssueReferenceType] = useState<IssueReferenceType>("PRODUCTION");
+  const [issueReferenceNumber, setIssueReferenceNumber] = useState("");
+  const [issueReason, setIssueReason] = useState("");
+  const [issueRemarks, setIssueRemarks] = useState("");
+  const [issueError, setIssueError] = useState<string | null>(null);
+  const [isIssuing, setIsIssuing] = useState(false);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["inventory-page"],
@@ -216,9 +227,8 @@ export function InventoryPage() {
     try {
       await adjustInventory(
         selectedInventory.id,
-        Number(adjustQuantity),
-        adjustReason.trim(),
-        adjustMode === "INCREASE"
+        adjustMode === "INCREASE" ? Number(adjustQuantity) : Number(adjustQuantity) * -1,
+        adjustReason.trim()
       );
       setIsAdjustOpen(false);
       setAdjustQuantity("");
@@ -229,6 +239,45 @@ export function InventoryPage() {
       setAdjustError(adjustRequestError instanceof Error ? adjustRequestError.message : "Unable to adjust inventory");
     } finally {
       setIsAdjusting(false);
+    }
+  }
+
+  async function handleIssueInventory() {
+    if (!selectedInventory) {
+      setIssueError("Select an inventory lot first.");
+      return;
+    }
+    if (!issueQuantity || Number(issueQuantity) <= 0) {
+      setIssueError("Enter a valid issue quantity.");
+      return;
+    }
+    if (!issueReason.trim()) {
+      setIssueError("Issue reason is required.");
+      return;
+    }
+
+    setIsIssuing(true);
+    setIssueError(null);
+    try {
+      await issueInventory(
+        selectedInventory.id,
+        Number(issueQuantity),
+        issueReferenceType,
+        issueReferenceNumber.trim(),
+        issueReason.trim(),
+        issueRemarks.trim() || undefined
+      );
+      setIsIssueOpen(false);
+      setIssueQuantity("");
+      setIssueReferenceType("PRODUCTION");
+      setIssueReferenceNumber("");
+      setIssueReason("");
+      setIssueRemarks("");
+      await refetch();
+    } catch (issueRequestError) {
+      setIssueError(issueRequestError instanceof Error ? issueRequestError.message : "Unable to issue inventory");
+    } finally {
+      setIsIssuing(false);
     }
   }
 
@@ -247,6 +296,7 @@ export function InventoryPage() {
         </div>
         <div className="flex gap-2">
           {[
+            { icon: "M3 3h18v4H3zm4 8h10m-8 4h6m-8 6h10", label: "Issue" },
             { icon: "M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4", label: "Transfer" },
             { icon: "M12 4v16m8-8H4", label: "Adjust" },
             { icon: "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4", label: "Export" }
@@ -255,6 +305,10 @@ export function InventoryPage() {
               key={label}
               type="button"
               onClick={() => {
+                if (label === "Issue") {
+                  setIsIssueOpen(true);
+                  setIssueError(null);
+                }
                 if (label === "Adjust") {
                   setIsAdjustOpen(true);
                   setAdjustError(null);
@@ -464,11 +518,15 @@ export function InventoryPage() {
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-semibold text-slate-800">
                           {txTypeLabel(tx.transactionType)}
-                          <span className="ml-2 font-normal text-slate-400">· {tx.referenceType}</span>
+                          <span className="ml-2 font-normal text-slate-400">
+                            · {tx.referenceType}
+                            {tx.referenceNumber ? ` ${tx.referenceNumber}` : ""}
+                          </span>
                         </p>
                         <p className="mt-0.5 truncate text-[11px] text-slate-500">
                           {material?.materialName ?? tx.materialId.slice(0, 8)}
                           {batch ? ` · ${batch.batchNumber}` : ""}
+                          {tx.afterQuantity !== null ? ` · balance ${tx.afterQuantity} ${tx.uom}` : ""}
                         </p>
                       </div>
                       <div className="shrink-0 text-right">
@@ -606,6 +664,106 @@ export function InventoryPage() {
                 className="w-full rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-sky-300"
               >
                 {isAdjusting ? "Submitting..." : "Confirm Adjustment"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isIssueOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/20 px-4">
+          <div className="w-full max-w-lg rounded-[24px] border border-sky-100 bg-white p-6 shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-800">Issue Inventory</h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  {selectedInventory
+                    ? `${selectedMaterial?.materialName ?? "Material"} · ${selectedBatch?.batchNumber ?? "Batch"} · ${selectedPallet?.palletCode ?? "Pallet"}`
+                    : "Select a released lot from the table before issuing inventory."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsIssueOpen(false);
+                  setIssueError(null);
+                }}
+                className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-700">Issue Reference Type</span>
+                <select
+                  value={issueReferenceType}
+                  onChange={(event) => setIssueReferenceType(event.target.value as IssueReferenceType)}
+                  className="w-full rounded-2xl border border-sky-100 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-sky-300"
+                >
+                  <option value="PRODUCTION">Production</option>
+                  <option value="DISPENSING">Dispensing</option>
+                  <option value="SAMPLING_REQUEST">Sampling Request</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">Quantity</span>
+                  <input
+                    type="number"
+                    min="0.001"
+                    step="0.001"
+                    value={issueQuantity}
+                    onChange={(event) => setIssueQuantity(event.target.value)}
+                    className="w-full rounded-2xl border border-sky-100 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-sky-300"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">Reference Number</span>
+                  <input
+                    type="text"
+                    value={issueReferenceNumber}
+                    onChange={(event) => setIssueReferenceNumber(event.target.value)}
+                    className="w-full rounded-2xl border border-sky-100 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-sky-300"
+                    placeholder="Production order / dispensing slip / request no."
+                  />
+                </label>
+              </div>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-700">Reason</span>
+                <textarea
+                  value={issueReason}
+                  onChange={(event) => setIssueReason(event.target.value)}
+                  className="min-h-24 w-full rounded-2xl border border-sky-100 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-sky-300"
+                  placeholder="Production issue, dispensing request, controlled sample issue, etc."
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-700">Remarks</span>
+                <textarea
+                  value={issueRemarks}
+                  onChange={(event) => setIssueRemarks(event.target.value)}
+                  className="min-h-20 w-full rounded-2xl border border-sky-100 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-sky-300"
+                  placeholder="Optional staging or handover notes"
+                />
+              </label>
+              {selectedInventory && selectedInventory.status !== "RELEASED" ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                  Only released inventory can be issued. Select a released lot first.
+                </div>
+              ) : null}
+              {issueError ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{issueError}</div>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void handleIssueInventory()}
+                disabled={isIssuing || !selectedInventory || selectedInventory.status !== "RELEASED"}
+                className="w-full rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-sky-300"
+              >
+                {isIssuing ? "Submitting..." : "Confirm Issue"}
               </button>
             </div>
           </div>

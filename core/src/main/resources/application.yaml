@@ -50,6 +50,14 @@ app:
         email: qc.manager@batchsphere.local
         password: Admin@123
         role: QC_MANAGER
+      - username: warehouse.op
+        email: warehouse.op@batchsphere.local
+        password: Admin@123
+        role: WAREHOUSE_OP
+      - username: procurement.user
+        email: procurement.user@batchsphere.local
+        password: Admin@123
+        role: PROCUREMENT
   cors:
     allowed-origins: http://localhost:5173,http://127.0.0.1:5173
   storage:

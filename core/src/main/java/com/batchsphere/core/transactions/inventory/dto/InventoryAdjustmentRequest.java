@@ -20,7 +20,4 @@ public class InventoryAdjustmentRequest {
     @NotBlank
     @Size(max = 500)
     private String reason;
-
-    @NotNull
-    private Boolean increase;
 }

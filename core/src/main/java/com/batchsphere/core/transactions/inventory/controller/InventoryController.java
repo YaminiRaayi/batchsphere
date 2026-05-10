@@ -1,6 +1,7 @@
 package com.batchsphere.core.transactions.inventory.controller;
 
 import com.batchsphere.core.transactions.inventory.dto.InventoryAdjustmentRequest;
+import com.batchsphere.core.transactions.inventory.dto.InventoryIssueRequest;
 import com.batchsphere.core.transactions.inventory.dto.InventoryResponse;
 import com.batchsphere.core.transactions.inventory.dto.InventorySummaryResponse;
 import com.batchsphere.core.transactions.inventory.dto.InventoryStatusUpdateRequest;
@@ -54,6 +55,12 @@ public class InventoryController {
     public ResponseEntity<InventoryResponse> adjustInventory(@PathVariable UUID id,
                                                              @Valid @RequestBody InventoryAdjustmentRequest request) {
         return ResponseEntity.ok(inventoryService.adjustInventory(id, request));
+    }
+
+    @PostMapping("/{id}/issue")
+    public ResponseEntity<InventoryResponse> issueInventory(@PathVariable UUID id,
+                                                            @Valid @RequestBody InventoryIssueRequest request) {
+        return ResponseEntity.ok(inventoryService.issueInventory(id, request));
     }
 
     @PostMapping("/{id}/transfer")

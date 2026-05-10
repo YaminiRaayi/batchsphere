@@ -15,21 +15,6 @@ The goal is to decide now, while the flow is still mid-stream, whether BatchSphe
 
 This document is analysis only.
 
-## Recently Closed Gaps
-
-The following gaps mentioned during the UAT pass are now closed in the current branch:
-
-- QC analyst sampling-page access to dependent batch and GRN-container reads
-- visible header sign-out action
-- retained-sample receipt inputs in QC sampling
-- clearer investigation field placement and sign-off autofill
-- sampling-plan update duplicate-key failure on container resave
-- material master persistence for storage, handling, and planning attributes
-- spec editor `compendialEdition`
-- sampling method now follows the approved spec instead of forcing `HUNDRED_PERCENT` for all critical materials
-- sampling MoA now narrows to spec-linked MoAs and auto-selects when only one is valid
-- GRN supporting documents now target a selected line item with explicit type and size guidance
-
 ## Short Answer
 
 Yes, `Warehouse Management`, `Sampling`, and `QC` should be strongly tied.

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchMaterials } from "../../../lib/api";
+import { useAuthStore } from "../../../stores/authStore";
 import type { Material, MaterialCategory } from "../../../types/material";
 import type { PageResponse } from "../../../types/grn";
 
@@ -36,9 +37,11 @@ const filterTabs = [
 
 export default function MaterialsPage() {
   const navigate = useNavigate();
+  const authUser = useAuthStore((state) => state.user);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("all");
+  const canManageMaterials = authUser?.role !== "PROCUREMENT";
 
   useEffect(() => {
     fetchMaterials(0, 100)
@@ -69,16 +72,19 @@ export default function MaterialsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => navigate("/master-data/materials/new")}
-            className="flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2 text-xs font-semibold text-white hover:bg-sky-700"
-          >
-            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-            </svg>
-            New Material
-          </button>
+          {canManageMaterials ? (
+            <button
+              data-testid="btn-new-material"
+              type="button"
+              onClick={() => navigate("/master-data/materials/new")}
+              className="flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2 text-xs font-semibold text-white hover:bg-sky-700"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+              </svg>
+              New Material
+            </button>
+          ) : null}
           <button
             type="button"
             className="flex items-center gap-2 rounded-xl border border-sky-200 bg-white px-4 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-50"
@@ -125,7 +131,7 @@ export default function MaterialsPage() {
           <div className="px-6 py-12 text-center text-sm text-slate-400">Loading materials…</div>
         ) : filtered.length === 0 ? (
           <div className="px-6 py-12 text-center text-sm text-slate-400">
-            No materials found. Click <strong>New Material</strong> to add one.
+            No materials found.{canManageMaterials ? " Click New Material to add one." : ""}
           </div>
         ) : (
           <table className="w-full text-xs">
@@ -159,6 +165,7 @@ export default function MaterialsPage() {
                 return (
                   <tr
                     key={material.id}
+                    data-testid={`material-row-${material.id}`}
                     className="cursor-pointer border-b border-sky-50 transition hover:bg-sky-50/50"
                   >
                     <td className="px-4 py-3 font-mono font-bold text-sky-700">
@@ -205,15 +212,18 @@ export default function MaterialsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            navigate("/master-data/materials/new", { state: { material } })
-                          }
-                          className="rounded-md border border-sky-200 px-2 py-1 text-[10px] font-medium text-sky-600 hover:bg-sky-50"
-                        >
-                          Edit
-                        </button>
+                        {canManageMaterials ? (
+                          <button
+                            data-testid={`btn-edit-material-${material.id}`}
+                            type="button"
+                            onClick={() =>
+                              navigate("/master-data/materials/new", { state: { material } })
+                            }
+                            className="rounded-md border border-sky-200 px-2 py-1 text-[10px] font-medium text-sky-600 hover:bg-sky-50"
+                          >
+                            Edit
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className="rounded-md border border-slate-200 px-2 py-1 text-[10px] font-medium text-slate-500 hover:bg-slate-50"

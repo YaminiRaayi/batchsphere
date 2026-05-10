@@ -37,6 +37,14 @@ export function canAccessNavPath(user: AuthUser | null, path: string) {
     return hasAnyRole(user, ["SUPER_ADMIN", "PROCUREMENT"]);
   }
 
+  if (path.startsWith("/admin/users")) {
+    return hasAnyRole(user, ["SUPER_ADMIN"]);
+  }
+
+  if (path.startsWith("/master-data/partners")) {
+    return hasAnyRole(user, ["SUPER_ADMIN", "PROCUREMENT"]);
+  }
+
   if (path.startsWith("/master-data")) {
     return hasAnyRole(user, ["SUPER_ADMIN", "WAREHOUSE_OP", "QC_ANALYST", "QC_MANAGER", "PROCUREMENT"]);
   }

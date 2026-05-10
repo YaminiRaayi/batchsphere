@@ -1,6 +1,11 @@
 import type { Batch } from "../types/batch";
 import type { BusinessUnit, CreateBusinessUnitRequest } from "../types/business-unit";
 import type { LoginResponse } from "../types/auth";
+import type {
+  CreateManagedUserRequest,
+  ManagedUser,
+  UpdateManagedUserRequest
+} from "../types/user-management";
 import type { CreateMoaRequest, Moa } from "../types/moa";
 import type { InventoryRecord, InventorySummary, InventoryTransaction } from "../types/inventory";
 import type {
@@ -289,6 +294,30 @@ export async function login(username: string, password: string) {
 
 export async function fetchCurrentUser() {
   return requestJson<LoginResponse["user"]>("/api/auth/me");
+}
+
+export async function fetchManagedUsers() {
+  return requestJson<ManagedUser[]>("/api/auth/users");
+}
+
+export async function createManagedUser(payload: CreateManagedUserRequest) {
+  return requestMutation<ManagedUser>("/api/auth/users", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateManagedUser(id: string, payload: UpdateManagedUserRequest) {
+  return requestMutation<ManagedUser>(`/api/auth/users/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deactivateManagedUser(id: string) {
+  return requestVoid(`/api/auth/users/${id}`, {
+    method: "DELETE"
+  });
 }
 
 export async function logout() {
@@ -1118,13 +1147,32 @@ export async function updateInventoryStatus(id: string, status: InventoryRecord[
   });
 }
 
-export async function adjustInventory(id: string, quantityDelta: number, reason: string, increase: boolean) {
+export async function adjustInventory(id: string, quantityDelta: number, reason: string) {
   return requestMutation<InventoryRecord>(`/api/inventory/${id}/adjust`, {
     method: "POST",
     body: JSON.stringify({
       quantityDelta,
+      reason
+    })
+  });
+}
+
+export async function issueInventory(
+  id: string,
+  quantity: number,
+  referenceType: "PRODUCTION" | "DISPENSING" | "SAMPLING_REQUEST" | "OTHER",
+  referenceNumber: string,
+  reason: string,
+  remarks?: string
+) {
+  return requestMutation<InventoryRecord>(`/api/inventory/${id}/issue`, {
+    method: "POST",
+    body: JSON.stringify({
+      quantity,
+      referenceType,
+      referenceNumber,
       reason,
-      increase
+      remarks
     })
   });
 }

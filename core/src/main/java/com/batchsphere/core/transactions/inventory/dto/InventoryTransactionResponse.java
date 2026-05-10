@@ -17,10 +17,14 @@ public class InventoryTransactionResponse {
     UUID materialId;
     UUID batchId;
     UUID palletId;
+    String warehouseLocation;
     InventoryTransactionType transactionType;
     InventoryReferenceType referenceType;
     UUID referenceId;
+    String referenceNumber;
     BigDecimal quantity;
+    BigDecimal beforeQuantity;
+    BigDecimal afterQuantity;
     String uom;
     String remarks;
     String createdBy;

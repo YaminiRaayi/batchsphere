@@ -101,6 +101,7 @@ export function LoginPage() {
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-ink">Username</span>
               <input
+                data-testid="login-username"
                 required
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
@@ -112,6 +113,7 @@ export function LoginPage() {
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-ink">Password</span>
               <input
+                data-testid="login-password"
                 required
                 type="password"
                 value={password}
@@ -122,12 +124,16 @@ export function LoginPage() {
             </label>
 
             {error ? (
-              <div className="rounded-2xl border border-redoxide/20 bg-redoxide/10 px-4 py-4 text-sm text-redoxide">
+              <div
+                data-testid="login-error"
+                className="rounded-2xl border border-redoxide/20 bg-redoxide/10 px-4 py-4 text-sm text-redoxide"
+              >
                 {error}
               </div>
             ) : null}
 
             <button
+              data-testid="login-submit"
               type="submit"
               disabled={isSubmitting}
               className="w-full rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-ink/90 disabled:cursor-not-allowed disabled:bg-ink/50"

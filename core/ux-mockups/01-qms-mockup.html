@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>BatchSphere — QMS Mockup</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .screen-label { background: #1e293b; color: #94a3b8; font-family: monospace; font-size: 11px; padding: 6px 16px; letter-spacing: .05em; }
+  </style>
+</head>
+<body class="bg-slate-200">
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 1 — /qms/deviations  (Deviation List)                  -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="screen-label">SCREEN 1 / 2 — /qms/deviations — Deviation List</div>
+<div class="flex h-screen bg-slate-50 overflow-hidden">
+
+  <!-- Sidebar -->
+    <aside class="w-64 shrink-0 flex flex-col bg-blue-900 border-r border-blue-800 overflow-y-auto">
+    <!-- Logo -->
+    <div class="flex h-16 shrink-0 items-center border-b border-blue-800 px-4 gap-3">
+      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">BS</div>
+      <div>
+        <p class="text-[10px] font-bold uppercase tracking-widest text-blue-200">BatchSphere</p>
+        <p class="text-sm font-semibold text-white leading-none">Core ERP</p>
+      </div>
+    </div>
+    <!-- User -->
+    <div class="border-b border-blue-800 p-3">
+      <div class="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">YR</div>
+        <div class="min-w-0">
+          <div class="truncate text-xs font-semibold text-white">Yamini Raayi</div>
+          <div class="text-[10px] text-blue-200">QC_MANAGER</div>
+        </div>
+        <div class="ml-auto h-2 w-2 rounded-full bg-green-400 shrink-0"></div>
+      </div>
+    </div>
+    <!-- Nav -->
+    <nav class="flex-1 overflow-y-auto p-3 space-y-3">
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Main</p>
+        <a href="01-dashboard.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⊞ Command Center</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Master Data</p>
+        <a href="07-vms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏢 Partners</a>
+        <a href="08-materials.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Materials</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏭 Locations</a>
+        <a href="11-spec-moa.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📋 QC Refs</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Operations</p>
+        <a href="02-grn.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📦 Inbound GRN</a>
+        <a href="09-inventory.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 Inventory</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏬 Warehouse</a>
+        <a href="06-sampling.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚗ QC Sampling</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Quality</p>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-white/10 font-semibold text-white">⚠ Deviations</a>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✔ CAPAs</a>
+        <a href="05-documents.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📄 Documents</a>
+        <a href="05-coa-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📜 CoA</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Manufacturing</p>
+        <a href="02-bpr-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚙ Batch Records</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Laboratory</p>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🔬 Instruments</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📈 Stability</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚡ OOS</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">HR</p>
+        <a href="03-hrms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">👤 Employees</a>
+      </div>
+    </nav>
+    <div class="border-t border-blue-800 p-3 text-center text-[10px] text-blue-400">BatchSphere © 2026</div>
+  </aside>
+
+  <!-- Main -->
+  <div class="flex flex-1 flex-col overflow-hidden">
+    <!-- Header -->
+    <header class="sticky top-0 z-20 flex h-14 items-center gap-4 border-b border-blue-100 bg-white px-6 shadow-sm">
+      <div class="min-w-0 flex-1 text-xs text-slate-400">
+        Home / <span class="font-medium text-blue-700">Deviations</span>
+      </div>
+      <span class="rounded-xl border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs text-slate-500">2026-05-08</span>
+    </header>
+
+    <!-- Page content -->
+    <main class="flex-1 overflow-y-auto p-6">
+      <!-- Page title + actions -->
+      <div class="mb-5 flex items-start justify-between">
+        <div>
+          <h1 class="text-xl font-bold text-slate-800">Deviations</h1>
+          <p class="mt-0.5 text-sm text-slate-500">Quality deviation register · GxP incident tracking</p>
+        </div>
+        <button class="flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700">
+          + New Deviation
+        </button>
+      </div>
+
+      <!-- KPI cards -->
+      <div class="mb-5 grid grid-cols-4 gap-4">
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm border-l-4 border-l-red-500">
+          <div class="text-xs text-slate-500 mb-1">Open</div>
+          <div class="text-2xl font-bold text-red-600">4</div>
+          <div class="text-xs text-slate-400 mt-1">Awaiting investigation</div>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm border-l-4 border-l-orange-400">
+          <div class="text-xs text-slate-500 mb-1">CAPA In Progress</div>
+          <div class="text-2xl font-bold text-orange-600">7</div>
+          <div class="text-xs text-slate-400 mt-1">Actions pending</div>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm border-l-4 border-l-red-700">
+          <div class="text-xs text-slate-500 mb-1">Critical Open</div>
+          <div class="text-2xl font-bold text-red-700">2</div>
+          <div class="text-xs text-slate-400 mt-1">Immediate action needed</div>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm border-l-4 border-l-green-500">
+          <div class="text-xs text-slate-500 mb-1">Closed (MTD)</div>
+          <div class="text-2xl font-bold text-green-600">12</div>
+          <div class="text-xs text-slate-400 mt-1">Month to date</div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="mb-4 flex items-center gap-3">
+        <input class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none focus:border-blue-400 w-64" placeholder="Search deviation number or title…" />
+        <select class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none">
+          <option>All Status</option>
+          <option>OPEN</option>
+          <option>UNDER_INVESTIGATION</option>
+          <option>CAPA_IN_PROGRESS</option>
+          <option>CLOSED</option>
+        </select>
+        <select class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none">
+          <option>All Severity</option>
+          <option>CRITICAL</option>
+          <option>MAJOR</option>
+          <option>MINOR</option>
+        </select>
+        <select class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none">
+          <option>All Sources</option>
+          <option>SAMPLING</option>
+          <option>GRN</option>
+          <option>BATCH</option>
+          <option>MANUAL</option>
+        </select>
+      </div>
+
+      <!-- Table -->
+      <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <table class="w-full text-xs">
+          <thead class="bg-slate-50 border-b border-slate-200">
+            <tr>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Deviation #</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Title</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Type</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Severity</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Source</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Status</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Detected</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Department</th>
+              <th class="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr class="hover:bg-slate-50 transition">
+              <td class="px-4 py-3 font-mono font-semibold text-blue-700">DEV-20260508-001</td>
+              <td class="px-4 py-3 text-slate-800 font-medium max-w-xs truncate">Moisture content OOS — Paracetamol API lot INV-2026-0892</td>
+              <td class="px-4 py-3"><span class="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-700">MATERIAL</span></td>
+              <td class="px-4 py-3"><span class="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">CRITICAL</span></td>
+              <td class="px-4 py-3 text-slate-600">Sampling · SR-20260508-017</td>
+              <td class="px-4 py-3"><span class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">OPEN</span></td>
+              <td class="px-4 py-3 text-slate-500">2026-05-08</td>
+              <td class="px-4 py-3 text-slate-500">QC</td>
+              <td class="px-4 py-3 text-right"><a class="text-blue-600 hover:underline font-medium">View</a></td>
+            </tr>
+            <tr class="hover:bg-slate-50 transition">
+              <td class="px-4 py-3 font-mono font-semibold text-blue-700">DEV-20260507-002</td>
+              <td class="px-4 py-3 text-slate-800 font-medium max-w-xs truncate">Labelling discrepancy on GRN-2026-042 — vendor batch mismatch</td>
+              <td class="px-4 py-3"><span class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">DOCUMENTATION</span></td>
+              <td class="px-4 py-3"><span class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">MINOR</span></td>
+              <td class="px-4 py-3 text-slate-600">GRN · GRN-2026-042</td>
+              <td class="px-4 py-3"><span class="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-700">CAPA_IN_PROGRESS</span></td>
+              <td class="px-4 py-3 text-slate-500">2026-05-07</td>
+              <td class="px-4 py-3 text-slate-500">Warehouse</td>
+              <td class="px-4 py-3 text-right"><a class="text-blue-600 hover:underline font-medium">View</a></td>
+            </tr>
+            <tr class="hover:bg-slate-50 transition">
+              <td class="px-4 py-3 font-mono font-semibold text-blue-700">DEV-20260507-003</td>
+              <td class="px-4 py-3 text-slate-800 font-medium max-w-xs truncate">Temperature excursion in Cold Room B — overnight shift unmonitored</td>
+              <td class="px-4 py-3"><span class="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-700">PROCESS</span></td>
+              <td class="px-4 py-3"><span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">MAJOR</span></td>
+              <td class="px-4 py-3 text-slate-600">Manual</td>
+              <td class="px-4 py-3"><span class="rounded-full bg-fuchsia-100 px-2 py-0.5 text-[10px] font-semibold text-fuchsia-700">UNDER_INVESTIGATION</span></td>
+              <td class="px-4 py-3 text-slate-500">2026-05-07</td>
+              <td class="px-4 py-3 text-slate-500">Warehouse</td>
+              <td class="px-4 py-3 text-right"><a class="text-blue-600 hover:underline font-medium">View</a></td>
+            </tr>
+            <tr class="hover:bg-slate-50 transition">
+              <td class="px-4 py-3 font-mono font-semibold text-blue-700">DEV-20260506-004</td>
+              <td class="px-4 py-3 text-slate-800 font-medium max-w-xs truncate">Ibuprofen API purity 97.1% — below 98.5% spec lower limit</td>
+              <td class="px-4 py-3"><span class="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-semibold text-purple-700">MATERIAL</span></td>
+              <td class="px-4 py-3"><span class="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">CRITICAL</span></td>
+              <td class="px-4 py-3 text-slate-600">Sampling · SR-20260506-009</td>
+              <td class="px-4 py-3"><span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">CLOSED</span></td>
+              <td class="px-4 py-3 text-slate-500">2026-05-06</td>
+              <td class="px-4 py-3 text-slate-500">QC</td>
+              <td class="px-4 py-3 text-right"><a class="text-blue-600 hover:underline font-medium">View</a></td>
+            </tr>
+            <tr class="hover:bg-slate-50 transition">
+              <td class="px-4 py-3 font-mono font-semibold text-blue-700">DEV-20260505-005</td>
+              <td class="px-4 py-3 text-slate-800 font-medium max-w-xs truncate">In-process blend uniformity failure — Metformin tablet compression Step 4</td>
+              <td class="px-4 py-3"><span class="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-700">PROCESS</span></td>
+              <td class="px-4 py-3"><span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">MAJOR</span></td>
+              <td class="px-4 py-3 text-slate-600">Batch · BATCH-20260505-003</td>
+              <td class="px-4 py-3"><span class="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-700">CAPA_IN_PROGRESS</span></td>
+              <td class="px-4 py-3 text-slate-500">2026-05-05</td>
+              <td class="px-4 py-3 text-slate-500">Manufacturing</td>
+              <td class="px-4 py-3 text-right"><a class="text-blue-600 hover:underline font-medium">View</a></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="border-t border-slate-100 px-4 py-2 text-xs text-slate-400">Showing 5 of 16 deviations</div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- spacer between screens -->
+<div class="h-8 bg-slate-300 flex items-center justify-center text-xs text-slate-500 font-mono tracking-wider">▼ SCROLL FOR NEXT SCREEN ▼</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 2 — /qms/deviations/DEV-20260508-001  (Detail + CAPA)  -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="screen-label">SCREEN 2 / 2 — /qms/deviations/DEV-20260508-001 — Deviation Detail + CAPA</div>
+<div class="flex h-screen bg-slate-50 overflow-hidden">
+
+  <!-- Sidebar (same as above, abbreviated) -->
+    <aside class="w-64 shrink-0 flex flex-col bg-blue-900 border-r border-blue-800 overflow-y-auto">
+    <!-- Logo -->
+    <div class="flex h-16 shrink-0 items-center border-b border-blue-800 px-4 gap-3">
+      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">BS</div>
+      <div>
+        <p class="text-[10px] font-bold uppercase tracking-widest text-blue-200">BatchSphere</p>
+        <p class="text-sm font-semibold text-white leading-none">Core ERP</p>
+      </div>
+    </div>
+    <!-- User -->
+    <div class="border-b border-blue-800 p-3">
+      <div class="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">YR</div>
+        <div class="min-w-0">
+          <div class="truncate text-xs font-semibold text-white">Yamini Raayi</div>
+          <div class="text-[10px] text-blue-200">QC_MANAGER</div>
+        </div>
+        <div class="ml-auto h-2 w-2 rounded-full bg-green-400 shrink-0"></div>
+      </div>
+    </div>
+    <!-- Nav -->
+    <nav class="flex-1 overflow-y-auto p-3 space-y-3">
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Main</p>
+        <a href="01-dashboard.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⊞ Command Center</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Master Data</p>
+        <a href="07-vms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏢 Partners</a>
+        <a href="08-materials.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Materials</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏭 Locations</a>
+        <a href="11-spec-moa.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📋 QC Refs</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Operations</p>
+        <a href="02-grn.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📦 Inbound GRN</a>
+        <a href="09-inventory.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 Inventory</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏬 Warehouse</a>
+        <a href="06-sampling.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚗ QC Sampling</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Quality</p>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-white/10 font-semibold text-white">⚠ Deviations</a>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✔ CAPAs</a>
+        <a href="05-documents.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📄 Documents</a>
+        <a href="05-coa-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📜 CoA</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Manufacturing</p>
+        <a href="02-bpr-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚙ Batch Records</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Laboratory</p>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🔬 Instruments</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📈 Stability</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚡ OOS</a>
+      </div>
+      <div>
+        <p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">HR</p>
+        <a href="03-hrms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">👤 Employees</a>
+      </div>
+    </nav>
+    <div class="border-t border-blue-800 p-3 text-center text-[10px] text-blue-400">BatchSphere © 2026</div>
+  </aside>
+
+  <!-- Main -->
+  <div class="flex flex-1 flex-col overflow-hidden">
+    <header class="sticky top-0 z-20 flex h-14 items-center gap-4 border-b border-blue-100 bg-white px-6 shadow-sm">
+      <div class="text-xs text-slate-400">Home / <a class="text-blue-700 font-medium hover:underline">Deviations</a> / DEV-20260508-001</div>
+      <div class="ml-auto flex items-center gap-2">
+        <button class="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">← Back</button>
+      </div>
+    </header>
+
+    <main class="flex-1 overflow-y-auto p-6 space-y-5">
+      <!-- Title bar -->
+      <div class="flex items-start justify-between">
+        <div>
+          <div class="flex items-center gap-3 mb-1">
+            <span class="font-mono text-sm font-bold text-blue-700">DEV-20260508-001</span>
+            <span class="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">CRITICAL</span>
+            <span class="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">OPEN</span>
+            <span class="rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-semibold text-purple-700">MATERIAL</span>
+          </div>
+          <h1 class="text-lg font-bold text-slate-800">Moisture content OOS — Paracetamol API lot INV-2026-0892</h1>
+        </div>
+        <div class="flex gap-2 shrink-0">
+          <button class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100">Update Status</button>
+          <button class="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700">+ Add CAPA</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-5">
+        <!-- Left: Deviation details -->
+        <div class="col-span-2 space-y-4">
+          <!-- Details card -->
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div class="border-b border-slate-100 px-5 py-3">
+              <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">Deviation Details</h2>
+            </div>
+            <div class="p-5 grid grid-cols-2 gap-4 text-xs">
+              <div>
+                <p class="text-slate-500 mb-1">Source</p>
+                <p class="font-medium text-slate-800">QC Sampling — <span class="font-mono text-blue-700">SR-20260508-017</span></p>
+              </div>
+              <div>
+                <p class="text-slate-500 mb-1">Detected By / At</p>
+                <p class="font-medium text-slate-800">qc.analyst · 2026-05-08 09:42</p>
+              </div>
+              <div>
+                <p class="text-slate-500 mb-1">Department</p>
+                <p class="font-medium text-slate-800">Quality Control</p>
+              </div>
+              <div>
+                <p class="text-slate-500 mb-1">Material / Lot</p>
+                <p class="font-medium text-slate-800">Paracetamol API (MAT-0023) · INV-2026-0892</p>
+              </div>
+              <div class="col-span-2">
+                <p class="text-slate-500 mb-1">Description</p>
+                <p class="text-slate-700 leading-relaxed">During incoming QC sampling (SR-20260508-017), moisture content of Paracetamol API (Lot INV-2026-0892, Vendor Batch VB-2026-8831) tested at 6.8% w/w against a specification limit of 2.0–4.0% w/w. Result exceeds upper limit by 2.8 percentage points. Karl Fischer titration performed in triplicate; all three readings consistent (6.7%, 6.8%, 6.9%). Instrument calibration verified valid.</p>
+              </div>
+              <div class="col-span-2">
+                <p class="text-slate-500 mb-1">Immediate Action Taken</p>
+                <p class="text-slate-700 leading-relaxed">Lot INV-2026-0892 placed under QUARANTINE hold. Material physically segregated and labelled "DO NOT USE – OOS Investigation." Warehouse Supervisor notified. Supplier (Cipla Ltd, Vendor BU: Cipla-API-HYD) notified via email at 10:15.</p>
+              </div>
+              <div class="col-span-2">
+                <p class="text-slate-500 mb-1">Root Cause (under investigation)</p>
+                <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-slate-400 italic">Root cause not yet established — investigation in progress.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CAPA section -->
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+              <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">CAPAs <span class="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">2</span></h2>
+              <button class="rounded-xl bg-slate-800 px-3 py-1.5 text-[10px] font-semibold text-white hover:bg-slate-700">+ Add CAPA</button>
+            </div>
+            <div class="divide-y divide-slate-100">
+              <!-- CAPA 1 -->
+              <div class="p-5">
+                <div class="flex items-start justify-between mb-3">
+                  <div class="flex items-center gap-2">
+                    <span class="font-mono text-xs font-bold text-blue-700">CAPA-20260508-001</span>
+                    <span class="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-700">CORRECTIVE</span>
+                    <span class="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-700">IN_PROGRESS</span>
+                  </div>
+                  <div class="flex gap-2">
+                    <button class="rounded-xl border border-slate-200 px-3 py-1 text-[10px] font-semibold text-slate-600 hover:bg-slate-50">Edit</button>
+                    <button class="rounded-xl bg-green-600 px-3 py-1 text-[10px] font-semibold text-white hover:bg-green-700">Mark Complete</button>
+                  </div>
+                </div>
+                <p class="text-xs font-medium text-slate-800 mb-1">Recalibrate HVAC alarm thresholds in API Storage Room and verify humidity sensor accuracy</p>
+                <div class="grid grid-cols-3 gap-3 text-xs">
+                  <div><span class="text-slate-500">Assigned to:</span> <span class="font-medium">warehouse.op</span></div>
+                  <div><span class="text-slate-500">Due:</span> <span class="font-medium text-amber-700">2026-05-15</span></div>
+                  <div><span class="text-slate-500">Completed:</span> <span class="text-slate-400">—</span></div>
+                </div>
+              </div>
+              <!-- CAPA 2 -->
+              <div class="p-5">
+                <div class="flex items-start justify-between mb-3">
+                  <div class="flex items-center gap-2">
+                    <span class="font-mono text-xs font-bold text-blue-700">CAPA-20260508-002</span>
+                    <span class="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700">PREVENTIVE</span>
+                    <span class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">OPEN</span>
+                  </div>
+                  <div class="flex gap-2">
+                    <button class="rounded-xl border border-slate-200 px-3 py-1 text-[10px] font-semibold text-slate-600 hover:bg-slate-50">Edit</button>
+                    <button class="rounded-xl bg-green-600 px-3 py-1 text-[10px] font-semibold text-white hover:bg-green-700">Mark Complete</button>
+                  </div>
+                </div>
+                <p class="text-xs font-medium text-slate-800 mb-1">Update SOP-WH-012 (Storage Area Monitoring) to require 4-hourly humidity log entries and automated alert to QC Manager when RH exceeds 55%</p>
+                <div class="grid grid-cols-3 gap-3 text-xs">
+                  <div><span class="text-slate-500">Assigned to:</span> <span class="font-medium">qc.manager</span></div>
+                  <div><span class="text-slate-500">Due:</span> <span class="font-medium">2026-05-22</span></div>
+                  <div><span class="text-slate-500">Completed:</span> <span class="text-slate-400">—</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Side summary -->
+        <div class="space-y-4">
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5 text-xs space-y-3">
+            <h3 class="font-bold uppercase tracking-wider text-slate-500 text-[10px]">Quick Info</h3>
+            <div class="flex justify-between"><span class="text-slate-500">Severity</span><span class="rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-700">CRITICAL</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Status</span><span class="rounded-full bg-blue-100 px-2 py-0.5 font-semibold text-blue-700">OPEN</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Type</span><span class="font-medium text-slate-700">MATERIAL</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Detected</span><span class="font-medium text-slate-700">2026-05-08</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Open Days</span><span class="font-medium text-red-600">0 days</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">CAPAs</span><span class="font-medium text-slate-700">2 (0 complete)</span></div>
+            <hr class="border-slate-100" />
+            <div class="space-y-2">
+              <button class="w-full rounded-xl bg-slate-800 py-2 text-[10px] font-semibold text-white hover:bg-slate-700">Move to Investigation</button>
+              <button class="w-full rounded-xl border border-slate-200 py-2 text-[10px] font-semibold text-slate-600 hover:bg-slate-50">Link to OOS Investigation</button>
+              <button class="w-full rounded-xl border border-slate-200 py-2 text-[10px] font-semibold text-slate-600 hover:bg-slate-50">Print Deviation Report</button>
+            </div>
+          </div>
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5 text-xs">
+            <h3 class="font-bold uppercase tracking-wider text-slate-500 text-[10px] mb-3">Timeline</h3>
+            <div class="space-y-3">
+              <div class="flex gap-3"><div class="mt-0.5 h-2 w-2 rounded-full bg-blue-500 shrink-0"></div><div><p class="font-medium text-slate-700">Deviation opened</p><p class="text-slate-400">qc.analyst · 2026-05-08 09:42</p></div></div>
+              <div class="flex gap-3"><div class="mt-0.5 h-2 w-2 rounded-full bg-orange-500 shrink-0"></div><div><p class="font-medium text-slate-700">CAPA-001 added</p><p class="text-slate-400">qc.manager · 2026-05-08 11:15</p></div></div>
+              <div class="flex gap-3"><div class="mt-0.5 h-2 w-2 rounded-full bg-violet-500 shrink-0"></div><div><p class="font-medium text-slate-700">CAPA-002 added</p><p class="text-slate-400">qc.manager · 2026-05-08 11:20</p></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 3 / 4 — /qms/deviations/new — Log New Deviation        -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="screen-label">SCREEN 3 / 4 — /qms/deviations/new — Log New Deviation</div>
+<div class="flex h-screen bg-slate-50 overflow-hidden">
+  <aside class="w-64 shrink-0 flex flex-col bg-blue-900 border-r border-blue-800 overflow-y-auto">
+    <div class="flex h-16 shrink-0 items-center border-b border-blue-800 px-4 gap-3">
+      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">BS</div>
+      <div><p class="text-[10px] font-bold uppercase tracking-widest text-blue-200">BatchSphere</p><p class="text-sm font-semibold text-white leading-none">Core ERP</p></div>
+    </div>
+    <div class="border-b border-blue-800 p-3">
+      <div class="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">YR</div>
+        <div class="min-w-0"><div class="truncate text-xs font-semibold text-white">Yamini Raayi</div><div class="text-[10px] text-blue-200">QC_MANAGER</div></div>
+        <div class="ml-auto h-2 w-2 rounded-full bg-green-400 shrink-0"></div>
+      </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto p-3 space-y-3">
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Main</p>
+        <a href="01-dashboard.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⊞ Command Center</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Master Data</p>
+        <a href="07-vms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏢 Partners</a>
+        <a href="08-materials.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Materials</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏭 Locations</a>
+        <a href="11-spec-moa.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📋 QC Refs</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Operations</p>
+        <a href="02-grn.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📦 Inbound GRN</a>
+        <a href="09-inventory.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 Inventory</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏬 Warehouse</a>
+        <a href="06-sampling.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚗ QC Sampling</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Quality</p>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-white/10 font-semibold text-white">⚠ Deviations</a>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✔ CAPAs</a>
+        <a href="05-documents.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📄 Documents</a>
+        <a href="05-coa-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📜 CoA</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Manufacturing</p>
+        <a href="02-bpr-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚙ Batch Records</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Laboratory</p>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🔬 Instruments</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📈 Stability</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚡ OOS</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">HR</p>
+        <a href="03-hrms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">👤 Employees</a></div>
+    </nav>
+    <div class="border-t border-blue-800 p-3 text-center text-[10px] text-blue-400">BatchSphere © 2026</div>
+  </aside>
+  <div class="flex flex-1 flex-col overflow-hidden">
+    <header class="sticky top-0 z-20 flex h-14 items-center gap-4 border-b border-blue-100 bg-white px-6 shadow-sm">
+      <div class="text-xs text-slate-400">Home / <a href="01-qms-mockup.html" class="text-blue-600 hover:underline">Deviations</a> / <span class="font-medium text-blue-700">New Deviation</span></div>
+      <span class="ml-auto text-xs text-slate-400 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100">2026-05-08</span>
+    </header>
+    <main class="flex-1 overflow-y-auto p-6">
+      <div class="mb-5 flex items-center justify-between">
+        <div>
+          <h1 class="text-xl font-bold text-slate-800">Log New Deviation</h1>
+          <p class="mt-0.5 text-sm text-slate-500">GxP deviation report · All fields marked * are required</p>
+        </div>
+        <div class="flex gap-2">
+          <a href="01-qms-mockup.html" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">Cancel</a>
+          <button class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">Save as Draft</button>
+          <button class="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700">Submit Deviation</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-6">
+        <!-- Left: Main form -->
+        <div class="col-span-2 space-y-5">
+
+          <!-- Section: Basic Info -->
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
+            <h2 class="mb-4 text-xs font-bold uppercase tracking-wider text-slate-500">Basic Information</h2>
+            <div class="space-y-4">
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-slate-600">Deviation Title <span class="text-red-500">*</span></label>
+                <input class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50" placeholder="e.g., Out-of-Spec Assay result for Paracetamol API Batch L-2026-047" value="Out-of-Spec Assay result — Paracetamol API, Batch L-2026-047" />
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Category <span class="text-red-500">*</span></label>
+                  <select class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400">
+                    <option>— Select —</option>
+                    <option selected>Material / Testing</option>
+                    <option>Process</option>
+                    <option>Equipment</option>
+                    <option>Documentation</option>
+                    <option>Personnel</option>
+                    <option>Facility / Environment</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Detection Area <span class="text-red-500">*</span></label>
+                  <select class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400">
+                    <option>— Select —</option>
+                    <option selected>QC Laboratory</option>
+                    <option>Warehouse / Inbound</option>
+                    <option>Manufacturing Floor</option>
+                    <option>Dispensing</option>
+                    <option>Quality Assurance</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Detection Date <span class="text-red-500">*</span></label>
+                  <input type="date" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400" value="2026-05-08" />
+                </div>
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Severity <span class="text-red-500">*</span></label>
+                  <div class="flex gap-2 mt-1">
+                    <label class="flex items-center gap-1.5 cursor-pointer rounded-xl border-2 border-red-300 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700"><input type="radio" name="sev" checked class="accent-red-600" /> Critical</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600"><input type="radio" name="sev" class="accent-amber-500" /> Major</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600"><input type="radio" name="sev" class="accent-blue-500" /> Minor</label>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-slate-600">Description <span class="text-red-500">*</span></label>
+                <textarea rows="3" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400 resize-none" placeholder="Provide a clear factual description of what was observed, when, and by whom…">Assay result for Paracetamol API (Batch L-2026-047, Supplier: Sigma-Aldrich, GRN-2026-0047) found to be 96.8% against specification of NLT 98.0% (IP 2022). Test performed on 2026-05-08 by QC Analyst Priya Kumar using HPLC System 1 (Waters Alliance e2695). Two repeat injections confirmed the result.</textarea>
+              </div>
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-slate-600">Immediate Action Taken</label>
+                <textarea rows="2" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400 resize-none" placeholder="Describe any immediate containment or corrective actions taken…">Batch placed under additional quarantine. QC Manager notified. Supplier COA cross-referenced — supplier reported 98.6%. Sample retained for re-test and for sending to third-party lab.</textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Linked References -->
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
+            <h2 class="mb-4 text-xs font-bold uppercase tracking-wider text-slate-500">Linked References <span class="text-slate-400 font-normal normal-case">(optional)</span></h2>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-slate-600">Batch / Lot Number</label>
+                <input class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400" value="L-2026-047" />
+              </div>
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-slate-600">GRN Reference</label>
+                <input class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400" value="GRN-2026-0047" />
+              </div>
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-slate-600">Material Name</label>
+                <input class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400" value="Paracetamol API" />
+              </div>
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-slate-600">Specification Reference</label>
+                <input class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400" value="SPEC-MAT-0001-v3" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: Attachments -->
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
+            <h2 class="mb-4 text-xs font-bold uppercase tracking-wider text-slate-500">Attachments</h2>
+            <div class="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+              <div class="text-2xl mb-2">📎</div>
+              <p class="text-xs text-slate-500">Drop files here or <span class="text-blue-600 underline cursor-pointer">browse</span></p>
+              <p class="text-[10px] text-slate-400 mt-1">Chromatograms, instrument logs, photos · Max 20 MB each</p>
+            </div>
+            <div class="mt-3 flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2">
+              <span class="text-slate-400">📄</span>
+              <span class="text-xs text-slate-700 flex-1">HPLC_Chromatogram_L2026047_20260508.pdf</span>
+              <span class="text-xs text-slate-400">142 KB</span>
+              <button class="text-red-400 hover:text-red-600 text-xs">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Summary card -->
+        <div class="space-y-4">
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5 text-xs space-y-4">
+            <h3 class="font-bold uppercase tracking-wider text-slate-500 text-[10px]">Deviation Summary</h3>
+            <div class="space-y-2">
+              <div class="flex justify-between"><span class="text-slate-500">DEV Number</span><span class="font-mono font-semibold text-blue-700">DEV-20260508-002</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Status</span><span class="rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">DRAFT</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Severity</span><span class="rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-700">CRITICAL</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Reported By</span><span class="font-medium text-slate-700">Yamini Raayi</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Date</span><span class="font-medium text-slate-700">2026-05-08</span></div>
+            </div>
+            <hr class="border-slate-100">
+            <div>
+              <label class="block mb-1 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Investigation Required</label>
+              <div class="flex gap-2">
+                <label class="flex items-center gap-1.5 cursor-pointer rounded-lg border-2 border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700"><input type="radio" name="inv" checked class="accent-blue-600" /> Yes</label>
+                <label class="flex items-center gap-1.5 cursor-pointer rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"><input type="radio" name="inv" /> No</label>
+              </div>
+            </div>
+            <div>
+              <label class="block mb-1 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">CAPA Required</label>
+              <div class="flex gap-2">
+                <label class="flex items-center gap-1.5 cursor-pointer rounded-lg border-2 border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700"><input type="radio" name="capa" checked class="accent-blue-600" /> Yes</label>
+                <label class="flex items-center gap-1.5 cursor-pointer rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"><input type="radio" name="capa" /> No</label>
+              </div>
+            </div>
+          </div>
+          <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800">
+            <p class="font-semibold mb-1">⚠ Critical Deviation Protocol</p>
+            <p>Critical deviations require QC Manager approval and must be investigated within 24 hours per SOP-QMS-001.</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 4 / 4 — /qms/deviations/DEV-001/capas/new — New CAPA  -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="screen-label">SCREEN 4 / 4 — /qms/deviations/DEV-20260508-001/capas/new — Add CAPA</div>
+<div class="flex h-screen bg-slate-50 overflow-hidden">
+  <aside class="w-64 shrink-0 flex flex-col bg-blue-900 border-r border-blue-800 overflow-y-auto">
+    <div class="flex h-16 shrink-0 items-center border-b border-blue-800 px-4 gap-3">
+      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">BS</div>
+      <div><p class="text-[10px] font-bold uppercase tracking-widest text-blue-200">BatchSphere</p><p class="text-sm font-semibold text-white leading-none">Core ERP</p></div>
+    </div>
+    <div class="border-b border-blue-800 p-3">
+      <div class="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">YR</div>
+        <div class="min-w-0"><div class="truncate text-xs font-semibold text-white">Yamini Raayi</div><div class="text-[10px] text-blue-200">QC_MANAGER</div></div>
+        <div class="ml-auto h-2 w-2 rounded-full bg-green-400 shrink-0"></div>
+      </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto p-3 space-y-3">
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Main</p>
+        <a href="01-dashboard.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⊞ Command Center</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Master Data</p>
+        <a href="07-vms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏢 Partners</a>
+        <a href="08-materials.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Materials</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏭 Locations</a>
+        <a href="11-spec-moa.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📋 QC Refs</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Operations</p>
+        <a href="02-grn.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📦 Inbound GRN</a>
+        <a href="09-inventory.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 Inventory</a>
+        <a href="04-wms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏬 Warehouse</a>
+        <a href="06-sampling.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚗ QC Sampling</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Quality</p>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-white/10 font-semibold text-white">⚠ Deviations</a>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✔ CAPAs</a>
+        <a href="05-documents.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📄 Documents</a>
+        <a href="05-coa-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📜 CoA</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Manufacturing</p>
+        <a href="02-bpr-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚙ Batch Records</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Laboratory</p>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🔬 Instruments</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📈 Stability</a>
+        <a href="04-lims-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚡ OOS</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">HR</p>
+        <a href="03-hrms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">👤 Employees</a></div>
+    </nav>
+    <div class="border-t border-blue-800 p-3 text-center text-[10px] text-blue-400">BatchSphere © 2026</div>
+  </aside>
+  <div class="flex flex-1 flex-col overflow-hidden">
+    <header class="sticky top-0 z-20 flex h-14 items-center gap-4 border-b border-blue-100 bg-white px-6 shadow-sm">
+      <div class="text-xs text-slate-400">Home / <a href="01-qms-mockup.html" class="text-blue-600 hover:underline">Deviations</a> / DEV-20260508-001 / <span class="font-medium text-blue-700">New CAPA</span></div>
+      <span class="ml-auto text-xs text-slate-400 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100">2026-05-08</span>
+    </header>
+    <main class="flex-1 overflow-y-auto p-6">
+      <!-- Context banner -->
+      <div class="mb-5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 flex items-start gap-3">
+        <span class="text-blue-600 text-base mt-0.5">⚠</span>
+        <div class="text-xs">
+          <span class="font-semibold text-blue-800">Adding CAPA for: DEV-20260508-001</span>
+          <span class="text-blue-600 ml-2">HPLC System 1 OOS result — Paracetamol API (CRITICAL)</span>
+        </div>
+      </div>
+
+      <div class="mb-5 flex items-center justify-between">
+        <div>
+          <h1 class="text-xl font-bold text-slate-800">New CAPA</h1>
+          <p class="mt-0.5 text-sm text-slate-500">Corrective and Preventive Action · Linked to deviation</p>
+        </div>
+        <div class="flex gap-2">
+          <button class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
+          <button class="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700">Create CAPA</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-6">
+        <div class="col-span-2 space-y-5">
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
+            <h2 class="mb-4 text-xs font-bold uppercase tracking-wider text-slate-500">CAPA Details</h2>
+            <div class="space-y-4">
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-slate-600">CAPA Title <span class="text-red-500">*</span></label>
+                <input class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400" value="Recalibrate HPLC System 1 and repeat assay with new mobile phase" />
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">CAPA Type <span class="text-red-500">*</span></label>
+                  <select class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400">
+                    <option selected>Corrective</option>
+                    <option>Preventive</option>
+                    <option>Both (Corrective + Preventive)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block mb-1 text-xs font-semibold text-slate-600">Priority <span class="text-red-500">*</span></label>
+                  <select class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400">
+                    <option selected>Critical</option>
+                    <option>High</option>
+                    <option>Medium</option>
+                    <option>Low</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-slate-600">Root Cause (Proposed) <span class="text-red-500">*</span></label>
+                <select class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400 mb-2">
+                  <option>Equipment — Calibration drift</option>
+                  <option>Reagent / Solvent — Degraded mobile phase</option>
+                  <option>Analyst error</option>
+                  <option>Sample preparation error</option>
+                  <option>Material — Genuine OOS</option>
+                  <option>Unknown — Pending investigation</option>
+                </select>
+                <textarea rows="2" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400 resize-none" placeholder="Elaborate on the root cause if known…">Suspected calibration drift on HPLC System 1 — last calibration was 14 days ago; system due in 16 days but column age is at 98% usage. Mobile phase prepared 5 days ago, at edge of 7-day stability window.</textarea>
+              </div>
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-slate-600">Action Description <span class="text-red-500">*</span></label>
+                <textarea rows="3" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400 resize-none">1. Recalibrate HPLC System 1 using certified reference standards.
+2. Replace HPLC column (current: 98% usage, replace with column from lot COL-2026-003).
+3. Prepare fresh mobile phase (acetonitrile:water 60:40 v/v, filtered).
+4. Repeat assay in triplicate by a second analyst (Ravi Shankar).
+5. If re-test confirms OOS, escalate to Phase II investigation and notify supplier.</textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5">
+            <h2 class="mb-4 text-xs font-bold uppercase tracking-wider text-slate-500">Assignment &amp; Timeline</h2>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-slate-600">Assigned To <span class="text-red-500">*</span></label>
+                <select class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400">
+                  <option selected>Ravi Shankar (QC Analyst)</option>
+                  <option>Priya Kumar (Warehouse Op)</option>
+                  <option>Yamini Raayi (QC Manager)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-slate-600">Due Date <span class="text-red-500">*</span></label>
+                <input type="date" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400" value="2026-05-09" />
+              </div>
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-slate-600">Effectiveness Check Date</label>
+                <input type="date" class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400" value="2026-05-16" />
+              </div>
+              <div>
+                <label class="block mb-1 text-xs font-semibold text-slate-600">Evidence Required</label>
+                <div class="space-y-1 mt-1">
+                  <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer"><input type="checkbox" checked class="accent-blue-600" /> Recalibration certificate</label>
+                  <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer"><input type="checkbox" checked class="accent-blue-600" /> New HPLC chromatogram</label>
+                  <label class="flex items-center gap-2 text-xs text-slate-600 cursor-pointer"><input type="checkbox" class="accent-blue-600" /> Updated column log</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div class="rounded-xl border border-slate-200 bg-white shadow-sm p-5 text-xs space-y-3">
+            <h3 class="font-bold uppercase tracking-wider text-slate-500 text-[10px]">CAPA Summary</h3>
+            <div class="space-y-2">
+              <div class="flex justify-between"><span class="text-slate-500">CAPA #</span><span class="font-mono font-semibold text-blue-700">CAPA-20260508-001</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Type</span><span class="rounded-full bg-blue-100 px-2 py-0.5 font-semibold text-blue-700">Corrective</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Priority</span><span class="rounded-full bg-red-100 px-2 py-0.5 font-semibold text-red-700">Critical</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Assignee</span><span class="font-medium text-slate-700">Ravi Shankar</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Due</span><span class="font-medium text-red-600">2026-05-09</span></div>
+            </div>
+          </div>
+          <div class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-800">
+            <p class="font-semibold mb-1">SOP Reference</p>
+            <p>SOP-QMS-002 — CAPA Management · SOP-QMS-003 — OOS Investigation Procedure</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+
+</body>
+</html>

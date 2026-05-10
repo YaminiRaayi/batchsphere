@@ -57,7 +57,15 @@ class AuthorizationIntegrationTest {
         String token = login("proc_user");
 
         assertEquals(200, performGet("/api/suppliers", token));
+        assertEquals(200, performGet("/api/materials", token));
+        assertEquals(200, performGet("/api/specs", token));
+        assertEquals(200, performGet("/api/moas", token));
         assertEquals(403, performGet("/api/grns", token));
+        assertEquals(403, performPost("/api/materials", token, """
+                {
+                  "materialName": "Should Fail"
+                }
+                """));
         assertEquals(403, performGet("/api/auth/users", token));
     }
 
@@ -66,6 +74,10 @@ class AuthorizationIntegrationTest {
         String token = login("warehouse_user");
 
         assertEquals(200, performGet("/api/grns", token));
+        assertEquals(200, performGet("/api/suppliers", token));
+        assertEquals(200, performGet("/api/vendors", token));
+        assertEquals(200, performGet("/api/vendor-business-units", token));
+        assertEquals(200, performGet("/api/wms/summary", token));
         assertEquals(403, performGet("/api/sampling-requests", token));
     }
 

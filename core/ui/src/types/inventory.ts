@@ -27,10 +27,14 @@ export type InventoryTransaction = {
   materialId: string;
   batchId: string;
   palletId: string;
+  warehouseLocation: string;
   transactionType: string;
   referenceType: string;
   referenceId: string;
+  referenceNumber: string | null;
   quantity: number;
+  beforeQuantity: number | null;
+  afterQuantity: number | null;
   uom: string;
   remarks: string | null;
   createdBy: string;

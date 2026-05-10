@@ -1,6 +1,7 @@
 package com.batchsphere.core.transactions.inventory.service;
 
 import com.batchsphere.core.transactions.inventory.dto.InventoryAdjustmentRequest;
+import com.batchsphere.core.transactions.inventory.dto.InventoryIssueRequest;
 import com.batchsphere.core.transactions.grn.entity.GrnItem;
 import com.batchsphere.core.transactions.inventory.dto.InventorySummaryResponse;
 import com.batchsphere.core.transactions.inventory.dto.InventoryTransferRequest;
@@ -24,6 +25,8 @@ public interface InventoryService {
     Page<InventoryTransactionResponse> getAllInventoryTransactions(Pageable pageable);
 
     InventoryResponse adjustInventory(UUID id, InventoryAdjustmentRequest request);
+
+    InventoryResponse issueInventory(UUID id, InventoryIssueRequest request);
 
     InventoryResponse transferInventory(UUID id, InventoryTransferRequest request);
 

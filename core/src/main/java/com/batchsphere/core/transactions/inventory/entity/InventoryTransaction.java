@@ -55,8 +55,17 @@ public class InventoryTransaction {
     @Column(name = "reference_id", nullable = false)
     private UUID referenceId;
 
+    @Column(name = "reference_number", length = 100)
+    private String referenceNumber;
+
     @Column(name = "quantity", nullable = false, precision = 18, scale = 3)
     private BigDecimal quantity;
+
+    @Column(name = "before_quantity", precision = 18, scale = 3)
+    private BigDecimal beforeQuantity;
+
+    @Column(name = "after_quantity", precision = 18, scale = 3)
+    private BigDecimal afterQuantity;
 
     @Column(name = "uom", nullable = false, length = 50)
     private String uom;
