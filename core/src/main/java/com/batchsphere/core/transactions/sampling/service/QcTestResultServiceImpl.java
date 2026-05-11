@@ -1,5 +1,7 @@
 package com.batchsphere.core.transactions.sampling.service;
 
+import com.batchsphere.core.compliance.audit.entity.AuditEventType;
+import com.batchsphere.core.compliance.audit.service.AuditEventService;
 import com.batchsphere.core.exception.BusinessConflictException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.masterdata.spec.entity.SpecParameter;
@@ -30,6 +32,7 @@ public class QcTestResultServiceImpl implements QcTestResultService {
     private final SpecParameterRepository specParameterRepository;
     private final QcDispositionRepository qcDispositionRepository;
     private final QcWorksheetService qcWorksheetService;
+    private final AuditEventService auditEventService;
 
     @Override
     public QcTestResultResponse recordResult(UUID testResultId, RecordQcTestResultRequest request, String actor) {
@@ -43,6 +46,7 @@ public class QcTestResultServiceImpl implements QcTestResultService {
             throw new BusinessConflictException("QC results can only be recorded when disposition is UNDER_REVIEW");
         }
 
+        QcTestResultStatus previousStatus = row.getStatus();
         row.setMoaIdUsed(request.getMoaIdUsed() != null ? request.getMoaIdUsed() : row.getMoaIdUsed());
         row.setResultValue(request.getResultValue());
         row.setResultText(StringUtils.hasText(request.getResultText()) ? request.getResultText().trim() : null);
@@ -55,6 +59,18 @@ public class QcTestResultServiceImpl implements QcTestResultService {
         row.setStatus(outcome.status());
         row.setPassFailFlag(outcome.passFlag());
         qcTestResultRepository.save(row);
+        qcWorksheetService.markWorksheetInProgress(row.getSampleId(), actor);
+        auditEventService.record(
+                "QC_TEST_RESULT",
+                row.getId(),
+                AuditEventType.UPDATE,
+                "status",
+                previousStatus != null ? previousStatus.name() : null,
+                row.getStatus().name(),
+                "QC worksheet result recorded",
+                actor,
+                "QC_WORKSHEET"
+        );
 
         return qcWorksheetService.getWorksheet(row.getSampleId()).stream()
                 .filter(item -> item.getId().equals(row.getId()))

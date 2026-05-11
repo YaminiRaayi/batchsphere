@@ -13,6 +13,7 @@ import com.batchsphere.core.transactions.inventory.dto.InventoryTransactionRespo
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,6 +30,8 @@ public interface InventoryService {
     InventoryResponse issueInventory(UUID id, InventoryIssueRequest request);
 
     InventoryResponse transferInventory(UUID id, InventoryTransferRequest request);
+
+    InventoryResponse consumeForSampling(UUID inventoryId, UUID samplingRequestId, BigDecimal quantity, String actor);
 
     InventorySummaryResponse getInventorySummary();
 

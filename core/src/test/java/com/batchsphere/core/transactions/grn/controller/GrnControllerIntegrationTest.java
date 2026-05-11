@@ -4,12 +4,27 @@ import com.batchsphere.core.auth.entity.User;
 import com.batchsphere.core.auth.entity.UserRole;
 import com.batchsphere.core.auth.security.AuthenticatedUser;
 import com.batchsphere.core.masterdata.material.entity.Material;
+import com.batchsphere.core.masterdata.material.entity.MaterialStatus;
 import com.batchsphere.core.masterdata.material.entity.StorageCondition;
 import com.batchsphere.core.masterdata.material.repository.MaterialRepository;
+import com.batchsphere.core.masterdata.businessunit.entity.BusinessUnit;
+import com.batchsphere.core.masterdata.businessunit.repository.BusinessUnitRepository;
+import com.batchsphere.core.masterdata.quality.enums.ReviewRoute;
+import com.batchsphere.core.masterdata.spec.entity.Spec;
+import com.batchsphere.core.masterdata.spec.entity.SpecStatus;
+import com.batchsphere.core.masterdata.spec.entity.SpecType;
+import com.batchsphere.core.masterdata.spec.repository.SpecRepository;
+import com.batchsphere.core.masterdata.supplier.entity.SupplierQualificationStatus;
+import com.batchsphere.core.masterdata.supplier.entity.SupplierType;
 import com.batchsphere.core.masterdata.supplier.entity.Supplier;
 import com.batchsphere.core.masterdata.supplier.repository.SupplierRepository;
 import com.batchsphere.core.masterdata.vendor.entity.Vendor;
 import com.batchsphere.core.masterdata.vendor.repository.VendorRepository;
+import com.batchsphere.core.masterdata.vendorapproval.entity.VendorMaterialApproval;
+import com.batchsphere.core.masterdata.vendorapproval.entity.VendorMaterialApprovalBasis;
+import com.batchsphere.core.masterdata.vendorapproval.entity.VendorMaterialApprovalStatus;
+import com.batchsphere.core.masterdata.vendorapproval.repository.VendorMaterialApprovalRepository;
+import com.batchsphere.core.masterdata.vendorbusinessunit.entity.QualificationStatus;
 import com.batchsphere.core.masterdata.vendorbusinessunit.entity.VendorBusinessUnit;
 import com.batchsphere.core.masterdata.vendorbusinessunit.repository.VendorBusinessUnitRepository;
 import com.batchsphere.core.masterdata.warehouselocation.dto.CreatePalletRequest;
@@ -35,6 +50,7 @@ import com.batchsphere.core.transactions.inventory.entity.InventoryReferenceType
 import com.batchsphere.core.transactions.inventory.entity.InventoryTransactionType;
 import com.batchsphere.core.transactions.inventory.repository.InventoryTransactionRepository;
 import com.batchsphere.core.transactions.sampling.repository.SamplingRequestRepository;
+import com.batchsphere.core.transactions.sampling.entity.SamplingMethod;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -83,6 +99,15 @@ class GrnControllerIntegrationTest {
 
     @Autowired
     private MaterialRepository materialRepository;
+
+    @Autowired
+    private SpecRepository specRepository;
+
+    @Autowired
+    private VendorMaterialApprovalRepository vendorMaterialApprovalRepository;
+
+    @Autowired
+    private BusinessUnitRepository businessUnitRepository;
 
     @Autowired
     private WarehouseLocationService warehouseLocationService;
@@ -495,6 +520,7 @@ class GrnControllerIntegrationTest {
     void receivingMultiItemGrnCreatesExpectedContainersLabelsSamplingAndInventoryTransactions() throws Exception {
         FixtureData fixture = createFixtureData();
         Material secondMaterial = createMaterial("MAT2-" + fixture.suffix(), "Aux Material " + fixture.suffix());
+        createApproval(fixture, secondMaterial);
         SecurityContextHolder.clearContext();
         String token = loginAsAdmin();
 
@@ -560,6 +586,8 @@ class GrnControllerIntegrationTest {
                 .contactPerson("Fixture User")
                 .email("supplier-" + suffix + "@example.com")
                 .phone("9999999999")
+                .supplierType(SupplierType.MANUFACTURER)
+                .qualificationStatus(SupplierQualificationStatus.QUALIFIED)
                 .isActive(true)
                 .createdBy("seed-user")
                 .createdAt(LocalDateTime.now())
@@ -586,10 +614,17 @@ class GrnControllerIntegrationTest {
                 .city("Hyderabad")
                 .state("TS")
                 .country("India")
+                .qualificationStatus(QualificationStatus.QUALIFIED)
+                .isApproved(true)
+                .isWhoGmpCertified(true)
+                .isUsfda(false)
+                .isEuGmp(false)
                 .isActive(true)
                 .createdBy("seed-user")
                 .createdAt(LocalDateTime.now())
                 .build());
+
+        Spec spec = createApprovedSpec(suffix);
 
         Material material = materialRepository.save(Material.builder()
                 .id(UUID.randomUUID())
@@ -597,6 +632,8 @@ class GrnControllerIntegrationTest {
                 .materialName("In House Label Material")
                 .materialType("RAW_MATERIAL")
                 .uom("KG")
+                .specId(spec.getId())
+                .status(MaterialStatus.ACTIVE)
                 .storageCondition(StorageCondition.ROOM_TEMPERATURE)
                 .photosensitive(false)
                 .hygroscopic(false)
@@ -610,7 +647,23 @@ class GrnControllerIntegrationTest {
                 .createdAt(LocalDateTime.now())
                 .build());
 
-        Pallet pallet = createPalletHierarchy(suffix);
+        vendorMaterialApprovalRepository.save(VendorMaterialApproval.builder()
+                .id(UUID.randomUUID())
+                .vendorId(vendor.getId())
+                .vendorBusinessUnitId(vendorBusinessUnit.getId())
+                .supplierId(supplier.getId())
+                .materialId(material.getId())
+                .status(VendorMaterialApprovalStatus.APPROVED)
+                .approvalBasis(VendorMaterialApprovalBasis.AUDIT)
+                .qualificationDate(LocalDate.now().minusDays(30))
+                .approvedBy("seed-user")
+                .isActive(true)
+                .createdBy("seed-user")
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        BusinessUnit businessUnit = createBusinessUnit(suffix);
+        Pallet pallet = createPalletHierarchy(suffix, businessUnit.getId());
         return new FixtureData(suffix, supplier, vendor, vendorBusinessUnit, material, pallet);
     }
 
@@ -763,12 +816,16 @@ class GrnControllerIntegrationTest {
     }
 
     private Material createMaterial(String materialCode, String materialName) {
-        return materialRepository.save(Material.builder()
+        String suffix = materialCode.replaceAll("[^A-Za-z0-9]", "");
+        Spec spec = createApprovedSpec(suffix + "B");
+        Material material = materialRepository.save(Material.builder()
                 .id(UUID.randomUUID())
                 .materialCode(materialCode)
                 .materialName(materialName)
                 .materialType("RAW_MATERIAL")
                 .uom("KG")
+                .specId(spec.getId())
+                .status(MaterialStatus.ACTIVE)
                 .storageCondition(StorageCondition.ROOM_TEMPERATURE)
                 .photosensitive(false)
                 .hygroscopic(false)
@@ -781,12 +838,58 @@ class GrnControllerIntegrationTest {
                 .createdBy("seed-user")
                 .createdAt(LocalDateTime.now())
                 .build());
+        return material;
     }
 
-    private Pallet createPalletHierarchy(String suffix) {
+    private Spec createApprovedSpec(String suffix) {
+        return specRepository.save(Spec.builder()
+                .id(UUID.randomUUID())
+                .specCode("SPEC-GRN-" + suffix)
+                .specName("GRN Spec " + suffix)
+                .revision("v1")
+                .specType(SpecType.MATERIAL)
+                .status(SpecStatus.APPROVED)
+                .samplingMethod(SamplingMethod.SQRT_N_PLUS_1)
+                .reviewRoute(ReviewRoute.QC_ONLY)
+                .isActive(true)
+                .createdBy("seed-user")
+                .createdAt(LocalDateTime.now())
+                .build());
+    }
+
+    private void createApproval(FixtureData fixture, Material material) {
+        vendorMaterialApprovalRepository.save(VendorMaterialApproval.builder()
+                .id(UUID.randomUUID())
+                .vendorId(fixture.vendor().getId())
+                .vendorBusinessUnitId(fixture.vendorBusinessUnit().getId())
+                .supplierId(fixture.supplier().getId())
+                .materialId(material.getId())
+                .status(VendorMaterialApprovalStatus.APPROVED)
+                .approvalBasis(VendorMaterialApprovalBasis.AUDIT)
+                .qualificationDate(LocalDate.now().minusDays(30))
+                .approvedBy("seed-user")
+                .isActive(true)
+                .createdBy("seed-user")
+                .createdAt(LocalDateTime.now())
+                .build());
+    }
+
+    private BusinessUnit createBusinessUnit(String suffix) {
+        return businessUnitRepository.save(BusinessUnit.builder()
+                .id(UUID.randomUUID())
+                .unitCode("BU-" + suffix)
+                .unitName("Business Unit " + suffix)
+                .isActive(true)
+                .createdBy("seed-user")
+                .createdAt(LocalDateTime.now())
+                .build());
+    }
+
+    private Pallet createPalletHierarchy(String suffix, UUID businessUnitId) {
         CreateWarehouseRequest warehouseRequest = new CreateWarehouseRequest();
         warehouseRequest.setWarehouseCode("WH-" + suffix);
         warehouseRequest.setWarehouseName("Warehouse " + suffix);
+        warehouseRequest.setBusinessUnitId(businessUnitId);
         warehouseRequest.setCreatedBy("seed-user");
         Warehouse warehouse = warehouseLocationService.createWarehouse(warehouseRequest);
 

@@ -5,6 +5,7 @@ import com.batchsphere.core.auth.entity.UserRole;
 import com.batchsphere.core.auth.security.AuthenticatedUser;
 import com.batchsphere.core.masterdata.material.dto.MaterialRequest;
 import com.batchsphere.core.masterdata.material.entity.Material;
+import com.batchsphere.core.masterdata.material.entity.MaterialStatus;
 import com.batchsphere.core.masterdata.material.entity.StorageCondition;
 import com.batchsphere.core.masterdata.material.repository.MaterialRepository;
 import com.batchsphere.core.masterdata.quality.enums.ReviewRoute;
@@ -90,6 +91,7 @@ class MaterialServiceIntegrationTest {
         request.setHsnCode("29157090");
         request.setCasNumber("557-04-0");
         request.setPharmacopoeialRef("IP 2022");
+        request.setStatus(MaterialStatus.ACTIVE);
         request.setStorageCondition(StorageCondition.AMBIENT);
         request.setMaxHumidity("NMT 65%");
         request.setLightSensitivity("AMBER_CONTAINER");
@@ -125,5 +127,64 @@ class MaterialServiceIntegrationTest {
         assertEquals(false, reloaded.getControlledSubstance());
         assertEquals(true, reloaded.getPhotosensitive());
         assertEquals(true, reloaded.getHygroscopic());
+        assertEquals(MaterialStatus.ACTIVE, reloaded.getStatus());
+    }
+
+    @Test
+    void updateMaterialPersistsLifecycleStatus() {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        Spec spec = specRepository.save(Spec.builder()
+                .id(UUID.randomUUID())
+                .specCode("SPEC-MAT-UPD-" + suffix)
+                .specName("Material Spec Update " + suffix)
+                .revision("v1")
+                .specType(SpecType.MATERIAL)
+                .status(SpecStatus.APPROVED)
+                .samplingMethod(SamplingMethod.SQRT_N_PLUS_1)
+                .reviewRoute(ReviewRoute.QC_ONLY)
+                .isActive(true)
+                .createdBy("tester")
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        MaterialRequest createRequest = new MaterialRequest();
+        createRequest.setMaterialCode("MAT-STS-" + suffix);
+        createRequest.setMaterialName("Lifecycle Material");
+        createRequest.setMaterialType("NON_CRITICAL");
+        createRequest.setUom("KG");
+        createRequest.setSpecId(spec.getId());
+        createRequest.setStorageCondition(StorageCondition.AMBIENT);
+        createRequest.setPhotosensitive(false);
+        createRequest.setHygroscopic(false);
+        createRequest.setHazardous(false);
+        createRequest.setSelectiveMaterial(false);
+        createRequest.setVendorCoaReleaseAllowed(false);
+        createRequest.setControlledSubstance(false);
+        createRequest.setSamplingRequired(true);
+        createRequest.setCreatedBy("tester");
+
+        Material created = materialService.createMaterial(createRequest);
+
+        MaterialRequest updateRequest = new MaterialRequest();
+        updateRequest.setMaterialCode(created.getMaterialCode());
+        updateRequest.setMaterialName(created.getMaterialName());
+        updateRequest.setMaterialType(created.getMaterialType());
+        updateRequest.setUom(created.getUom());
+        updateRequest.setSpecId(spec.getId());
+        updateRequest.setStorageCondition(created.getStorageCondition());
+        updateRequest.setPhotosensitive(created.getPhotosensitive());
+        updateRequest.setHygroscopic(created.getHygroscopic());
+        updateRequest.setHazardous(created.getHazardous());
+        updateRequest.setSelectiveMaterial(created.getSelectiveMaterial());
+        updateRequest.setVendorCoaReleaseAllowed(created.getVendorCoaReleaseAllowed());
+        updateRequest.setControlledSubstance(created.getControlledSubstance());
+        updateRequest.setSamplingRequired(created.getSamplingRequired());
+        updateRequest.setStatus(MaterialStatus.DISCONTINUED);
+        updateRequest.setCreatedBy("tester");
+
+        materialService.updateMaterial(created.getId(), updateRequest);
+        Material reloaded = materialRepository.findById(created.getId()).orElseThrow();
+
+        assertEquals(MaterialStatus.DISCONTINUED, reloaded.getStatus());
     }
 }

@@ -10,4 +10,5 @@ public interface QcWorksheetService {
     List<QcTestResultResponse> getWorksheet(UUID sampleId);
     boolean isWorksheetComplete(UUID sampleId);
     boolean hasFailingResults(UUID sampleId);
+    void markWorksheetInProgress(UUID sampleId, String actor);
 }

@@ -2,6 +2,8 @@ package com.batchsphere.core.transactions.sampling.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -38,6 +40,19 @@ public class SamplingContainerSample {
 
     @Column(name = "sampled_quantity", nullable = false, precision = 18, scale = 3)
     private BigDecimal sampledQuantity;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "draw_purpose", nullable = false, length = 50)
+    private SamplingDrawPurpose drawPurpose;
+
+    @Column(name = "container_condition", length = 255)
+    private String containerCondition;
+
+    @Column(name = "resealed", nullable = false)
+    private Boolean resealed;
+
+    @Column(name = "label_applied", nullable = false)
+    private Boolean labelApplied;
 
     @Column(name = "created_by", nullable = false, length = 100)
     private String createdBy;

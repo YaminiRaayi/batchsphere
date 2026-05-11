@@ -106,6 +106,7 @@ export type GrnContainer = {
   vendorBatch: string;
   internalLot: string;
   quantity: number;
+  remainingQuantity: number;
   uom: string;
   manufactureDate: string | null;
   expiryDate: string | null;

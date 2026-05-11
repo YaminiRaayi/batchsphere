@@ -42,6 +42,11 @@ import type {
 } from "../types/spec";
 import type { CreateSupplierRequest, Supplier } from "../types/supplier";
 import type {
+  CreateVendorMaterialApprovalRequest,
+  VendorMaterialApproval,
+  VendorMaterialApprovalStatus
+} from "../types/vendor-material-approval";
+import type {
   CreateGrnRequest,
   Grn,
   GrnContainer,
@@ -53,7 +58,9 @@ import type {
 } from "../types/grn";
 import type {
   CompleteQaInvestigationReviewRequest,
+  AuditEvent,
   DestroyRetainedSampleRequest,
+  ESignatureRecord,
   EscalateQcInvestigationRequest,
   QcDecisionRequest,
   QcReceiptRequest,
@@ -606,6 +613,43 @@ export async function updateVendorBusinessUnitAudit(
   return requestMutation<VendorBusinessUnitAudit>(`/api/vendor-business-units/${id}/audits/${auditId}`, {
     method: "PUT",
     body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchVendorMaterialApprovals(filters?: {
+  vendorId?: string;
+  vendorBusinessUnitId?: string;
+  supplierId?: string;
+  materialId?: string;
+  status?: VendorMaterialApprovalStatus;
+}) {
+  const params = new URLSearchParams();
+  if (filters?.vendorId) params.set("vendorId", filters.vendorId);
+  if (filters?.vendorBusinessUnitId) params.set("vendorBusinessUnitId", filters.vendorBusinessUnitId);
+  if (filters?.supplierId) params.set("supplierId", filters.supplierId);
+  if (filters?.materialId) params.set("materialId", filters.materialId);
+  if (filters?.status) params.set("status", filters.status);
+  const query = params.toString();
+  return requestJson<VendorMaterialApproval[]>(`/api/vendor-material-approvals${query ? `?${query}` : ""}`);
+}
+
+export async function createVendorMaterialApproval(payload: CreateVendorMaterialApprovalRequest) {
+  return requestMutation<VendorMaterialApproval>("/api/vendor-material-approvals", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateVendorMaterialApproval(id: string, payload: CreateVendorMaterialApprovalRequest) {
+  return requestMutation<VendorMaterialApproval>(`/api/vendor-material-approvals/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deleteVendorMaterialApproval(id: string) {
+  return requestVoid(`/api/vendor-material-approvals/${id}`, {
+    method: "DELETE"
   });
 }
 
@@ -1268,6 +1312,16 @@ export async function startSamplingQcReview(samplingRequestId: string, payload: 
 
 export async function fetchSamplingWorksheet(samplingRequestId: string) {
   return requestJson<QcWorksheetRow[]>(`/api/sampling-requests/${samplingRequestId}/worksheet`);
+}
+
+export async function fetchAuditEvents(entityType: string, entityId: string) {
+  const params = new URLSearchParams({ entityType, entityId });
+  return requestJson<AuditEvent[]>(`/api/audit-events?${params.toString()}`);
+}
+
+export async function fetchESignatures(entityType: string, entityId: string) {
+  const params = new URLSearchParams({ entityType, entityId });
+  return requestJson<ESignatureRecord[]>(`/api/e-signatures?${params.toString()}`);
 }
 
 export async function fetchSamplingCycles(samplingRequestId: string) {

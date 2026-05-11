@@ -376,7 +376,10 @@ export function SamplingPage() {
         rationale: selectedRequest.plan.rationale ?? "",
         containerSamples: selectedRequest.plan.containerSamples.map((s) => ({
           grnContainerId: s.grnContainerId,
-          sampledQuantity: s.sampledQuantity
+          sampledQuantity: s.sampledQuantity,
+          drawPurpose: s.drawPurpose ?? "COMPOSITE_ASSAY",
+          resealed: true,
+          labelApplied: true
         })),
         createdBy: currentUserName,
         updatedBy: currentUserName
@@ -497,7 +500,14 @@ export function SamplingPage() {
         ? []
         : requestContainers.slice(0, requiredContainers).map((container) => {
             const existing = planForm.containerSamples.find((s) => s.grnContainerId === container.id);
-            return { grnContainerId: container.id, sampledQuantity: existing?.sampledQuantity ?? 0 };
+            return {
+              grnContainerId: container.id,
+              sampledQuantity: existing?.sampledQuantity ?? 0,
+              drawPurpose: existing?.drawPurpose ?? "COMPOSITE_ASSAY",
+              containerCondition: existing?.containerCondition ?? "Container intact at sampling",
+              resealed: existing?.resealed ?? true,
+              labelApplied: existing?.labelApplied ?? true
+            };
           });
     const compositeSampleQuantity = nextSamples.reduce((sum, s) => sum + Number(s.sampledQuantity || 0), 0);
     setPlanForm((c) => ({
@@ -1498,9 +1508,9 @@ export function SamplingPage() {
                   {/* Container-wise quantities */}
                   {planForm.samplingMethod !== "COA_BASED_RELEASE" ? (
                     <div className="rounded-xl border border-green-100 bg-green-50/40 p-4">
-                      <p className="mb-1 text-xs font-semibold text-slate-700">Container-wise sample quantity</p>
+                      <p className="mb-1 text-xs font-semibold text-slate-700">Container-wise sample quantities</p>
                       <p className="mb-3 text-[11px] text-slate-500">
-                        Applies the same sample quantity to all selected containers.{sampleQuantityUom ? ` UOM: ${sampleQuantityUom}` : ""}
+                        Enter the actual quantity drawn from each selected container.{sampleQuantityUom ? ` UOM: ${sampleQuantityUom}` : ""}
                       </p>
                       <div className="grid gap-3 md:grid-cols-[1fr_0.7fr]">
                         <input readOnly value={`${planForm.containersToSample} selected containers`} className={readonlyCls} />
@@ -1523,9 +1533,41 @@ export function SamplingPage() {
                           {planForm.containerSamples.map((sample, index) => {
                             const container = requestContainers.find((c) => c.id === sample.grnContainerId);
                             return (
-                              <div key={sample.grnContainerId} className="grid gap-3 md:grid-cols-[1.2fr_0.8fr]">
-                                <input readOnly value={container?.containerNumber ?? `Container ${index + 1}`} className={readonlyCls} />
-                                <input readOnly value={`${sample.sampledQuantity}${sampleQuantityUom ? ` ${sampleQuantityUom}` : ""}`} className={readonlyCls} />
+                              <div key={sample.grnContainerId} className="grid gap-3 md:grid-cols-[1.1fr_0.7fr_0.7fr]">
+                                <input
+                                  readOnly
+                                  value={`${container?.containerNumber ?? `Container ${index + 1}`} | Remaining ${container?.remainingQuantity ?? container?.quantity ?? "-"}${sampleQuantityUom ? ` ${sampleQuantityUom}` : ""}`}
+                                  className={readonlyCls}
+                                />
+                                <select
+                                  disabled={!canEditPlan || isSubmitting}
+                                  value={sample.drawPurpose ?? "COMPOSITE_ASSAY"}
+                                  onChange={(event) => {
+                                    const drawPurpose = event.target.value as NonNullable<SamplingContainerSampleRequest["drawPurpose"]>;
+                                    const nextSamples = planForm.containerSamples.map((item) => item.grnContainerId === sample.grnContainerId ? { ...item, drawPurpose } : item);
+                                    setPlanForm((c) => ({ ...c, containerSamples: nextSamples }));
+                                  }}
+                                  className={fieldCls}>
+                                  <option value="IDENTITY">Identity</option>
+                                  <option value="COMPOSITE_ASSAY">Composite assay</option>
+                                  <option value="RETENTION">Retention</option>
+                                  <option value="MICRO">Micro</option>
+                                  <option value="OTHER">Other</option>
+                                </select>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.001"
+                                  disabled={!canEditPlan || isSubmitting}
+                                  value={sample.sampledQuantity}
+                                  onChange={(event) => {
+                                    const sampledQuantity = Number(event.target.value);
+                                    const nextSamples = planForm.containerSamples.map((item) => item.grnContainerId === sample.grnContainerId ? { ...item, sampledQuantity } : item);
+                                    const compositeSampleQuantity = nextSamples.reduce((sum, item) => sum + Number(item.sampledQuantity || 0), 0);
+                                    setPlanForm((c) => ({ ...c, containerSamples: nextSamples, compositeSampleQuantity }));
+                                  }}
+                                  className={fieldCls}
+                                />
                               </div>
                             );
                           })}

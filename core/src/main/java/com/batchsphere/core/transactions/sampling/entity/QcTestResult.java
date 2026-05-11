@@ -33,6 +33,9 @@ public class QcTestResult {
     @Column(name = "sample_id", nullable = false)
     private UUID sampleId;
 
+    @Column(name = "worksheet_id")
+    private UUID worksheetId;
+
     @Column(name = "spec_parameter_id", nullable = false)
     private UUID specParameterId;
 

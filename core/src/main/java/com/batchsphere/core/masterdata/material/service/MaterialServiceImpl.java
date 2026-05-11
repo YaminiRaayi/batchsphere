@@ -6,6 +6,7 @@ import com.batchsphere.core.exception.DuplicateResourceException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.masterdata.material.dto.MaterialRequest;
 import com.batchsphere.core.masterdata.material.entity.Material;
+import com.batchsphere.core.masterdata.material.entity.MaterialStatus;
 import com.batchsphere.core.masterdata.spec.dto.DelinkMaterialSpecRequest;
 import com.batchsphere.core.masterdata.spec.dto.LinkMaterialSpecRequest;
 import com.batchsphere.core.masterdata.spec.entity.MaterialSpecLink;
@@ -57,6 +58,7 @@ public class MaterialServiceImpl implements  MaterialServiceInterface{
                 .hsnCode(materialRequest.getHsnCode())
                 .casNumber(materialRequest.getCasNumber())
                 .pharmacopoeialRef(materialRequest.getPharmacopoeialRef())
+                .status(materialRequest.getStatus() == null ? MaterialStatus.ACTIVE : materialRequest.getStatus())
                 .storageCondition(materialRequest.getStorageCondition())
                 .maxHumidity(materialRequest.getMaxHumidity())
                 .lightSensitivity(materialRequest.getLightSensitivity())
@@ -142,6 +144,7 @@ public class MaterialServiceImpl implements  MaterialServiceInterface{
         material.setHsnCode(request.getHsnCode());
         material.setCasNumber(request.getCasNumber());
         material.setPharmacopoeialRef(request.getPharmacopoeialRef());
+        material.setStatus(request.getStatus() == null ? material.getStatus() : request.getStatus());
         material.setStorageCondition(request.getStorageCondition());
         material.setMaxHumidity(request.getMaxHumidity());
         material.setLightSensitivity(request.getLightSensitivity());

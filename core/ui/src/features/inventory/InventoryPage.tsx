@@ -50,7 +50,8 @@ function txTypeLabel(type: string) {
     QC_REJECT: "QC Reject",
     TRANSFER: "Transfer",
     ADJUSTMENT: "Adjustment",
-    OUTBOUND: "Issue"
+    OUTBOUND: "Issue",
+    SAMPLING_CONSUMPTION: "Sampling Consumption"
   };
   return map[type] ?? type.replace(/_/g, " ");
 }
@@ -207,6 +208,17 @@ export function InventoryPage() {
   const selectedBatch = selectedInventory ? batchMap.get(selectedInventory.batchId) ?? null : null;
   const selectedMaterial = selectedInventory ? materialMap.get(selectedInventory.materialId) ?? null : null;
   const selectedPallet = selectedInventory ? palletMap.get(selectedInventory.palletId) ?? null : null;
+  const selectedIssueBlockedReason = useMemo(() => {
+    if (!selectedInventory) return "Select a released lot from the table before issuing inventory.";
+    if (selectedInventory.status !== "RELEASED") return "Only released inventory can be issued.";
+    if (selectedInventory.expiryDate && new Date(selectedInventory.expiryDate).getTime() < Date.now()) {
+      return "Expired inventory cannot be issued.";
+    }
+    if (selectedInventory.retestDueDate && new Date(selectedInventory.retestDueDate).getTime() < Date.now()) {
+      return "Retest-overdue inventory cannot be issued.";
+    }
+    return null;
+  }, [selectedInventory]);
 
   async function handleAdjustInventory() {
     if (!selectedInventory) {
@@ -306,6 +318,10 @@ export function InventoryPage() {
               type="button"
               onClick={() => {
                 if (label === "Issue") {
+                  if (selectedIssueBlockedReason) {
+                    setIssueError(selectedIssueBlockedReason);
+                    return;
+                  }
                   setIsIssueOpen(true);
                   setIssueError(null);
                 }
@@ -391,7 +407,7 @@ export function InventoryPage() {
               <table className="min-w-full text-xs">
                 <thead>
                   <tr className="border-b border-sky-50 bg-sky-50/50">
-                    {["Lot No.", "Material", "Pallet / Location", "Qty Available", "Expiry", "Status"].map(
+                    {["Lot No.", "Material", "Pallet / Location", "Qty Available", "Expiry / Retest", "Status"].map(
                       (col) => (
                         <th key={col} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                           {col}
@@ -417,7 +433,7 @@ export function InventoryPage() {
                       const batch = batchMap.get(record.batchId);
                       const pallet = palletMap.get(record.palletId);
                       const cfg = statusConfig(record.status);
-                      const expiry = expiryChip(batch?.expiryDate);
+                      const expiry = expiryChip(record.expiryDate);
                       return (
                         <tr key={record.id} className="border-b border-sky-50 transition hover:bg-sky-50">
                           <td className="px-4 py-2.5">
@@ -444,9 +460,14 @@ export function InventoryPage() {
                             {record.quantityOnHand} {record.uom}
                           </td>
                           <td className="px-4 py-2.5">
-                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${expiry.className}`}>
-                              {expiry.label}
-                            </span>
+                            <div className="space-y-1">
+                              <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${expiry.className}`}>
+                                {expiry.label}
+                              </span>
+                              <div className="text-[10px] text-slate-500">
+                                {record.retestDueDate ? `Retest ${formatDate(record.retestDueDate)}` : "Retest —"}
+                              </div>
+                            </div>
                           </td>
                           <td className="px-4 py-2.5">
                             <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold ${cfg.pill}`}>

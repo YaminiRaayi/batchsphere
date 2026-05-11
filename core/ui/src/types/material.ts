@@ -20,6 +20,12 @@ export type LightSensitivity =
   | "AMBER_CONTAINER"
   | "STORE_IN_DARK";
 
+export type MaterialStatus =
+  | "DRAFT"
+  | "ACTIVE"
+  | "DISCONTINUED"
+  | "OBSOLETE";
+
 export type Material = {
   id: string;
   materialCode: string;
@@ -48,6 +54,7 @@ export type Material = {
   samplingRequired: boolean;
   description: string | null;
   isActive: boolean;
+  status: MaterialStatus;
   createdBy: string;
   createdAt: string;
   updatedBy: string | null;
@@ -79,6 +86,7 @@ export type CreateMaterialRequest = {
   selectiveMaterial: boolean;
   vendorCoaReleaseAllowed: boolean;
   samplingRequired: boolean;
+  status?: MaterialStatus;
   description?: string;
   createdBy: string;
 };

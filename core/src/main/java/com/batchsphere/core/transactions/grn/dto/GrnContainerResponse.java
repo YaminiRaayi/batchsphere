@@ -26,6 +26,7 @@ public class GrnContainerResponse {
     String vendorBatch;
     String internalLot;
     BigDecimal quantity;
+    BigDecimal remainingQuantity;
     String uom;
     LocalDate manufactureDate;
     LocalDate expiryDate;

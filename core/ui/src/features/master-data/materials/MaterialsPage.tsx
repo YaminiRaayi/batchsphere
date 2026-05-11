@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchMaterials } from "../../../lib/api";
 import { useAuthStore } from "../../../stores/authStore";
-import type { Material, MaterialCategory } from "../../../types/material";
+import type { Material, MaterialCategory, MaterialStatus } from "../../../types/material";
 import type { PageResponse } from "../../../types/grn";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -23,6 +23,13 @@ const storageLabels: Record<string, string> = {
   REFRIGERATED_2_TO_8C: "Refrigerated 2–8°C",
   COLD: "Frozen –20°C",
   DEEP_FREEZER: "Deep Frozen –80°C"
+};
+
+const materialStatusMeta: Record<MaterialStatus, { label: string; bg: string; text: string }> = {
+  DRAFT: { label: "Draft", bg: "bg-slate-100", text: "text-slate-600" },
+  ACTIVE: { label: "Active", bg: "bg-green-100", text: "text-green-700" },
+  DISCONTINUED: { label: "Discontinued", bg: "bg-amber-100", text: "text-amber-700" },
+  OBSOLETE: { label: "Obsolete", bg: "bg-red-100", text: "text-red-700" }
 };
 
 const filterTabs = [
@@ -193,22 +200,26 @@ export default function MaterialsPage() {
                       {storageLabels[material.storageCondition] ?? material.storageCondition}
                     </td>
                     <td className="px-4 py-3">
+                      {(() => {
+                        const statusMeta = materialStatusMeta[material.status ?? "ACTIVE"];
+                        return (
                       <span
                         className={[
                           "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold",
-                          material.isActive
-                            ? "bg-green-100 text-green-700"
-                            : "bg-slate-100 text-slate-500"
+                          statusMeta.bg,
+                          statusMeta.text
                         ].join(" ")}
                       >
                         <span
                           className={[
                             "h-1.5 w-1.5 rounded-full",
-                            material.isActive ? "bg-green-500" : "bg-slate-400"
+                            statusMeta.text.replace("text-", "bg-")
                           ].join(" ")}
                         />
-                        {material.isActive ? "Active" : "Inactive"}
+                        {statusMeta.label}
                       </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">

@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -17,6 +18,8 @@ public class InventoryResponse {
     UUID palletId;
     BigDecimal quantityOnHand;
     String uom;
+    LocalDate expiryDate;
+    LocalDate retestDueDate;
     InventoryStatus status;
     Boolean isActive;
     String createdBy;

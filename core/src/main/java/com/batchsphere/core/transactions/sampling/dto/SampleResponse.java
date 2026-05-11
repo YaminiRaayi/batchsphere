@@ -45,4 +45,5 @@ public class SampleResponse {
     String updatedBy;
     LocalDateTime updatedAt;
     List<SampleContainerLinkResponse> containerLinks;
+    List<SampleChainOfCustodyResponse> custodyEvents;
 }

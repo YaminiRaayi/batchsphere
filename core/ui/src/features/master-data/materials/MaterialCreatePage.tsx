@@ -15,6 +15,7 @@ import type {
   LightSensitivity,
   Material,
   MaterialCategory,
+  MaterialStatus,
   StorageCondition
 } from "../../../types/material";
 import type {
@@ -79,6 +80,15 @@ const lightSensitivityLabels: Record<LightSensitivity, string> = {
   STORE_IN_DARK: "Store in dark"
 };
 
+const materialStatuses: MaterialStatus[] = ["DRAFT", "ACTIVE", "DISCONTINUED", "OBSOLETE"];
+
+const materialStatusLabels: Record<MaterialStatus, string> = {
+  DRAFT: "Draft",
+  ACTIVE: "Active",
+  DISCONTINUED: "Discontinued",
+  OBSOLETE: "Obsolete"
+};
+
 const uomOptions = ["KG", "G", "MG", "L", "ML", "PCS", "STRIPS", "ROLLS"];
 const pharmacopoeialRefs = ["IP 2022", "BP 2024", "USP-NF 2024", "EP 10th Edition", "Non-Pharmacopoeial", "In-house"];
 
@@ -110,6 +120,7 @@ function makeInitialForm(userName: string): CreateMaterialRequest {
     selectiveMaterial: false,
     vendorCoaReleaseAllowed: false,
     samplingRequired: true,
+    status: "ACTIVE",
     description: "",
     createdBy: userName
   };
@@ -212,6 +223,7 @@ export default function MaterialCreatePage() {
         selectiveMaterial: editMaterial.selectiveMaterial,
         vendorCoaReleaseAllowed: editMaterial.vendorCoaReleaseAllowed,
         samplingRequired: editMaterial.samplingRequired,
+        status: editMaterial.status,
         description: editMaterial.description ?? "",
         createdBy: editMaterial.updatedBy ?? editMaterial.createdBy ?? currentUserName
       };
@@ -523,6 +535,19 @@ export default function MaterialCreatePage() {
                   <option value="NON_CRITICAL">Packaging Material (PM)</option>
                   <option value="FINISHED_GOODS">Finished Goods (FG)</option>
                   <option value="IN_PROCESS">In-Process Material</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <FieldLabel label="Lifecycle Status" required />
+                <select
+                  className={selectCls}
+                  value={form.status ?? "ACTIVE"}
+                  onChange={(e) => field("status")(e.target.value as MaterialStatus)}
+                >
+                  {materialStatuses.map((status) => (
+                    <option key={status} value={status}>{materialStatusLabels[status]}</option>
+                  ))}
                 </select>
               </label>
 

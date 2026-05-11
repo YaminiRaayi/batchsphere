@@ -1,7 +1,7 @@
 package com.batchsphere.core.masterdata.supplier.controller;
 
 import com.batchsphere.core.masterdata.supplier.dto.supplier.dto.SupplierRequest;
-import com.batchsphere.core.masterdata.supplier.entity.Supplier;
+import com.batchsphere.core.masterdata.supplier.dto.supplier.dto.SupplierResponse;
 import com.batchsphere.core.masterdata.supplier.service.SupplierService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,22 +19,22 @@ public class SupplierController {
     private final SupplierService supplierService;
 
     @PostMapping
-    public ResponseEntity<Supplier> createSupplier(@Valid @RequestBody SupplierRequest request) {
+    public ResponseEntity<SupplierResponse> createSupplier(@Valid @RequestBody SupplierRequest request) {
         return ResponseEntity.ok(supplierService.createSupplier(request));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Supplier> getSupplier(@PathVariable UUID id) {
+    public ResponseEntity<SupplierResponse> getSupplier(@PathVariable UUID id) {
         return ResponseEntity.ok(supplierService.getSupplier(id));
     }
 
     @GetMapping
-    public ResponseEntity<List<Supplier>> getAllSuppliers() {
+    public ResponseEntity<List<SupplierResponse>> getAllSuppliers() {
         return ResponseEntity.ok(supplierService.getAllSuppliers());
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Supplier> updateSupplier(@PathVariable UUID id, @Valid @RequestBody SupplierRequest request) {
+    public ResponseEntity<SupplierResponse> updateSupplier(@PathVariable UUID id, @Valid @RequestBody SupplierRequest request) {
         return ResponseEntity.ok(supplierService.updateSupplier(id, request));
     }
 

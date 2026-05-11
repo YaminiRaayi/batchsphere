@@ -13,6 +13,8 @@ export type InventoryRecord = {
   palletId: string;
   quantityOnHand: number;
   uom: string;
+  expiryDate: string | null;
+  retestDueDate: string | null;
   status: InventoryStatus;
   isActive: boolean;
   createdBy: string;

@@ -7,6 +7,11 @@ import com.batchsphere.core.batch.entity.Batch;
 import com.batchsphere.core.batch.entity.BatchStatus;
 import com.batchsphere.core.batch.entity.BatchType;
 import com.batchsphere.core.batch.repository.BatchRepository;
+import com.batchsphere.core.compliance.audit.entity.AuditEvent;
+import com.batchsphere.core.compliance.audit.entity.AuditEventType;
+import com.batchsphere.core.compliance.audit.repository.AuditEventRepository;
+import com.batchsphere.core.compliance.esign.entity.ESignatureRecord;
+import com.batchsphere.core.compliance.esign.repository.ESignatureRecordRepository;
 import com.batchsphere.core.exception.BusinessConflictException;
 import com.batchsphere.core.masterdata.businessunit.entity.BusinessUnit;
 import com.batchsphere.core.masterdata.businessunit.repository.BusinessUnitRepository;
@@ -87,6 +92,9 @@ import com.batchsphere.core.transactions.sampling.entity.QcInvestigationOutcome;
 import com.batchsphere.core.transactions.sampling.entity.QcInvestigationPhase;
 import com.batchsphere.core.transactions.sampling.entity.QcInvestigationStatus;
 import com.batchsphere.core.transactions.sampling.entity.QcInvestigationType;
+import com.batchsphere.core.transactions.sampling.entity.QcWorksheetStatus;
+import com.batchsphere.core.transactions.sampling.entity.SampleChainOfCustody;
+import com.batchsphere.core.transactions.sampling.entity.SampleCustodyEventType;
 import com.batchsphere.core.transactions.sampling.entity.SampleStatus;
 import com.batchsphere.core.transactions.sampling.entity.SampleType;
 import com.batchsphere.core.transactions.sampling.entity.SamplingMethod;
@@ -100,8 +108,10 @@ import com.batchsphere.core.transactions.sampling.repository.SamplingRequestRepo
 import com.batchsphere.core.transactions.sampling.repository.SamplingPlanRepository;
 import com.batchsphere.core.transactions.sampling.repository.SamplingContainerSampleRepository;
 import com.batchsphere.core.transactions.sampling.repository.SampleContainerLinkRepository;
+import com.batchsphere.core.transactions.sampling.repository.SampleChainOfCustodyRepository;
 import com.batchsphere.core.transactions.sampling.repository.SampleRepository;
 import com.batchsphere.core.transactions.sampling.repository.QcDispositionRepository;
+import com.batchsphere.core.transactions.sampling.repository.QcWorksheetRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
@@ -194,7 +204,19 @@ class SamplingServiceIntegrationTest {
     private SampleContainerLinkRepository sampleContainerLinkRepository;
 
     @Autowired
+    private SampleChainOfCustodyRepository sampleChainOfCustodyRepository;
+
+    @Autowired
     private QcDispositionRepository qcDispositionRepository;
+
+    @Autowired
+    private QcWorksheetRepository qcWorksheetRepository;
+
+    @Autowired
+    private AuditEventRepository auditEventRepository;
+
+    @Autowired
+    private ESignatureRecordRepository eSignatureRecordRepository;
 
     @Autowired
     private WarehouseLocationService warehouseLocationService;
@@ -760,14 +782,20 @@ class SamplingServiceIntegrationTest {
                 .anyMatch(transaction -> transaction.getRemarks().contains("to UNDER_TEST")));
 
         GrnContainer updatedContainer = grnContainerRepository.findById(container.getId()).orElseThrow();
-        assertEquals(new BigDecimal("9.000"), updatedContainer.getQuantity());
+        assertEquals(new BigDecimal("10.000"), updatedContainer.getQuantity());
+        assertEquals(new BigDecimal("9.000"), updatedContainer.getRemainingQuantity());
         assertEquals(new BigDecimal("1.000"), updatedContainer.getSampledQuantity());
         assertEquals(InventoryStatus.UNDER_TEST, updatedContainer.getInventoryStatus());
         UUID sampleId = sampleRepository.findBySamplingRequestId(samplingRequest.getId()).orElseThrow().getId();
         assertEquals(1, sampleContainerLinkRepository.findBySampleIdOrderByContainerNumber(sampleId).size());
 
         receiveAndStartQcReview(samplingRequest.getId(), "EMP-TEST");
+        assertTrue(qcWorksheetRepository.findBySampleIdAndIsActiveTrue(sampleId).isPresent());
+        assertEquals(QcWorksheetStatus.GENERATED,
+                qcWorksheetRepository.findBySampleIdAndIsActiveTrue(sampleId).orElseThrow().getStatus());
         recordFirstWorksheetResult(samplingRequest.getId(), new BigDecimal("99.0000"));
+        assertEquals(QcWorksheetStatus.COMPLETE,
+                qcWorksheetRepository.findBySampleIdAndIsActiveTrue(sampleId).orElseThrow().getStatus());
 
         setAuthenticatedRole(UserRole.QC_MANAGER, "qc-final-approver");
         QcDecisionRequest finalDecision = createQcDecisionRequest(true, "meets specification", "tester", "qc-final-approver");
@@ -777,6 +805,14 @@ class SamplingServiceIntegrationTest {
         assertEquals(SampleStatus.APPROVED, approved.getSample().getSampleStatus());
         assertNotNull(approved.getQcDisposition());
         assertEquals(QcDispositionStatus.APPROVED, approved.getQcDisposition().getStatus());
+        List<AuditEvent> requestAuditEvents =
+                auditEventRepository.findByEntityTypeAndEntityIdAndIsActiveTrueOrderByEventAtDesc("SAMPLING_REQUEST", samplingRequest.getId());
+        assertTrue(requestAuditEvents.stream().anyMatch(event -> event.getEventType() == AuditEventType.STATUS_CHANGE));
+        assertTrue(requestAuditEvents.stream().anyMatch(event -> event.getEventType() == AuditEventType.E_SIGNATURE));
+        List<ESignatureRecord> signatures =
+                eSignatureRecordRepository.findByEntityTypeAndEntityIdAndIsActiveTrueOrderBySignedAtDesc("SAMPLING_REQUEST", samplingRequest.getId());
+        assertEquals(1, signatures.size());
+        assertEquals("qc-final-approver", signatures.get(0).getSignerUsername());
 
         SamplingSummaryResponse summary = samplingService.getSamplingSummary();
         assertTrue(summary.countsByStatus().get(SamplingRequestStatus.COMPLETED) >= 1);
@@ -1566,6 +1602,85 @@ class SamplingServiceIntegrationTest {
         assertEquals(2, containerSamples.size());
         assertEquals(new BigDecimal("1.500"), containerSamples.get(0).getSampledQuantity());
         assertEquals(new BigDecimal("1.500"), containerSamples.get(1).getSampledQuantity());
+    }
+
+    @Test
+    void completingSamplingCreatesCompanionSamplesForTheSameSamplingRequest() {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        SamplingWorkflowFixture fixture = createWorkflowFixture(
+                suffix,
+                SamplingMethod.HUNDRED_PERCENT,
+                "CRITICAL",
+                false,
+                2,
+                new BigDecimal("10.000")
+        );
+
+        CreateSamplingPlanRequest request = new CreateSamplingPlanRequest();
+        request.setSamplingMethod(SamplingMethod.HUNDRED_PERCENT);
+        request.setSampleType(SampleType.COMPOSITE);
+        request.setSpecId(fixture.spec().getId());
+        request.setMoaId(fixture.moa().getId());
+        request.setTotalContainers(2);
+        request.setContainersToSample(2);
+        request.setIndividualSampleQuantity(new BigDecimal("0.500"));
+        request.setCompositeSampleQuantity(new BigDecimal("2.000"));
+        request.setSamplingLocation("QC Booth");
+        request.setAnalystEmployeeCode("EMP-MULTI");
+        request.setSamplingToolId(fixture.tool().getId());
+        request.setPhotosensitiveHandlingRequired(false);
+        request.setHygroscopicHandlingRequired(false);
+        request.setCoaBasedRelease(false);
+        request.setRationale("Identity and composite sampling from the same GRN request");
+        request.setContainerSamples(List.of(
+                sampleRequest(fixture.containers().get(0).getId(), "1.000"),
+                sampleRequest(fixture.containers().get(1).getId(), "1.000")
+        ));
+        request.setCreatedBy("tester");
+
+        samplingService.createSamplingPlan(fixture.samplingRequest().getId(), request);
+
+        SamplingStartRequest startRequest = new SamplingStartRequest();
+        startRequest.setUpdatedBy("tester");
+        samplingService.startSampling(fixture.samplingRequest().getId(), startRequest);
+
+        SamplingCompletionRequest completionRequest = new SamplingCompletionRequest();
+        completionRequest.setUpdatedBy("tester");
+        SamplingRequestResponse completed = samplingService.completeSampling(fixture.samplingRequest().getId(), completionRequest);
+
+        assertNotNull(completed.getSample());
+        assertEquals(SampleType.COMPOSITE, completed.getSample().getSampleType());
+        assertEquals(2, completed.getSamples().size());
+        assertTrue(completed.getSamples().stream().anyMatch(sample -> sample.getSampleType() == SampleType.COMPOSITE));
+        assertTrue(completed.getSamples().stream().anyMatch(sample -> sample.getSampleType() == SampleType.INDIVIDUAL));
+        assertEquals(2, sampleRepository.findBySamplingRequestIdOrderBySampleTypeAscCreatedAtAsc(fixture.samplingRequest().getId()).size());
+
+        SamplingHandoffRequest handoffRequest = new SamplingHandoffRequest();
+        handoffRequest.setUpdatedBy("tester");
+        SamplingRequestResponse handedOff = samplingService.handoffToQc(fixture.samplingRequest().getId(), handoffRequest);
+        assertTrue(handedOff.getSamples().stream().allMatch(sample -> sample.getSampleStatus() == SampleStatus.HANDED_TO_QC));
+        assertTrue(handedOff.getSamples().stream().allMatch(sample -> sample.getCustodyEvents().size() == 1));
+
+        List<SampleChainOfCustody> handoffEvents =
+                sampleChainOfCustodyRepository.findBySamplingRequestIdOrderByHandedOverAtAsc(fixture.samplingRequest().getId());
+        assertEquals(2, handoffEvents.size());
+        assertTrue(handoffEvents.stream().allMatch(event -> event.getEventType() == SampleCustodyEventType.HANDOFF_TO_QC));
+        assertTrue(handoffEvents.stream().allMatch(event -> event.getReceivedAt() == null));
+
+        QcReceiptRequest receiptRequest = new QcReceiptRequest();
+        receiptRequest.setReceivedBy("QC Analyst");
+        receiptRequest.setReceiptCondition("Sealed and intact");
+        receiptRequest.setSampleStorageLocation("QC Shelf A1");
+        SamplingRequestResponse received = samplingService.receiveInQc(fixture.samplingRequest().getId(), receiptRequest);
+
+        assertEquals(SamplingRequestStatus.RECEIVED, received.getRequestStatus());
+        assertTrue(received.getSamples().stream().allMatch(sample -> sample.getSampleStatus() == SampleStatus.RECEIVED));
+        assertTrue(sampleChainOfCustodyRepository.findBySamplingRequestIdOrderByHandedOverAtAsc(fixture.samplingRequest().getId())
+                .stream()
+                .allMatch(event -> "QC Analyst".equals(event.getReceivedBy())
+                        && "QC Shelf A1".equals(event.getToLocation())
+                        && "Sealed and intact".equals(event.getReceiptCondition())
+                        && event.getReceivedAt() != null));
     }
 
     private SamplingContainerSampleRequest sampleRequest(UUID grnContainerId, String quantity) {

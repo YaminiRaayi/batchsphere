@@ -2,6 +2,10 @@ package com.batchsphere.core.transactions.sampling.service;
 
 import com.batchsphere.core.auth.entity.UserRole;
 import com.batchsphere.core.auth.service.AuthenticatedActorService;
+import com.batchsphere.core.compliance.audit.entity.AuditEventType;
+import com.batchsphere.core.compliance.audit.service.AuditEventService;
+import com.batchsphere.core.compliance.esign.dto.ESignatureRequest;
+import com.batchsphere.core.compliance.esign.service.ESignatureService;
 import com.batchsphere.core.exception.BusinessConflictException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.masterdata.material.entity.Material;
@@ -18,6 +22,7 @@ import com.batchsphere.core.transactions.grn.entity.GrnItem;
 import com.batchsphere.core.transactions.grn.repository.GrnContainerRepository;
 import com.batchsphere.core.transactions.inventory.entity.InventoryStatus;
 import com.batchsphere.core.transactions.inventory.entity.InventoryReferenceType;
+import com.batchsphere.core.transactions.inventory.repository.InventoryRepository;
 import com.batchsphere.core.transactions.inventory.service.InventoryService;
 import com.batchsphere.core.transactions.sampling.dto.CreateSamplingPlanRequest;
 import com.batchsphere.core.transactions.sampling.dto.CompleteQaInvestigationReviewRequest;
@@ -39,6 +44,7 @@ import com.batchsphere.core.transactions.sampling.dto.SamplingHandoffRequest;
 import com.batchsphere.core.transactions.sampling.dto.SamplingPlanResponse;
 import com.batchsphere.core.transactions.sampling.dto.QcDispositionResponse;
 import com.batchsphere.core.transactions.sampling.dto.SamplingRequestResponse;
+import com.batchsphere.core.transactions.sampling.dto.SampleChainOfCustodyResponse;
 import com.batchsphere.core.transactions.sampling.dto.SampleContainerLinkResponse;
 import com.batchsphere.core.transactions.sampling.dto.SampleResponse;
 import com.batchsphere.core.transactions.sampling.dto.SamplingStartRequest;
@@ -46,8 +52,11 @@ import com.batchsphere.core.transactions.sampling.dto.SamplingSummaryResponse;
 import com.batchsphere.core.transactions.sampling.dto.StartQcReviewRequest;
 import com.batchsphere.core.transactions.sampling.dto.UpdateSamplingPlanRequest;
 import com.batchsphere.core.transactions.sampling.entity.Sample;
+import com.batchsphere.core.transactions.sampling.entity.SampleChainOfCustody;
 import com.batchsphere.core.transactions.sampling.entity.SampleContainerLink;
+import com.batchsphere.core.transactions.sampling.entity.SampleCustodyEventType;
 import com.batchsphere.core.transactions.sampling.entity.SampleStatus;
+import com.batchsphere.core.transactions.sampling.entity.SampleType;
 import com.batchsphere.core.transactions.sampling.entity.QcInvestigation;
 import com.batchsphere.core.transactions.sampling.entity.QcInvestigationClosureCategory;
 import com.batchsphere.core.transactions.sampling.entity.QcInvestigationOutcome;
@@ -60,16 +69,20 @@ import com.batchsphere.core.transactions.sampling.entity.QcDispositionStatus;
 import com.batchsphere.core.transactions.sampling.entity.QcTestResult;
 import com.batchsphere.core.transactions.sampling.entity.QcTestResultStatus;
 import com.batchsphere.core.transactions.sampling.entity.SamplingContainerSample;
+import com.batchsphere.core.transactions.sampling.entity.SamplingContainerDraw;
+import com.batchsphere.core.transactions.sampling.entity.SamplingDrawPurpose;
 import com.batchsphere.core.transactions.sampling.entity.SamplingMethod;
 import com.batchsphere.core.transactions.sampling.entity.SamplingPlan;
 import com.batchsphere.core.transactions.sampling.entity.SamplingRequest;
 import com.batchsphere.core.transactions.sampling.entity.SamplingRequestStatus;
 import com.batchsphere.core.transactions.sampling.repository.SampleContainerLinkRepository;
+import com.batchsphere.core.transactions.sampling.repository.SampleChainOfCustodyRepository;
 import com.batchsphere.core.transactions.sampling.repository.SampleRepository;
 import com.batchsphere.core.transactions.sampling.repository.QcDispositionRepository;
 import com.batchsphere.core.transactions.sampling.repository.QcInvestigationRepository;
 import com.batchsphere.core.transactions.sampling.repository.QcTestResultRepository;
 import com.batchsphere.core.transactions.sampling.repository.SamplingContainerSampleRepository;
+import com.batchsphere.core.transactions.sampling.repository.SamplingContainerDrawRepository;
 import com.batchsphere.core.transactions.sampling.repository.SamplingPlanRepository;
 import com.batchsphere.core.transactions.sampling.repository.SamplingRequestRepository;
 import lombok.RequiredArgsConstructor;
@@ -87,6 +100,7 @@ import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -115,21 +129,26 @@ public class SamplingServiceImpl implements SamplingService {
     private final SamplingRequestRepository samplingRequestRepository;
     private final SamplingPlanRepository samplingPlanRepository;
     private final SamplingContainerSampleRepository samplingContainerSampleRepository;
+    private final SamplingContainerDrawRepository samplingContainerDrawRepository;
     private final MaterialRepository materialRepository;
     private final SpecRepository specRepository;
     private final MaterialSpecLinkRepository materialSpecLinkRepository;
     private final MoaRepository moaRepository;
     private final SamplingToolRepository samplingToolRepository;
     private final GrnContainerRepository grnContainerRepository;
+    private final InventoryRepository inventoryRepository;
     private final InventoryService inventoryService;
     private final AuthenticatedActorService authenticatedActorService;
     private final SampleRepository sampleRepository;
     private final SampleContainerLinkRepository sampleContainerLinkRepository;
+    private final SampleChainOfCustodyRepository sampleChainOfCustodyRepository;
     private final QcDispositionRepository qcDispositionRepository;
     private final QcInvestigationRepository qcInvestigationRepository;
     private final QcTestResultRepository qcTestResultRepository;
     private final QcWorksheetService qcWorksheetService;
     private final QcTestResultService qcTestResultService;
+    private final AuditEventService auditEventService;
+    private final ESignatureService eSignatureService;
 
     @Override
     @Transactional
@@ -397,6 +416,7 @@ public class SamplingServiceImpl implements SamplingService {
         }
 
         reconcileContainerSamples(plan, containerSamples, actor);
+        consumeInventoryForSampling(samplingRequest, containerSamples, actor);
         createOrRefreshSample(samplingRequest, plan, containerSamples, actor);
         samplingRequest.setRequestStatus(SamplingRequestStatus.SAMPLED);
         samplingRequest.setUpdatedBy(actor);
@@ -404,6 +424,27 @@ public class SamplingServiceImpl implements SamplingService {
         samplingRequestRepository.save(samplingRequest);
 
         return toResponse(samplingRequest);
+    }
+
+    private void consumeInventoryForSampling(SamplingRequest samplingRequest,
+                                             List<SamplingContainerSample> containerSamples,
+                                             String actor) {
+        BigDecimal totalConsumed = containerSamples.stream()
+                .map(SamplingContainerSample::getSampledQuantity)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(3, RoundingMode.HALF_UP);
+        if (totalConsumed.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+
+        UUID inventoryId = inventoryRepository.findByMaterialIdAndBatchIdAndPalletIdAndIsActiveTrue(
+                        samplingRequest.getMaterialId(),
+                        samplingRequest.getBatchId(),
+                        samplingRequest.getPalletId())
+                .map(inventory -> inventory.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Inventory not found for sampling request consumption"));
+
+        inventoryService.consumeForSampling(inventoryId, samplingRequest.getId(), totalConsumed, actor);
     }
 
     @Override
@@ -426,6 +467,7 @@ public class SamplingServiceImpl implements SamplingService {
         samplingRequest.setUpdatedAt(LocalDateTime.now());
         samplingRequestRepository.save(samplingRequest);
         updateSampleOnHandoff(samplingRequestId, actor);
+        createChainOfCustodyOnHandoff(samplingRequestId, actor);
         createOrUpdateQcDispositionOnHandoff(samplingRequestId, actor);
 
         updateInventoryStatus(
@@ -450,7 +492,7 @@ public class SamplingServiceImpl implements SamplingService {
         if (plan.getSpecId() == null) {
             throw new BusinessConflictException("QC receipt requires a resolved specification on the sampling plan");
         }
-        Sample sample = sampleRepository.findBySamplingRequestId(samplingRequestId)
+        Sample sample = findPrimarySample(samplingRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("QC sample not found for request: " + samplingRequestId));
         LocalDateTime receiptTime = request.getReceiptTimestamp() != null ? request.getReceiptTimestamp() : LocalDateTime.now();
 
@@ -459,15 +501,11 @@ public class SamplingServiceImpl implements SamplingService {
         samplingRequest.setUpdatedAt(LocalDateTime.now());
         samplingRequestRepository.save(samplingRequest);
 
-        sample.setSampleStatus(SampleStatus.RECEIVED);
-        sample.setReceivedByQc(request.getReceivedBy().trim());
-        sample.setReceivedAtQc(receiptTime);
-        sample.setReceiptCondition(request.getReceiptCondition().trim());
-        sample.setQcStorageLocation(request.getSampleStorageLocation().trim());
-        applyRetentionDetails(sample, request);
-        sample.setUpdatedBy(actor);
-        sample.setUpdatedAt(LocalDateTime.now());
-        sampleRepository.save(sample);
+        UUID primarySampleId = sample.getId();
+        updateSamplesOnQcReceipt(samplingRequestId, primarySampleId, request, receiptTime, actor);
+        sample = sampleRepository.findById(primarySampleId)
+                .orElseThrow(() -> new ResourceNotFoundException("QC sample not found with id: " + primarySampleId));
+        receiveOpenChainOfCustodyEvents(samplingRequestId, request, receiptTime, actor);
 
         updateQcDispositionStatus(samplingRequestId, QcDispositionStatus.RECEIVED, actor);
         qcWorksheetService.generateWorksheet(sample.getId(), plan.getSpecId(), resolveWorksheetAnalystCode(plan, actor), actor);
@@ -482,7 +520,7 @@ public class SamplingServiceImpl implements SamplingService {
         if (samplingRequest.getRequestStatus() != SamplingRequestStatus.RECEIVED) {
             throw new BusinessConflictException("QC review can only start after QC receipt");
         }
-        Sample sample = sampleRepository.findBySamplingRequestId(samplingRequestId)
+        Sample sample = findPrimarySample(samplingRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("QC sample not found for request: " + samplingRequestId));
         SamplingPlan plan = samplingPlanRepository.findBySamplingRequestId(samplingRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Sampling plan not found for request: " + samplingRequestId));
@@ -508,7 +546,7 @@ public class SamplingServiceImpl implements SamplingService {
 
     @Override
     public List<QcTestResultResponse> getWorksheet(UUID samplingRequestId) {
-        Sample sample = sampleRepository.findBySamplingRequestId(samplingRequestId)
+        Sample sample = findPrimarySample(samplingRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("QC sample not found for request: " + samplingRequestId));
         return qcWorksheetService.getWorksheet(sample.getId());
     }
@@ -516,7 +554,7 @@ public class SamplingServiceImpl implements SamplingService {
     @Override
     @Transactional
     public QcTestResultResponse recordWorksheetResult(UUID samplingRequestId, UUID testResultId, RecordQcTestResultRequest request) {
-        sampleRepository.findBySamplingRequestId(samplingRequestId)
+        findPrimarySample(samplingRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("QC sample not found for request: " + samplingRequestId));
         String actor = authenticatedActorService.currentActor();
         return qcTestResultService.recordResult(testResultId, request, actor);
@@ -541,7 +579,7 @@ public class SamplingServiceImpl implements SamplingService {
             throw new BusinessConflictException("QC investigation can only be opened while review is in progress");
         }
 
-        Sample sample = sampleRepository.findBySamplingRequestId(samplingRequestId)
+        Sample sample = findPrimarySample(samplingRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("QC sample not found for request: " + samplingRequestId));
         QcDisposition disposition = qcDispositionRepository.findBySamplingRequestId(samplingRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("QC disposition not found for request: " + samplingRequestId));
@@ -698,7 +736,7 @@ public class SamplingServiceImpl implements SamplingService {
                         : QA_REVIEW_RETURN_CONFIRMATION
         );
         SamplingRequest samplingRequest = getSamplingRequest(samplingRequestId);
-        Sample sample = sampleRepository.findBySamplingRequestId(samplingRequestId)
+        Sample sample = findPrimarySample(samplingRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("QC sample not found for request: " + samplingRequestId));
         QcInvestigation investigation = qcInvestigationRepository.findById(investigationId)
                 .orElseThrow(() -> new ResourceNotFoundException("QC investigation not found with id: " + investigationId));
@@ -758,7 +796,7 @@ public class SamplingServiceImpl implements SamplingService {
             throw new BusinessConflictException("Retest can only be started after a RETEST_REQUIRED investigation outcome");
         }
 
-        Sample sample = sampleRepository.findBySamplingRequestId(samplingRequestId)
+        Sample sample = findPrimarySample(samplingRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("QC sample not found for request: " + samplingRequestId));
         if (!Boolean.TRUE.equals(sample.getRetainedFlag())
                 || sample.getRetainedQuantity() == null
@@ -820,7 +858,7 @@ public class SamplingServiceImpl implements SamplingService {
     public SamplingRequestResponse destroyRetainedSample(UUID samplingRequestId, DestroyRetainedSampleRequest request) {
         String actor = authenticatedActorService.currentActor();
         SamplingRequest samplingRequest = getSamplingRequest(samplingRequestId);
-        Sample sample = sampleRepository.findBySamplingRequestId(samplingRequestId)
+        Sample sample = findPrimarySample(samplingRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("QC sample not found for request: " + samplingRequestId));
 
         if (Boolean.TRUE.equals(sample.getDestroyedFlag())) {
@@ -916,6 +954,7 @@ public class SamplingServiceImpl implements SamplingService {
         SamplingRequest samplingRequest = getSamplingRequest(samplingRequestId);
         SamplingPlan plan = samplingPlanRepository.findBySamplingRequestId(samplingRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Sampling plan not found for request: " + samplingRequestId));
+        SamplingRequestStatus previousRequestStatus = samplingRequest.getRequestStatus();
 
         if (samplingRequest.getRequestStatus() == SamplingRequestStatus.COMPLETED
                 || samplingRequest.getRequestStatus() == SamplingRequestStatus.APPROVED
@@ -932,8 +971,9 @@ public class SamplingServiceImpl implements SamplingService {
         }
 
         if (plan.getSamplingMethod() != SamplingMethod.COA_BASED_RELEASE) {
-            Sample sample = sampleRepository.findBySamplingRequestId(samplingRequestId)
+            Sample sample = findPrimarySample(samplingRequestId)
                     .orElseThrow(() -> new ResourceNotFoundException("QC sample not found for request: " + samplingRequestId));
+            assertFinalReviewerDiffersFromWorksheetAnalyst(sample.getId(), actor);
             if (Boolean.TRUE.equals(request.getApproved())) {
                 if (!qcWorksheetService.isWorksheetComplete(sample.getId())) {
                     throw new BusinessConflictException("QC approval requires all mandatory worksheet results to pass");
@@ -970,6 +1010,43 @@ public class SamplingServiceImpl implements SamplingService {
         samplingRequestRepository.save(samplingRequest);
         updateSampleOnQcDecision(samplingRequest.getId(), Boolean.TRUE.equals(request.getApproved()), actor);
         updateQcDispositionOnDecision(samplingRequest.getId(), request.getRemarks().trim(), Boolean.TRUE.equals(request.getApproved()), actor);
+        ESignatureRequest signatureRequest = new ESignatureRequest();
+        signatureRequest.setUsername(request.getESignatureUsername());
+        signatureRequest.setPassword(request.getESignaturePassword());
+        signatureRequest.setMeaning(request.getESignatureMeaning());
+        eSignatureService.sign(
+                "SAMPLING_REQUEST",
+                samplingRequest.getId(),
+                Boolean.TRUE.equals(request.getApproved()) ? "QC_FINAL_APPROVAL" : "QC_FINAL_REJECTION",
+                Boolean.TRUE.equals(request.getApproved())
+                        ? "Final QC disposition approval"
+                        : "Final QC disposition rejection",
+                actor,
+                signatureRequest,
+                request.getRemarks()
+        );
+        auditEventService.record(
+                "SAMPLING_REQUEST",
+                samplingRequest.getId(),
+                AuditEventType.STATUS_CHANGE,
+                "requestStatus",
+                previousRequestStatus.name(),
+                samplingRequest.getRequestStatus().name(),
+                request.getRemarks(),
+                actor,
+                "QC_DECISION"
+        );
+        auditEventService.record(
+                "SAMPLING_REQUEST",
+                samplingRequest.getId(),
+                AuditEventType.E_SIGNATURE,
+                "qcDecision",
+                null,
+                Boolean.TRUE.equals(request.getApproved()) ? "APPROVED" : "REJECTED",
+                "Final QC decision electronically signed",
+                actor,
+                "QC_DECISION"
+        );
 
         updateInventoryStatus(
                 samplingRequest,
@@ -1028,17 +1105,17 @@ public class SamplingServiceImpl implements SamplingService {
         }
         validateContainerSamplesBelongToSamplingRequest(samplingRequest, containerSamples);
 
-        BigDecimal commonSampleQuantity = containerSamples.get(0).getSampledQuantity().setScale(3, RoundingMode.HALF_UP);
-        if (commonSampleQuantity.signum() <= 0) {
-            throw new BusinessConflictException("Container sample quantity must be greater than zero");
-        }
-
-        boolean hasDifferentContainerQuantities = containerSamples.stream()
-                .map(SamplingContainerSampleRequest::getSampledQuantity)
-                .map(quantity -> quantity.setScale(3, RoundingMode.HALF_UP))
-                .anyMatch(quantity -> quantity.compareTo(commonSampleQuantity) != 0);
-        if (hasDifferentContainerQuantities) {
-            throw new BusinessConflictException("The same sample quantity must be applied to every selected container");
+        for (SamplingContainerSampleRequest containerSample : containerSamples) {
+            BigDecimal sampledQuantity = containerSample.getSampledQuantity().setScale(3, RoundingMode.HALF_UP);
+            if (sampledQuantity.signum() <= 0) {
+                throw new BusinessConflictException("Container sample quantity must be greater than zero");
+            }
+            GrnContainer container = grnContainerRepository.findById(containerSample.getGrnContainerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("GRN container not found with id: " + containerSample.getGrnContainerId()));
+            BigDecimal remainingQuantity = resolveRemainingQuantity(container);
+            if (sampledQuantity.compareTo(remainingQuantity) > 0) {
+                throw new BusinessConflictException("Sampled quantity cannot exceed remaining container quantity");
+            }
         }
     }
 
@@ -1072,19 +1149,42 @@ public class SamplingServiceImpl implements SamplingService {
                                            List<SamplingContainerSample> samples,
                                            String actor) {
         LocalDateTime now = LocalDateTime.now();
+        samplingContainerDrawRepository.deleteBySamplingPlanId(plan.getId());
         for (SamplingContainerSample sample : samples) {
             GrnContainer container = grnContainerRepository.findById(sample.getGrnContainerId())
                     .orElseThrow(() -> new ResourceNotFoundException("GRN container not found with id: " + sample.getGrnContainerId()));
             if (!Boolean.TRUE.equals(container.getIsActive())) {
                 throw new ResourceNotFoundException("GRN container not found with id: " + sample.getGrnContainerId());
             }
-            if (sample.getSampledQuantity().compareTo(container.getQuantity()) > 0) {
-                throw new BusinessConflictException("Sampled quantity cannot exceed available container quantity");
+            BigDecimal balanceBefore = resolveRemainingQuantity(container);
+            BigDecimal actualQuantity = sample.getSampledQuantity().setScale(3, RoundingMode.HALF_UP);
+            if (actualQuantity.compareTo(balanceBefore) > 0) {
+                throw new BusinessConflictException("Sampled quantity cannot exceed remaining container quantity");
             }
+            BigDecimal balanceAfter = balanceBefore.subtract(actualQuantity).setScale(3, RoundingMode.HALF_UP);
 
-            container.setQuantity(container.getQuantity().subtract(sample.getSampledQuantity()).setScale(3, RoundingMode.HALF_UP));
+            samplingContainerDrawRepository.save(SamplingContainerDraw.builder()
+                    .id(UUID.randomUUID())
+                    .samplingPlanId(plan.getId())
+                    .grnContainerId(container.getId())
+                    .drawPurpose(sample.getDrawPurpose())
+                    .plannedQuantity(actualQuantity)
+                    .actualQuantity(actualQuantity)
+                    .uom(container.getUom())
+                    .balanceBefore(balanceBefore)
+                    .balanceAfter(balanceAfter)
+                    .sampledBy(actor)
+                    .sampledAt(now)
+                    .containerCondition(sample.getContainerCondition())
+                    .resealed(Boolean.TRUE.equals(sample.getResealed()))
+                    .labelApplied(Boolean.TRUE.equals(sample.getLabelApplied()))
+                    .createdBy(actor)
+                    .createdAt(now)
+                    .build());
+
+            container.setRemainingQuantity(balanceAfter);
             container.setSampled(true);
-            container.setSampledQuantity(sample.getSampledQuantity().setScale(3, RoundingMode.HALF_UP));
+            container.setSampledQuantity(resolveSampledQuantity(container).add(actualQuantity).setScale(3, RoundingMode.HALF_UP));
             container.setSamplingLocation(plan.getSamplingLocation());
             container.setSampledBy(actor);
             container.setSampledAt(now);
@@ -1093,6 +1193,17 @@ public class SamplingServiceImpl implements SamplingService {
             container.setUpdatedAt(now);
             grnContainerRepository.save(container);
         }
+    }
+
+    private BigDecimal resolveRemainingQuantity(GrnContainer container) {
+        return (container.getRemainingQuantity() == null ? container.getQuantity() : container.getRemainingQuantity())
+                .setScale(3, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal resolveSampledQuantity(GrnContainer container) {
+        return container.getSampledQuantity() == null
+                ? BigDecimal.ZERO.setScale(3, RoundingMode.HALF_UP)
+                : container.getSampledQuantity().setScale(3, RoundingMode.HALF_UP);
     }
 
     private int calculateContainersToSample(SamplingMethod method, Integer totalContainers) {
@@ -1154,6 +1265,10 @@ public class SamplingServiceImpl implements SamplingService {
                     .grnContainerId(request.getGrnContainerId())
                     .containerNumber(container.getContainerNumber())
                     .sampledQuantity(request.getSampledQuantity().setScale(3, RoundingMode.HALF_UP))
+                    .drawPurpose(request.getDrawPurpose() == null ? SamplingDrawPurpose.COMPOSITE_ASSAY : request.getDrawPurpose())
+                    .containerCondition(trimToNull(request.getContainerCondition()))
+                    .resealed(request.getResealed() == null || Boolean.TRUE.equals(request.getResealed()))
+                    .labelApplied(request.getLabelApplied() == null || Boolean.TRUE.equals(request.getLabelApplied()))
                     .createdBy(actor)
                     .createdAt(now)
                     .build());
@@ -1228,7 +1343,11 @@ public class SamplingServiceImpl implements SamplingService {
                 .updatedBy(request.getUpdatedBy())
                 .updatedAt(request.getUpdatedAt())
                 .plan(samplingPlanRepository.findBySamplingRequestId(request.getId()).map(this::toPlanResponse).orElse(null))
-                .sample(sampleRepository.findBySamplingRequestId(request.getId()).map(this::toSampleResponse).orElse(null))
+                .sample(findPrimarySample(request.getId()).map(this::toSampleResponse).orElse(null))
+                .samples(sampleRepository.findBySamplingRequestIdOrderBySampleTypeAscCreatedAtAsc(request.getId())
+                        .stream()
+                        .map(this::toSampleResponse)
+                        .toList())
                 .qcDisposition(qcDispositionRepository.findBySamplingRequestId(request.getId()).map(this::toQcDispositionResponse).orElse(null))
                 .build();
     }
@@ -1238,7 +1357,56 @@ public class SamplingServiceImpl implements SamplingService {
                                        List<SamplingContainerSample> containerSamples,
                                        String actor) {
         LocalDateTime now = LocalDateTime.now();
-        Sample sample = sampleRepository.findBySamplingRequestId(request.getId())
+        BigDecimal compositeQuantity = containerSamples.stream()
+                .map(SamplingContainerSample::getSampledQuantity)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(3, RoundingMode.HALF_UP);
+
+        Sample savedSample = upsertSampleRecord(
+                request,
+                plan,
+                plan.getSampleType(),
+                compositeQuantity,
+                containerSamples,
+                "Primary sample collected from selected GRN containers",
+                actor,
+                now
+        );
+        replaceSampleContainerLinks(savedSample.getId(), containerSamples, actor, now);
+
+        SampleType companionType = plan.getSampleType() == SampleType.COMPOSITE ? SampleType.INDIVIDUAL : SampleType.COMPOSITE;
+        if (shouldMaintainCompanionSample(plan, containerSamples)) {
+            BigDecimal companionQuantity = resolveCompanionSampleQuantity(plan, containerSamples, companionType);
+            Sample companionSample = upsertSampleRecord(
+                    request,
+                    plan,
+                    companionType,
+                    companionQuantity,
+                    containerSamples,
+                    "Companion " + companionType.name().toLowerCase() + " sample record for the same sampling event",
+                    actor,
+                    now
+            );
+            replaceSampleContainerLinks(companionSample.getId(), containerSamples, actor, now);
+        } else {
+            sampleRepository.findBySamplingRequestIdAndSampleType(request.getId(), companionType).ifPresent(existing -> {
+                existing.setIsActive(false);
+                existing.setUpdatedBy(actor);
+                existing.setUpdatedAt(now);
+                sampleRepository.save(existing);
+            });
+        }
+    }
+
+    private Sample upsertSampleRecord(SamplingRequest request,
+                                      SamplingPlan plan,
+                                      SampleType sampleType,
+                                      BigDecimal sampleQuantity,
+                                      List<SamplingContainerSample> containerSamples,
+                                      String remarks,
+                                      String actor,
+                                      LocalDateTime now) {
+        Sample sample = sampleRepository.findBySamplingRequestIdAndSampleType(request.getId(), sampleType)
                 .orElseGet(() -> Sample.builder()
                         .id(UUID.randomUUID())
                         .sampleNumber(generateSampleNumber())
@@ -1250,12 +1418,9 @@ public class SamplingServiceImpl implements SamplingService {
 
         sample.setBatchId(request.getBatchId());
         sample.setMaterialId(request.getMaterialId());
-        sample.setSampleType(plan.getSampleType());
+        sample.setSampleType(sampleType);
         sample.setSampleStatus(SampleStatus.COLLECTED);
-        sample.setSampleQuantity(containerSamples.stream()
-                .map(SamplingContainerSample::getSampledQuantity)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(3, RoundingMode.HALF_UP));
+        sample.setSampleQuantity(sampleQuantity);
         sample.setUom(resolveSampleUom(containerSamples));
         sample.setCollectedBy(actor);
         sample.setCollectedAt(now);
@@ -1269,16 +1434,23 @@ public class SamplingServiceImpl implements SamplingService {
         sample.setDestroyedFlag(false);
         sample.setRetainedQuantity(null);
         sample.setRetainedUntil(null);
-        sample.setRemarks("Sample collected from selected GRN containers");
+        sample.setRemarks(remarks);
+        sample.setIsActive(true);
         sample.setUpdatedBy(actor);
         sample.setUpdatedAt(now);
 
-        Sample savedSample = sampleRepository.save(sample);
-        sampleContainerLinkRepository.deleteBySampleId(savedSample.getId());
+        return sampleRepository.save(sample);
+    }
+
+    private void replaceSampleContainerLinks(UUID sampleId,
+                                             List<SamplingContainerSample> containerSamples,
+                                             String actor,
+                                             LocalDateTime now) {
+        sampleContainerLinkRepository.deleteBySampleId(sampleId);
         sampleContainerLinkRepository.saveAll(containerSamples.stream()
                 .map(containerSample -> SampleContainerLink.builder()
                         .id(UUID.randomUUID())
-                        .sampleId(savedSample.getId())
+                        .sampleId(sampleId)
                         .grnContainerId(containerSample.getGrnContainerId())
                         .containerNumber(containerSample.getContainerNumber())
                         .sampledQuantity(containerSample.getSampledQuantity())
@@ -1288,19 +1460,134 @@ public class SamplingServiceImpl implements SamplingService {
                 .toList());
     }
 
+    private boolean shouldMaintainCompanionSample(SamplingPlan plan, List<SamplingContainerSample> containerSamples) {
+        return containerSamples.size() > 1
+                && (positive(plan.getIndividualSampleQuantity()) || positive(plan.getCompositeSampleQuantity()));
+    }
+
+    private BigDecimal resolveCompanionSampleQuantity(SamplingPlan plan,
+                                                      List<SamplingContainerSample> containerSamples,
+                                                      SampleType companionType) {
+        if (companionType == SampleType.INDIVIDUAL && positive(plan.getIndividualSampleQuantity())) {
+            return plan.getIndividualSampleQuantity()
+                    .multiply(BigDecimal.valueOf(containerSamples.size()))
+                    .setScale(3, RoundingMode.HALF_UP);
+        }
+        if (companionType == SampleType.COMPOSITE && positive(plan.getCompositeSampleQuantity())) {
+            return plan.getCompositeSampleQuantity().setScale(3, RoundingMode.HALF_UP);
+        }
+        return containerSamples.stream()
+                .map(SamplingContainerSample::getSampledQuantity)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(3, RoundingMode.HALF_UP);
+    }
+
+    private boolean positive(BigDecimal value) {
+        return value != null && value.signum() > 0;
+    }
+
     private void updateSampleOnHandoff(UUID samplingRequestId, String actor) {
-        Sample sample = sampleRepository.findBySamplingRequestId(samplingRequestId)
-                .orElseThrow(() -> new ResourceNotFoundException("Sample not found for sampling request: " + samplingRequestId));
-        sample.setSampleStatus(SampleStatus.HANDED_TO_QC);
-        sample.setHandoffToQcBy(actor);
-        sample.setHandoffToQcAt(LocalDateTime.now());
-        sample.setUpdatedBy(actor);
-        sample.setUpdatedAt(LocalDateTime.now());
-        sampleRepository.save(sample);
+        List<Sample> samples = sampleRepository.findBySamplingRequestIdOrderBySampleTypeAscCreatedAtAsc(samplingRequestId);
+        if (samples.isEmpty()) {
+            throw new ResourceNotFoundException("Sample not found for sampling request: " + samplingRequestId);
+        }
+        LocalDateTime now = LocalDateTime.now();
+        samples.forEach(sample -> {
+            sample.setSampleStatus(SampleStatus.HANDED_TO_QC);
+            sample.setHandoffToQcBy(actor);
+            sample.setHandoffToQcAt(now);
+            sample.setUpdatedBy(actor);
+            sample.setUpdatedAt(now);
+        });
+        sampleRepository.saveAll(samples);
+    }
+
+    private void createChainOfCustodyOnHandoff(UUID samplingRequestId, String actor) {
+        LocalDateTime now = LocalDateTime.now();
+        List<Sample> samples = sampleRepository.findBySamplingRequestIdOrderBySampleTypeAscCreatedAtAsc(samplingRequestId);
+        List<SampleChainOfCustody> events = samples.stream()
+                .map(sample -> SampleChainOfCustody.builder()
+                        .id(UUID.randomUUID())
+                        .sampleId(sample.getId())
+                        .samplingRequestId(samplingRequestId)
+                        .eventType(SampleCustodyEventType.HANDOFF_TO_QC)
+                        .fromLocation(sample.getSamplingLocation())
+                        .toLocation("QC")
+                        .handedOverBy(actor)
+                        .handedOverAt(sample.getHandoffToQcAt() != null ? sample.getHandoffToQcAt() : now)
+                        .remarks("Sample handed over to QC")
+                        .isActive(true)
+                        .createdBy(actor)
+                        .createdAt(now)
+                        .build())
+                .toList();
+        sampleChainOfCustodyRepository.saveAll(events);
+    }
+
+    private void receiveOpenChainOfCustodyEvents(UUID samplingRequestId,
+                                                 QcReceiptRequest request,
+                                                 LocalDateTime receiptTime,
+                                                 String actor) {
+        List<Sample> samples = sampleRepository.findBySamplingRequestIdOrderBySampleTypeAscCreatedAtAsc(samplingRequestId);
+        List<SampleChainOfCustody> events = new ArrayList<>();
+        for (Sample sample : samples) {
+            sampleChainOfCustodyRepository
+                    .findFirstBySampleIdAndEventTypeAndReceivedAtIsNullAndIsActiveTrueOrderByHandedOverAtDesc(
+                            sample.getId(),
+                            SampleCustodyEventType.HANDOFF_TO_QC
+                    )
+                    .ifPresent(event -> {
+                        event.setToLocation(request.getSampleStorageLocation().trim());
+                        event.setReceivedBy(request.getReceivedBy().trim());
+                        event.setReceivedAt(receiptTime);
+                        event.setReceiptCondition(request.getReceiptCondition().trim());
+                        event.setUpdatedBy(actor);
+                        event.setUpdatedAt(LocalDateTime.now());
+                        events.add(event);
+                    });
+        }
+        sampleChainOfCustodyRepository.saveAll(events);
+    }
+
+    private void updateSamplesOnQcReceipt(UUID samplingRequestId,
+                                          UUID primarySampleId,
+                                          QcReceiptRequest request,
+                                          LocalDateTime receiptTime,
+                                          String actor) {
+        LocalDateTime now = LocalDateTime.now();
+        List<Sample> samples = sampleRepository.findBySamplingRequestIdOrderBySampleTypeAscCreatedAtAsc(samplingRequestId);
+        samples.forEach(sample -> {
+            sample.setSampleStatus(SampleStatus.RECEIVED);
+            sample.setReceivedByQc(request.getReceivedBy().trim());
+            sample.setReceivedAtQc(receiptTime);
+            sample.setReceiptCondition(request.getReceiptCondition().trim());
+            sample.setQcStorageLocation(request.getSampleStorageLocation().trim());
+            if (sample.getId().equals(primarySampleId)) {
+                applyRetentionDetails(sample, request);
+            }
+            sample.setUpdatedBy(actor);
+            sample.setUpdatedAt(now);
+        });
+        sampleRepository.saveAll(samples);
+    }
+
+    private Optional<Sample> findPrimarySample(UUID samplingRequestId) {
+        Optional<SamplingPlan> plan = samplingPlanRepository.findBySamplingRequestId(samplingRequestId);
+        if (plan.isPresent()) {
+            Optional<Sample> plannedSample = sampleRepository.findBySamplingRequestIdAndSampleType(
+                    samplingRequestId,
+                    plan.get().getSampleType()
+            );
+            if (plannedSample.isPresent()) {
+                return plannedSample;
+            }
+        }
+        return sampleRepository.findBySamplingRequestIdAndSampleType(samplingRequestId, SampleType.COMPOSITE)
+                .or(() -> sampleRepository.findFirstBySamplingRequestIdOrderByCreatedAtAsc(samplingRequestId));
     }
 
     private void updateSampleOnQcDecision(UUID samplingRequestId, boolean approved, String actor) {
-        sampleRepository.findBySamplingRequestId(samplingRequestId).ifPresent(sample -> {
+        sampleRepository.findBySamplingRequestIdOrderBySampleTypeAscCreatedAtAsc(samplingRequestId).forEach(sample -> {
             sample.setSampleStatus(approved ? SampleStatus.APPROVED : SampleStatus.REJECTED);
             sample.setUpdatedBy(actor);
             sample.setUpdatedAt(LocalDateTime.now());
@@ -1310,7 +1597,7 @@ public class SamplingServiceImpl implements SamplingService {
 
     private void createOrUpdateQcDispositionOnHandoff(UUID samplingRequestId, String actor) {
         LocalDateTime now = LocalDateTime.now();
-        UUID sampleId = sampleRepository.findBySamplingRequestId(samplingRequestId).map(Sample::getId).orElse(null);
+        UUID sampleId = findPrimarySample(samplingRequestId).map(Sample::getId).orElse(null);
         QcDisposition disposition = qcDispositionRepository.findBySamplingRequestId(samplingRequestId)
                 .orElseGet(() -> QcDisposition.builder()
                         .id(UUID.randomUUID())
@@ -1348,7 +1635,7 @@ public class SamplingServiceImpl implements SamplingService {
                         .createdAt(now)
                         .isActive(true)
                         .build());
-        disposition.setSampleId(sampleRepository.findBySamplingRequestId(samplingRequestId).map(Sample::getId).orElse(null));
+        disposition.setSampleId(findPrimarySample(samplingRequestId).map(Sample::getId).orElse(null));
         disposition.setStatus(approved ? QcDispositionStatus.APPROVED : QcDispositionStatus.REJECTED);
         disposition.setDecisionRemarks(remarks);
         disposition.setDecisionBy(actor);
@@ -1379,6 +1666,15 @@ public class SamplingServiceImpl implements SamplingService {
         UserRole role = authenticatedActorService.currentRole();
         if (role != UserRole.SUPER_ADMIN && role != UserRole.QC_MANAGER) {
             throw new BusinessConflictException("Only QC managers or super admins can record the final QC decision");
+        }
+    }
+
+    private void assertFinalReviewerDiffersFromWorksheetAnalyst(UUID sampleId, String actor) {
+        boolean sameActorEnteredWorksheet = qcTestResultRepository.findBySampleIdAndIsActiveTrueOrderByCreatedAtAsc(sampleId)
+                .stream()
+                .anyMatch(row -> row.getAnalystCode() != null && row.getAnalystCode().equalsIgnoreCase(actor));
+        if (sameActorEnteredWorksheet) {
+            throw new BusinessConflictException("Final QC reviewer must be different from the worksheet analyst");
         }
     }
 
@@ -1595,6 +1891,9 @@ public class SamplingServiceImpl implements SamplingService {
     }
 
     private SamplingPlanResponse toPlanResponse(SamplingPlan plan) {
+        Map<UUID, SamplingContainerDraw> latestDrawByContainer = new LinkedHashMap<>();
+        samplingContainerDrawRepository.findBySamplingPlanIdOrderBySampledAtAsc(plan.getId())
+                .forEach(draw -> latestDrawByContainer.put(draw.getGrnContainerId(), draw));
         return SamplingPlanResponse.builder()
                 .id(plan.getId())
                 .samplingRequestId(plan.getSamplingRequestId())
@@ -1626,6 +1925,15 @@ public class SamplingServiceImpl implements SamplingService {
                                 .grnContainerId(sample.getGrnContainerId())
                                 .containerNumber(sample.getContainerNumber())
                                 .sampledQuantity(sample.getSampledQuantity())
+                                .drawPurpose(latestDrawByContainer.containsKey(sample.getGrnContainerId())
+                                        ? latestDrawByContainer.get(sample.getGrnContainerId()).getDrawPurpose()
+                                        : sample.getDrawPurpose())
+                                .balanceBefore(latestDrawByContainer.containsKey(sample.getGrnContainerId())
+                                        ? latestDrawByContainer.get(sample.getGrnContainerId()).getBalanceBefore()
+                                        : null)
+                                .balanceAfter(latestDrawByContainer.containsKey(sample.getGrnContainerId())
+                                        ? latestDrawByContainer.get(sample.getGrnContainerId()).getBalanceAfter()
+                                        : null)
                                 .build())
                         .toList())
                 .build();
@@ -1672,6 +1980,32 @@ public class SamplingServiceImpl implements SamplingService {
                                 .sampledQuantity(link.getSampledQuantity())
                                 .build())
                         .toList())
+                .custodyEvents(sampleChainOfCustodyRepository.findBySampleIdOrderByHandedOverAtAsc(sample.getId())
+                        .stream()
+                        .map(this::toSampleChainOfCustodyResponse)
+                        .toList())
+                .build();
+    }
+
+    private SampleChainOfCustodyResponse toSampleChainOfCustodyResponse(SampleChainOfCustody event) {
+        return SampleChainOfCustodyResponse.builder()
+                .id(event.getId())
+                .sampleId(event.getSampleId())
+                .samplingRequestId(event.getSamplingRequestId())
+                .eventType(event.getEventType())
+                .fromLocation(event.getFromLocation())
+                .toLocation(event.getToLocation())
+                .handedOverBy(event.getHandedOverBy())
+                .handedOverAt(event.getHandedOverAt())
+                .receivedBy(event.getReceivedBy())
+                .receivedAt(event.getReceivedAt())
+                .receiptCondition(event.getReceiptCondition())
+                .remarks(event.getRemarks())
+                .isActive(event.getIsActive())
+                .createdBy(event.getCreatedBy())
+                .createdAt(event.getCreatedAt())
+                .updatedBy(event.getUpdatedBy())
+                .updatedAt(event.getUpdatedAt())
                 .build();
     }
 

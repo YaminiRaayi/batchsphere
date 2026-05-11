@@ -9,5 +9,6 @@ import java.util.UUID;
 
 public interface QcTestResultRepository extends JpaRepository<QcTestResult, UUID> {
     List<QcTestResult> findBySampleIdAndIsActiveTrueOrderByCreatedAtAsc(UUID sampleId);
+    List<QcTestResult> findByWorksheetIdAndIsActiveTrueOrderByCreatedAtAsc(UUID worksheetId);
     boolean existsBySampleIdAndIsActiveTrueAndStatusIn(UUID sampleId, List<QcTestResultStatus> statuses);
 }

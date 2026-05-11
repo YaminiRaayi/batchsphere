@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -46,6 +47,12 @@ public class Inventory {
 
     @Column(name = "uom", nullable = false, length = 50)
     private String uom;
+
+    @Column(name = "expiry_date")
+    private LocalDate expiryDate;
+
+    @Column(name = "retest_due_date")
+    private LocalDate retestDueDate;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)

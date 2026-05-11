@@ -43,7 +43,11 @@ import com.batchsphere.core.transactions.inventory.service.InventoryService;
 import com.batchsphere.core.transactions.sampling.service.SamplingService;
 import com.batchsphere.core.storage.LocalStorageService;
 import com.batchsphere.core.masterdata.material.entity.Material;
+import com.batchsphere.core.masterdata.material.entity.MaterialStatus;
 import com.batchsphere.core.masterdata.material.repository.MaterialRepository;
+import com.batchsphere.core.masterdata.spec.entity.Spec;
+import com.batchsphere.core.masterdata.spec.entity.SpecStatus;
+import com.batchsphere.core.masterdata.spec.repository.SpecRepository;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Pallet;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Rack;
 import com.batchsphere.core.masterdata.warehouselocation.entity.Room;
@@ -53,9 +57,13 @@ import com.batchsphere.core.masterdata.warehouselocation.repository.RackReposito
 import com.batchsphere.core.masterdata.warehouselocation.repository.RoomRepository;
 import com.batchsphere.core.masterdata.warehouselocation.repository.ShelfRepository;
 import com.batchsphere.core.masterdata.supplier.entity.Supplier;
+import com.batchsphere.core.masterdata.supplier.entity.SupplierQualificationStatus;
 import com.batchsphere.core.masterdata.supplier.repository.SupplierRepository;
 import com.batchsphere.core.masterdata.vendor.entity.Vendor;
 import com.batchsphere.core.masterdata.vendor.repository.VendorRepository;
+import com.batchsphere.core.masterdata.vendorapproval.entity.VendorMaterialApprovalStatus;
+import com.batchsphere.core.masterdata.vendorapproval.repository.VendorMaterialApprovalRepository;
+import com.batchsphere.core.masterdata.vendorbusinessunit.entity.QualificationStatus;
 import com.batchsphere.core.masterdata.vendorbusinessunit.entity.VendorBusinessUnit;
 import com.batchsphere.core.masterdata.vendorbusinessunit.repository.VendorBusinessUnitRepository;
 import lombok.RequiredArgsConstructor;
@@ -68,6 +76,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.math.BigDecimal;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -93,6 +102,8 @@ public class GrnServiceImpl implements GrnService {
     private final VendorRepository vendorRepository;
     private final VendorBusinessUnitRepository vendorBusinessUnitRepository;
     private final MaterialRepository materialRepository;
+    private final SpecRepository specRepository;
+    private final VendorMaterialApprovalRepository vendorMaterialApprovalRepository;
     private final PalletRepository palletRepository;
     private final ShelfRepository shelfRepository;
     private final RackRepository rackRepository;
@@ -214,7 +225,9 @@ public class GrnServiceImpl implements GrnService {
         String actor = authenticatedActorService.currentActor();
         Grn grn = getActiveGrn(id);
         ensureDraft(grn, "Only draft GRNs can be received");
+        validateHeader(grn.getSupplierId(), grn.getVendorId(), grn.getVendorBusinessUnitId());
         List<GrnItem> items = grnItemRepository.findByGrnIdAndIsActiveTrueOrderByLineNumber(id);
+        validateExistingItems(grn, items);
         items = generateInHouseBatches(grn, items, actor);
         generateContainersAndLabels(grn, items, actor);
         inventoryService.recordGrnReceipt(id, items, actor);
@@ -437,6 +450,7 @@ public class GrnServiceImpl implements GrnService {
     }
 
     private List<GrnItem> createItems(UUID grnId, List<GrnItemRequest> requests, String actor) {
+        Grn grn = getActiveGrn(grnId);
         LocalDateTime now = LocalDateTime.now();
         List<GrnItem> items = new ArrayList<>();
 
@@ -444,6 +458,9 @@ public class GrnServiceImpl implements GrnService {
             GrnItemRequest request = requests.get(index);
             Material material = getActiveMaterial(request.getMaterialId());
             Pallet pallet = getActivePallet(request.getPalletId());
+            validateMaterialEligibility(material);
+            validateApprovedSpec(material);
+            validateVendorMaterialApproval(grn, material.getId());
             validateItem(request, material);
             BigDecimal totalPrice = request.getUnitPrice().multiply(request.getReceivedQuantity());
             BigDecimal expectedTotal = request.getQuantityPerContainer().multiply(BigDecimal.valueOf(request.getNumberOfContainers()));
@@ -508,12 +525,25 @@ public class GrnServiceImpl implements GrnService {
     }
 
     private void validateHeader(UUID supplierId, UUID vendorId, UUID vendorBusinessUnitId) {
-        getActiveSupplier(supplierId);
+        Supplier supplier = getActiveSupplier(supplierId);
         getActiveVendor(vendorId);
         VendorBusinessUnit vendorBusinessUnit = getActiveVendorBusinessUnit(vendorBusinessUnitId);
 
         if (!vendorBusinessUnit.getVendorId().equals(vendorId)) {
             throw new BusinessConflictException("Vendor business unit does not belong to the provided vendor");
+        }
+        if (supplier.getQualificationStatus() == SupplierQualificationStatus.SUSPENDED
+                || supplier.getQualificationStatus() == SupplierQualificationStatus.DISQUALIFIED) {
+            throw new BusinessConflictException("Supplier is not qualified for GRN processing");
+        }
+        if (supplier.getGmpcertExpiryDate() != null && supplier.getGmpcertExpiryDate().isBefore(LocalDate.now())) {
+            throw new BusinessConflictException("Supplier GMP certificate is expired");
+        }
+        if (vendorBusinessUnit.getQualificationStatus() != QualificationStatus.QUALIFIED) {
+            throw new BusinessConflictException("Vendor business unit must be QUALIFIED before GRN processing");
+        }
+        if (vendorBusinessUnit.getGmpCertExpiry() != null && vendorBusinessUnit.getGmpCertExpiry().isBefore(LocalDate.now())) {
+            throw new BusinessConflictException("Vendor business unit GMP certificate is expired");
         }
     }
 
@@ -540,6 +570,48 @@ public class GrnServiceImpl implements GrnService {
             throw new BusinessConflictException("QC status is required");
         }
 
+    }
+
+    private void validateExistingItems(Grn grn, List<GrnItem> items) {
+        for (GrnItem item : items) {
+            Material material = getActiveMaterial(item.getMaterialId());
+            validateMaterialEligibility(material);
+            validateApprovedSpec(material);
+            validateVendorMaterialApproval(grn, material.getId());
+        }
+    }
+
+    private void validateMaterialEligibility(Material material) {
+        if (material.getStatus() != MaterialStatus.ACTIVE) {
+            throw new BusinessConflictException("Material must be ACTIVE for GRN processing: " + material.getMaterialCode());
+        }
+    }
+
+    private void validateApprovedSpec(Material material) {
+        if (material.getSpecId() == null) {
+            throw new BusinessConflictException("Material must have an approved specification before GRN processing");
+        }
+        Spec spec = specRepository.findById(material.getSpecId())
+                .orElseThrow(() -> new ResourceNotFoundException("Spec not found with id: " + material.getSpecId()));
+        if (!Boolean.TRUE.equals(spec.getIsActive()) || spec.getStatus() != SpecStatus.APPROVED) {
+            throw new BusinessConflictException("Material must have an active APPROVED specification before GRN processing");
+        }
+    }
+
+    private void validateVendorMaterialApproval(Grn grn, UUID materialId) {
+        var approval = vendorMaterialApprovalRepository
+                .findByVendorIdAndVendorBusinessUnitIdAndSupplierIdAndMaterialIdAndIsActiveTrue(
+                        grn.getVendorId(),
+                        grn.getVendorBusinessUnitId(),
+                        grn.getSupplierId(),
+                        materialId)
+                .orElseThrow(() -> new BusinessConflictException(
+                        "No approved vendor-material-source record exists for the GRN material and source combination"));
+
+        if (approval.getStatus() != VendorMaterialApprovalStatus.APPROVED
+                && approval.getStatus() != VendorMaterialApprovalStatus.CONDITIONAL) {
+            throw new BusinessConflictException("Vendor-material-source approval status does not allow GRN processing");
+        }
     }
 
     private List<GrnItem> generateInHouseBatches(Grn grn, List<GrnItem> items, String actor) {
@@ -779,6 +851,7 @@ public class GrnServiceImpl implements GrnService {
                         .vendorBatch(item.getVendorBatch())
                         .internalLot(internalLot)
                         .quantity(item.getQuantityPerContainer())
+                        .remainingQuantity(item.getQuantityPerContainer())
                         .uom(item.getUom())
                         .manufactureDate(item.getManufactureDate())
                         .expiryDate(item.getExpiryDate())
@@ -892,6 +965,7 @@ public class GrnServiceImpl implements GrnService {
                 .vendorBatch(container.getVendorBatch())
                 .internalLot(container.getInternalLot())
                 .quantity(container.getQuantity())
+                .remainingQuantity(container.getRemainingQuantity())
                 .uom(container.getUom())
                 .manufactureDate(container.getManufactureDate())
                 .expiryDate(container.getExpiryDate())

@@ -69,7 +69,12 @@ import type { CreateMaterialRequest, LightSensitivity, Material, MaterialCategor
 import type { CreateMoaRequest, Moa } from "../../types/moa";
 import type { CreateSamplingToolRequest, SamplingTool } from "../../types/sampling-tool";
 import type { CreateSpecRequest, Spec } from "../../types/spec";
-import type { CreateSupplierRequest, Supplier } from "../../types/supplier";
+import type {
+  CreateSupplierRequest,
+  Supplier,
+  SupplierQualificationStatus,
+  SupplierType
+} from "../../types/supplier";
 import type { SamplingMethod } from "../../types/sampling";
 import type {
   CreateVendorBusinessUnitRequest,
@@ -150,9 +155,33 @@ function createInitialSupplierForm(currentUserName: string): CreateSupplierReque
     contactPerson: "",
     email: "",
     phone: "",
+    supplierType: "DISTRIBUTOR",
+    qualificationStatus: "QUALIFIED",
+    countryOfManufacture: "",
+    gmpcertNumber: "",
+    gmpcertIssuingAuthority: "",
+    gmpcertExpiryDate: "",
+    approvedSince: "",
+    lastAuditDate: "",
+    nextAuditDue: "",
+    openCapaCount: 0,
     createdBy: currentUserName
   };
 }
+
+const supplierTypeLabels: Record<SupplierType, string> = {
+  MANUFACTURER: "Manufacturer",
+  CONTRACT_MANUFACTURER: "Contract Manufacturer",
+  DISTRIBUTOR: "Distributor",
+  BROKER: "Broker"
+};
+
+const supplierQualificationLabels: Record<SupplierQualificationStatus, string> = {
+  QUALIFIED: "Qualified",
+  CONDITIONALLY_QUALIFIED: "Conditionally Qualified",
+  SUSPENDED: "Suspended",
+  DISQUALIFIED: "Disqualified"
+};
 
 function createInitialVendorForm(currentUserName: string): CreateVendorRequest {
   return {
@@ -1048,6 +1077,16 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
         contactPerson: form.contactPerson?.trim() || undefined,
         email: form.email?.trim() || undefined,
         phone: form.phone?.trim() || undefined,
+        supplierType: form.supplierType,
+        qualificationStatus: form.qualificationStatus,
+        countryOfManufacture: form.countryOfManufacture?.trim() || undefined,
+        gmpcertNumber: form.gmpcertNumber?.trim() || undefined,
+        gmpcertIssuingAuthority: form.gmpcertIssuingAuthority?.trim() || undefined,
+        gmpcertExpiryDate: form.gmpcertExpiryDate || undefined,
+        approvedSince: form.approvedSince || undefined,
+        lastAuditDate: form.lastAuditDate || undefined,
+        nextAuditDue: form.nextAuditDue || undefined,
+        openCapaCount: form.openCapaCount ?? 0,
         createdBy: form.createdBy.trim()
       };
       const savedSupplier = editingSupplierId
@@ -1500,6 +1539,16 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
       contactPerson: supplier.contactPerson ?? "",
       email: supplier.email ?? "",
       phone: supplier.phone ?? "",
+      supplierType: supplier.supplierType,
+      qualificationStatus: supplier.qualificationStatus,
+      countryOfManufacture: supplier.countryOfManufacture ?? "",
+      gmpcertNumber: supplier.gmpcertNumber ?? "",
+      gmpcertIssuingAuthority: supplier.gmpcertIssuingAuthority ?? "",
+      gmpcertExpiryDate: supplier.gmpcertExpiryDate ?? "",
+      approvedSince: supplier.approvedSince ?? "",
+      lastAuditDate: supplier.lastAuditDate ?? "",
+      nextAuditDue: supplier.nextAuditDue ?? "",
+      openCapaCount: supplier.openCapaCount ?? 0,
       createdBy: supplier.updatedBy ?? supplier.createdBy ?? currentUserName
     });
     setSuccessMessage(null);
@@ -2123,6 +2172,101 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
                   }
                   className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel"
                   placeholder="9876543210"
+                />
+              </label>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-ink">Supplier type</span>
+                <select
+                  value={form.supplierType}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, supplierType: event.target.value as SupplierType }))
+                  }
+                  className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel"
+                >
+                  {Object.entries(supplierTypeLabels).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-ink">Qualification status</span>
+                <select
+                  value={form.qualificationStatus}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, qualificationStatus: event.target.value as SupplierQualificationStatus }))
+                  }
+                  className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel"
+                >
+                  {Object.entries(supplierQualificationLabels).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-ink">Country of manufacture</span>
+                <input
+                  value={form.countryOfManufacture ?? ""}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, countryOfManufacture: event.target.value }))
+                  }
+                  className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel"
+                  placeholder="India"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-ink">Open CAPA count</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.openCapaCount ?? 0}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, openCapaCount: Number(event.target.value || 0) }))
+                  }
+                  className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel"
+                />
+              </label>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-ink">GMP certificate no.</span>
+                <input
+                  value={form.gmpcertNumber ?? ""}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, gmpcertNumber: event.target.value }))
+                  }
+                  className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-ink">Issuing authority</span>
+                <input
+                  value={form.gmpcertIssuingAuthority ?? ""}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, gmpcertIssuingAuthority: event.target.value }))
+                  }
+                  className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-ink">GMP expiry</span>
+                <input
+                  type="date"
+                  value={form.gmpcertExpiryDate ?? ""}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, gmpcertExpiryDate: event.target.value }))
+                  }
+                  className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel"
                 />
               </label>
             </div>
@@ -3340,8 +3484,9 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
                     <tr>
                       <th className="px-4 py-3 font-medium">Code</th>
                       <th className="px-4 py-3 font-medium">Name</th>
+                      <th className="px-4 py-3 font-medium">Type</th>
+                      <th className="px-4 py-3 font-medium">Status</th>
                       <th className="px-4 py-3 font-medium">Contact</th>
-                      <th className="px-4 py-3 font-medium">Phone</th>
                       <th className="px-4 py-3 font-medium">Actions</th>
                     </tr>
                   </thead>
@@ -3350,8 +3495,15 @@ export function MasterDataPage({ section, showHeader = true }: MasterDataPagePro
                       <tr key={supplier.id} className="border-t border-ink/10">
                         <td className="px-4 py-3">{supplier.supplierCode}</td>
                         <td className="px-4 py-3">{supplier.supplierName}</td>
-                        <td className="px-4 py-3">{supplier.contactPerson || "Not set"}</td>
-                        <td className="px-4 py-3">{supplier.phone || "Not set"}</td>
+                        <td className="px-4 py-3">{supplierTypeLabels[supplier.supplierType]}</td>
+                        <td className="px-4 py-3">
+                          <span className="rounded-full bg-ink/5 px-2.5 py-1 text-xs text-ink">
+                            {supplierQualificationLabels[supplier.qualificationStatus]}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {supplier.contactPerson || "Not set"}{supplier.phone ? ` · ${supplier.phone}` : ""}
+                        </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-2">
                             <button type="button" onClick={() => startEditingSupplier(supplier)} className="rounded-full border border-ink/10 px-3 py-1 text-xs font-medium text-ink">Edit</button>

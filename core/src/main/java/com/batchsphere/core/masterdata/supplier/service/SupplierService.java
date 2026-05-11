@@ -1,20 +1,20 @@
 package com.batchsphere.core.masterdata.supplier.service;
 
 import com.batchsphere.core.masterdata.supplier.dto.supplier.dto.SupplierRequest;
-import com.batchsphere.core.masterdata.supplier.entity.Supplier;
+import com.batchsphere.core.masterdata.supplier.dto.supplier.dto.SupplierResponse;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface SupplierService {
 
-    Supplier createSupplier(SupplierRequest request);
+    SupplierResponse createSupplier(SupplierRequest request);
 
-    Supplier getSupplier(UUID id);
+    SupplierResponse getSupplier(UUID id);
 
-    List<Supplier> getAllSuppliers();
+    List<SupplierResponse> getAllSuppliers();
 
-    Supplier updateSupplier(UUID id, SupplierRequest request);
+    SupplierResponse updateSupplier(UUID id, SupplierRequest request);
 
     void deactivateSupplier(UUID id);
 }

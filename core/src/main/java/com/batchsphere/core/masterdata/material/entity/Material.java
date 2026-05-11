@@ -100,6 +100,11 @@ public class Material {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 50)
+    @Builder.Default
+    private MaterialStatus status = MaterialStatus.ACTIVE;
+
     @Column(name = "created_by", nullable = false, length = 100)
     private String createdBy;
 

@@ -33,7 +33,7 @@ public class Sample {
     @Column(name = "sample_number", nullable = false, unique = true, length = 100)
     private String sampleNumber;
 
-    @Column(name = "sampling_request_id", nullable = false, unique = true)
+    @Column(name = "sampling_request_id", nullable = false)
     private UUID samplingRequestId;
 
     @Column(name = "batch_id")

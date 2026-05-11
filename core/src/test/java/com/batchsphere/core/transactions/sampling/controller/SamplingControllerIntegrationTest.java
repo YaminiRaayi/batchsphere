@@ -233,6 +233,7 @@ class SamplingControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
+                                  "phaseOneSummary": "Phase I review completed with no assignable laboratory cause",
                                   "phaseTwoAssessment": "No assignable cause found in Phase I"
                                 }
                                 """))
@@ -250,6 +251,7 @@ class SamplingControllerIntegrationTest {
                         .content("""
                                 {
                                   "outcome": "RESUME_REVIEW",
+                                  "phaseSummary": "Phase II review confirms the original worksheet can resume",
                                   "rootCause": "Analyst transcription error",
                                   "resolutionRemarks": "Resume QC review"
                                 }

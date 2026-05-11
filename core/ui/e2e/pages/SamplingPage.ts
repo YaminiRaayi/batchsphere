@@ -30,12 +30,25 @@ export class SamplingPage {
     analystCode: string;
     toolLabel: string;
     individualSampleQuantity: string;
+    containerDraws?: Array<{ quantity: string; purpose?: string }>;
     rationale?: string;
   }) {
     await this.page.getByLabel("Sampling location").fill(params.samplingLocation);
     await this.page.getByLabel("Analyst employee code").fill(params.analystCode);
     await this.page.getByLabel("Sampling tool").selectOption({ label: params.toolLabel });
     await this.page.getByPlaceholder(/Sample qty/).fill(params.individualSampleQuantity);
+    if (params.containerDraws?.length) {
+      const drawRows = this.page.locator('input[readonly][value*="Remaining"]').locator("xpath=..");
+
+      for (const [index, draw] of params.containerDraws.entries()) {
+        const row = drawRows.nth(index);
+        await expect(row).toBeVisible();
+        if (draw.purpose) {
+          await row.locator("select").selectOption(draw.purpose);
+        }
+        await row.locator('input[type="number"]').fill(draw.quantity);
+      }
+    }
     if (params.rationale) {
       await this.page.getByLabel("Rationale").fill(params.rationale);
     }

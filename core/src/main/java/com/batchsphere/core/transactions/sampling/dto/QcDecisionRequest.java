@@ -16,4 +16,7 @@ public class QcDecisionRequest {
     private String confirmedBy;
     @NotBlank
     private String confirmationText;
+    private String eSignatureUsername;
+    private String eSignaturePassword;
+    private String eSignatureMeaning;
 }

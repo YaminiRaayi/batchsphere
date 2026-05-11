@@ -249,6 +249,8 @@ public class InventoryServiceImpl implements InventoryService {
                         .palletId(destinationPallet.getId())
                         .quantityOnHand(BigDecimal.ZERO)
                         .uom(sourceInventory.getUom())
+                        .expiryDate(sourceInventory.getExpiryDate())
+                        .retestDueDate(sourceInventory.getRetestDueDate())
                         .status(sourceInventory.getStatus())
                         .isActive(true)
                         .createdBy(actor)
@@ -258,6 +260,8 @@ public class InventoryServiceImpl implements InventoryService {
         destinationInventory.setWarehouseLocation(buildWarehouseLocation(destinationPallet));
         destinationInventory.setQuantityOnHand(destinationInventory.getQuantityOnHand().add(request.getQuantity()));
         destinationInventory.setUom(sourceInventory.getUom());
+        destinationInventory.setExpiryDate(sourceInventory.getExpiryDate());
+        destinationInventory.setRetestDueDate(sourceInventory.getRetestDueDate());
         destinationInventory.setStatus(sourceInventory.getStatus());
         destinationInventory.setUpdatedBy(actor);
         destinationInventory.setUpdatedAt(now);
@@ -300,6 +304,42 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional
+    public InventoryResponse consumeForSampling(UUID inventoryId, UUID samplingRequestId, BigDecimal quantity, String actor) {
+        Inventory inventory = getActiveInventory(inventoryId);
+        if (quantity == null || quantity.compareTo(ZERO) <= 0) {
+            throw new BusinessConflictException("Sampling consumption quantity must be greater than zero");
+        }
+        if (quantity.compareTo(inventory.getQuantityOnHand()) > 0) {
+            throw new BusinessConflictException("Sampling consumption quantity cannot exceed available inventory");
+        }
+
+        BigDecimal beforeQuantity = inventory.getQuantityOnHand();
+        BigDecimal updatedQuantity = beforeQuantity.subtract(quantity);
+        LocalDateTime now = LocalDateTime.now();
+        inventory.setQuantityOnHand(updatedQuantity);
+        inventory.setUpdatedBy(actor);
+        inventory.setUpdatedAt(now);
+        Inventory savedInventory = inventoryRepository.save(inventory);
+
+        inventoryTransactionRepository.save(buildTransaction(
+                savedInventory,
+                InventoryTransactionType.SAMPLING_CONSUMPTION,
+                InventoryReferenceType.SAMPLING_REQUEST,
+                samplingRequestId,
+                null,
+                quantity.negate(),
+                beforeQuantity,
+                updatedQuantity,
+                "Inventory consumed for sampling",
+                actor,
+                now
+        ));
+
+        return toResponse(savedInventory);
+    }
+
+    @Override
+    @Transactional
     public void recordGrnReceipt(UUID grnId, List<GrnItem> items, String actor) {
         LocalDateTime now = LocalDateTime.now();
 
@@ -323,6 +363,8 @@ public class InventoryServiceImpl implements InventoryService {
                             .palletId(item.getPalletId())
                             .quantityOnHand(BigDecimal.ZERO)
                             .uom(item.getUom())
+                            .expiryDate(item.getExpiryDate())
+                            .retestDueDate(item.getRetestDate())
                             .status(InventoryStatus.QUARANTINE)
                             .isActive(true)
                             .createdBy(actor)
@@ -332,6 +374,8 @@ public class InventoryServiceImpl implements InventoryService {
             inventory.setQuantityOnHand(inventory.getQuantityOnHand().add(item.getAcceptedQuantity()));
             inventory.setWarehouseLocation(item.getWarehouseLocation());
             inventory.setUom(item.getUom());
+            inventory.setExpiryDate(item.getExpiryDate());
+            inventory.setRetestDueDate(item.getRetestDate());
             inventory.setStatus(InventoryStatus.QUARANTINE);
             inventory.setUpdatedBy(actor);
             inventory.setUpdatedAt(now);
@@ -680,6 +724,12 @@ public class InventoryServiceImpl implements InventoryService {
         if (inventory.getStatus() != InventoryStatus.RELEASED) {
             throw new BusinessConflictException("Only released inventory can be issued");
         }
+        if (inventory.getExpiryDate() != null && inventory.getExpiryDate().isBefore(LocalDate.now())) {
+            throw new BusinessConflictException("Expired inventory cannot be issued");
+        }
+        if (inventory.getRetestDueDate() != null && inventory.getRetestDueDate().isBefore(LocalDate.now())) {
+            throw new BusinessConflictException("Retest-overdue inventory cannot be issued");
+        }
         if (request.getReferenceType() == InventoryReferenceType.GRN
                 || request.getReferenceType() == InventoryReferenceType.INVENTORY) {
             throw new BusinessConflictException("Issue reference type must be production, dispensing, sampling request, or other");
@@ -739,6 +789,8 @@ public class InventoryServiceImpl implements InventoryService {
                 .palletId(inventory.getPalletId())
                 .quantityOnHand(inventory.getQuantityOnHand())
                 .uom(inventory.getUom())
+                .expiryDate(inventory.getExpiryDate())
+                .retestDueDate(inventory.getRetestDueDate())
                 .status(inventory.getStatus())
                 .isActive(inventory.getIsActive())
                 .createdBy(inventory.getCreatedBy())

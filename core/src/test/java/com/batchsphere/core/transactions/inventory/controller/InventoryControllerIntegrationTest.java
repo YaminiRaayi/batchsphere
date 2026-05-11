@@ -29,6 +29,7 @@ import com.batchsphere.core.transactions.inventory.entity.InventoryTransaction;
 import com.batchsphere.core.transactions.inventory.entity.InventoryTransactionType;
 import com.batchsphere.core.transactions.inventory.repository.InventoryRepository;
 import com.batchsphere.core.transactions.inventory.repository.InventoryTransactionRepository;
+import com.batchsphere.core.transactions.inventory.service.InventoryService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,6 +70,9 @@ class InventoryControllerIntegrationTest {
 
     @Autowired
     private InventoryTransactionRepository inventoryTransactionRepository;
+
+    @Autowired
+    private InventoryService inventoryService;
 
     @Autowired
     private MaterialRepository materialRepository;
@@ -236,6 +240,66 @@ class InventoryControllerIntegrationTest {
     }
 
     @Test
+    void expiredReleasedInventoryCannotBeIssued() throws Exception {
+        Inventory inventory = inventoryRepository.save(buildInventory(InventoryStatus.RELEASED, LocalDate.now().minusDays(1), LocalDate.now().plusDays(30)));
+        SecurityContextHolder.clearContext();
+        String token = loginAsAdmin();
+
+        MvcResult result = mockMvc.perform(post("/api/inventory/{id}/issue", inventory.getId())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "quantity": 5.000,
+                                  "referenceType": "PRODUCTION",
+                                  "referenceNumber": "PRD-002",
+                                  "reason": "Issued to production"
+                                }
+                                """))
+                .andReturn();
+
+        assertEquals(409, result.getResponse().getStatus(), result.getResponse().getContentAsString());
+    }
+
+    @Test
+    void retestOverdueReleasedInventoryCannotBeIssued() throws Exception {
+        Inventory inventory = inventoryRepository.save(buildInventory(InventoryStatus.RELEASED, LocalDate.now().plusDays(60), LocalDate.now().minusDays(1)));
+        SecurityContextHolder.clearContext();
+        String token = loginAsAdmin();
+
+        MvcResult result = mockMvc.perform(post("/api/inventory/{id}/issue", inventory.getId())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "quantity": 5.000,
+                                  "referenceType": "PRODUCTION",
+                                  "referenceNumber": "PRD-003",
+                                  "reason": "Issued to production"
+                                }
+                                """))
+                .andReturn();
+
+        assertEquals(409, result.getResponse().getStatus(), result.getResponse().getContentAsString());
+    }
+
+    @Test
+    void samplingConsumptionReducesInventoryAndWritesTransaction() {
+        Inventory inventory = inventoryRepository.save(buildInventory(InventoryStatus.SAMPLING));
+
+        inventoryService.consumeForSampling(inventory.getId(), UUID.randomUUID(), new BigDecimal("0.500"), "tester");
+
+        Inventory savedInventory = inventoryRepository.findById(inventory.getId()).orElseThrow();
+        assertEquals(new BigDecimal("24.500"), savedInventory.getQuantityOnHand());
+        assertTrue(inventoryTransactionRepository.findAll().stream()
+                .anyMatch(transaction -> transaction.getInventoryId().equals(inventory.getId())
+                        && transaction.getTransactionType() == InventoryTransactionType.SAMPLING_CONSUMPTION
+                        && new BigDecimal("-0.500").compareTo(transaction.getQuantity()) == 0
+                        && new BigDecimal("25.000").compareTo(transaction.getBeforeQuantity()) == 0
+                        && new BigDecimal("24.500").compareTo(transaction.getAfterQuantity()) == 0));
+    }
+
+    @Test
     void transferMovesQuantityToDestinationPalletAndWritesTransferTransactions() throws Exception {
         Inventory inventory = inventoryRepository.save(buildInventory(InventoryStatus.QUARANTINE));
         Pallet destinationPallet = createPalletHierarchy();
@@ -345,6 +409,10 @@ class InventoryControllerIntegrationTest {
     }
 
     private Inventory buildInventory(InventoryStatus status) {
+        return buildInventory(status, LocalDate.now().plusMonths(12), LocalDate.now().plusMonths(6));
+    }
+
+    private Inventory buildInventory(InventoryStatus status, LocalDate expiryDate, LocalDate retestDueDate) {
         Material material = materialRepository.save(Material.builder()
                 .id(UUID.randomUUID())
                 .materialCode("MAT-" + UUID.randomUUID().toString().substring(0, 8))
@@ -373,7 +441,8 @@ class InventoryControllerIntegrationTest {
                 .quantity(new BigDecimal("25.000"))
                 .unitOfMeasure("KG")
                 .manufactureDate(LocalDate.now())
-                .expiryDate(LocalDate.now().plusMonths(12))
+                .expiryDate(expiryDate)
+                .retestDate(retestDueDate)
                 .isActive(true)
                 .createdBy("seed-user")
                 .createdAt(LocalDateTime.now())
@@ -388,6 +457,8 @@ class InventoryControllerIntegrationTest {
                 .palletId(pallet.getId())
                 .quantityOnHand(new BigDecimal("25.000"))
                 .uom("KG")
+                .expiryDate(expiryDate)
+                .retestDueDate(retestDueDate)
                 .status(status)
                 .isActive(true)
                 .createdBy("seed-user")

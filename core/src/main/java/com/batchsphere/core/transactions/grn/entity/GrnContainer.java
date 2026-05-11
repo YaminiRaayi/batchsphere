@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -63,6 +64,9 @@ public class GrnContainer {
     @Column(name = "quantity", nullable = false, precision = 18, scale = 3)
     private BigDecimal quantity;
 
+    @Column(name = "remaining_quantity", nullable = false, precision = 18, scale = 3)
+    private BigDecimal remainingQuantity;
+
     @Column(name = "uom", nullable = false, length = 50)
     private String uom;
 
@@ -116,4 +120,11 @@ public class GrnContainer {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @PrePersist
+    void initializeRemainingQuantity() {
+        if (remainingQuantity == null) {
+            remainingQuantity = quantity;
+        }
+    }
 }

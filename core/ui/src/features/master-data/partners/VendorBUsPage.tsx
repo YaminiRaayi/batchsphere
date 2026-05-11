@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  createVendorMaterialApproval,
+  fetchMaterials,
+  fetchSuppliers,
+  fetchVendorMaterialApprovals,
   createVendorBusinessUnitAudit,
   deleteVendorBusinessUnit,
   deleteVendorBusinessUnitDocument,
@@ -14,6 +18,8 @@ import {
 } from "../../../lib/api";
 import { useAppShellStore } from "../../../stores/appShellStore";
 import type { PageResponse } from "../../../types/grn";
+import type { Material } from "../../../types/material";
+import type { Supplier } from "../../../types/supplier";
 import type { Vendor } from "../../../types/vendor";
 import {
   QUAL_STATUS_LABELS,
@@ -32,6 +38,10 @@ import {
   type VendorBusinessUnitAudit,
   type VendorBusinessUnitDocument
 } from "../../../types/vendor-business-unit";
+import type {
+  CreateVendorMaterialApprovalRequest,
+  VendorMaterialApproval
+} from "../../../types/vendor-material-approval";
 import { VendorBUFormDrawer } from "./VendorBUFormDrawer";
 
 function formatDate(value: string | null) {
@@ -290,8 +300,11 @@ export default function VendorBUsPage() {
 
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [businessUnits, setBusinessUnits] = useState<VendorBusinessUnit[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [materials, setMaterials] = useState<Material[]>([]);
   const [documents, setDocuments] = useState<VendorBusinessUnitDocument[]>([]);
   const [audits, setAudits] = useState<VendorBusinessUnitAudit[]>([]);
+  const [approvals, setApprovals] = useState<VendorMaterialApproval[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedVendorId, setSelectedVendorId] = useState<string | "ALL">(searchParams.get("vendorId") ?? "ALL");
   const [hierarchyPage, setHierarchyPage] = useState(1);
@@ -306,17 +319,31 @@ export default function VendorBUsPage() {
   const [pageError, setPageError] = useState<string | null>(null);
   const [createVendorId, setCreateVendorId] = useState<string | null>(null);
   const [statusSaving, setStatusSaving] = useState(false);
+  const [approvalSaving, setApprovalSaving] = useState(false);
+  const [approvalForm, setApprovalForm] = useState<CreateVendorMaterialApprovalRequest>({
+    vendorId: "",
+    vendorBusinessUnitId: "",
+    supplierId: "",
+    materialId: "",
+    status: "APPROVED",
+    approvalBasis: "AUDIT",
+    approvedBy: currentUser
+  });
 
   async function loadBusinessUnits(nextSelectedId?: string | null) {
     setLoading(true);
     setPageError(null);
     try {
-      const [vendorsResponse, businessUnitsResponse] = await Promise.all([
+      const [vendorsResponse, businessUnitsResponse, suppliersResponse, materialsResponse] = await Promise.all([
         fetchVendors(0, 200),
-        fetchVendorBusinessUnits(0, 200)
+        fetchVendorBusinessUnits(0, 200),
+        fetchSuppliers(),
+        fetchMaterials(0, 500)
       ]);
       setVendors(vendorsResponse.content);
       setBusinessUnits(businessUnitsResponse.content);
+      setSuppliers(suppliersResponse);
+      setMaterials(materialsResponse.content);
       const firstForVendor = selectedVendorId !== "ALL"
         ? businessUnitsResponse.content.find((unit) => unit.vendorId === selectedVendorId)?.id
         : null;
@@ -341,6 +368,7 @@ export default function VendorBUsPage() {
     if (!selectedId) {
       setDocuments([]);
       setAudits([]);
+      setApprovals([]);
       return;
     }
 
@@ -350,6 +378,9 @@ export default function VendorBUsPage() {
       .then(setAudits)
       .catch(() => setAudits([]))
       .finally(() => setAuditsLoading(false));
+    void fetchVendorMaterialApprovals({ vendorBusinessUnitId: selectedId })
+      .then(setApprovals)
+      .catch(() => setApprovals([]));
   }, [selectedId]);
 
   const vendorById = useMemo(
@@ -410,6 +441,18 @@ export default function VendorBUsPage() {
     setHierarchyPage((current) => Math.min(current, hierarchyPageCount));
   }, [hierarchyPageCount]);
 
+  useEffect(() => {
+    if (!selected) {
+      return;
+    }
+    setApprovalForm((current) => ({
+      ...current,
+      vendorId: selected.vendorId,
+      vendorBusinessUnitId: selected.id,
+      approvedBy: currentUser
+    }));
+  }, [currentUser, selected]);
+
   async function loadBusinessUnitDocuments(id: string) {
     setDocsLoading(true);
     try {
@@ -466,6 +509,32 @@ export default function VendorBUsPage() {
     const refreshedAudits = await fetchVendorBusinessUnitAudits(selectedId);
     setAudits(refreshedAudits);
     setEditAuditTarget(null);
+  }
+
+  async function handleApprovalSubmit() {
+    if (!selected) return;
+    if (!approvalForm.supplierId || !approvalForm.materialId) {
+      setPageError("Supplier and material are required for material approval.");
+      return;
+    }
+    setApprovalSaving(true);
+    setPageError(null);
+    try {
+      const saved = await createVendorMaterialApproval(approvalForm);
+      setApprovals((current) => [saved, ...current.filter((item) => item.id !== saved.id)]);
+      setApprovalForm((current) => ({
+        ...current,
+        supplierId: "",
+        materialId: "",
+        qualificationDate: "",
+        nextRequalificationDate: "",
+        remarks: ""
+      }));
+    } catch (error) {
+      setPageError(error instanceof Error ? error.message : "Failed to create material approval");
+    } finally {
+      setApprovalSaving(false);
+    }
   }
 
   function openNewSite() {
@@ -876,6 +945,105 @@ export default function VendorBUsPage() {
                     </table>
                   )}
                 </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-orange-200 bg-white p-4 shadow-sm">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-700">Material Approvals</div>
+                  <p className="mt-1 text-[11px] text-slate-500">Approved supplier-material combinations for this site.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
+                <select
+                  value={approvalForm.supplierId}
+                  onChange={(event) => setApprovalForm((current) => ({ ...current, supplierId: event.target.value }))}
+                  className="rounded-xl border border-orange-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none"
+                >
+                  <option value="">Select supplier</option>
+                  {suppliers.map((supplier) => (
+                    <option key={supplier.id} value={supplier.id}>{supplier.supplierCode} - {supplier.supplierName}</option>
+                  ))}
+                </select>
+                <select
+                  value={approvalForm.materialId}
+                  onChange={(event) => setApprovalForm((current) => ({ ...current, materialId: event.target.value }))}
+                  className="rounded-xl border border-orange-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none"
+                >
+                  <option value="">Select material</option>
+                  {materials.map((material) => (
+                    <option key={material.id} value={material.id}>{material.materialCode} - {material.materialName}</option>
+                  ))}
+                </select>
+                <select
+                  value={approvalForm.status}
+                  onChange={(event) => setApprovalForm((current) => ({ ...current, status: event.target.value as CreateVendorMaterialApprovalRequest["status"] }))}
+                  className="rounded-xl border border-orange-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none"
+                >
+                  <option value="APPROVED">Approved</option>
+                  <option value="CONDITIONAL">Conditional</option>
+                  <option value="SUSPENDED">Suspended</option>
+                  <option value="DISQUALIFIED">Disqualified</option>
+                </select>
+                <select
+                  value={approvalForm.approvalBasis}
+                  onChange={(event) => setApprovalForm((current) => ({ ...current, approvalBasis: event.target.value as CreateVendorMaterialApprovalRequest["approvalBasis"] }))}
+                  className="rounded-xl border border-orange-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none"
+                >
+                  <option value="AUDIT">Audit</option>
+                  <option value="DOCUMENT_REVIEW">Document Review</option>
+                  <option value="HISTORICAL">Historical</option>
+                  <option value="REGULATORY">Regulatory</option>
+                </select>
+                <input
+                  type="date"
+                  value={approvalForm.qualificationDate ?? ""}
+                  onChange={(event) => setApprovalForm((current) => ({ ...current, qualificationDate: event.target.value }))}
+                  className="rounded-xl border border-orange-200 bg-white px-3 py-2 text-xs text-slate-800 outline-none"
+                />
+                <button
+                  type="button"
+                  disabled={approvalSaving}
+                  onClick={() => void handleApprovalSubmit()}
+                  className="rounded-xl bg-orange-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                >
+                  {approvalSaving ? "Saving..." : "Add Approval"}
+                </button>
+              </div>
+
+              <div className="mt-4 overflow-hidden rounded-xl border border-orange-100">
+                {approvals.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-xs text-slate-400">No material approvals recorded for this site.</div>
+                ) : (
+                  <table className="w-full text-xs">
+                    <thead className="bg-orange-50 text-left text-[10px] uppercase text-slate-500">
+                      <tr>
+                        <th className="px-3 py-2">Supplier</th>
+                        <th className="px-3 py-2">Material</th>
+                        <th className="px-3 py-2">Status</th>
+                        <th className="px-3 py-2">Basis</th>
+                        <th className="px-3 py-2">Qualified</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {approvals.map((approval) => {
+                        const supplier = suppliers.find((item) => item.id === approval.supplierId);
+                        const material = materials.find((item) => item.id === approval.materialId);
+                        return (
+                          <tr key={approval.id} className="border-t border-orange-50">
+                            <td className="px-3 py-2 text-slate-700">{supplier ? `${supplier.supplierCode} - ${supplier.supplierName}` : approval.supplierId}</td>
+                            <td className="px-3 py-2 text-slate-700">{material ? `${material.materialCode} - ${material.materialName}` : approval.materialId}</td>
+                            <td className="px-3 py-2 text-slate-700">{approval.status}</td>
+                            <td className="px-3 py-2 text-slate-700">{approval.approvalBasis}</td>
+                            <td className="px-3 py-2 text-slate-600">{formatDate(approval.qualificationDate)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
           </div>

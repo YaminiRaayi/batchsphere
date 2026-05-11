@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Value
@@ -43,5 +44,6 @@ public class SamplingRequestResponse {
     LocalDateTime updatedAt;
     SamplingPlanResponse plan;
     SampleResponse sample;
+    List<SampleResponse> samples;
     QcDispositionResponse qcDisposition;
 }

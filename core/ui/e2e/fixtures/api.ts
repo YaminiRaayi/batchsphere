@@ -49,6 +49,160 @@ export async function createAdminApiContext() {
   });
 }
 
+async function fetchPagedAdmin<T>(pathName: string) {
+  const api = await createAdminApiContext();
+  const response = await api.get(pathName);
+  expect(response.ok()).toBeTruthy();
+  const payload = (await response.json()) as T[] | { content?: T[] };
+  await api.dispose();
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+  expect(Array.isArray(payload.content), `Expected ${pathName} to return an array or paged content`).toBeTruthy();
+  return payload.content ?? [];
+}
+
+async function findPagedAdmin<T>(pathName: string, predicate: (entry: T) => boolean, label: string) {
+  const content = await fetchPagedAdmin<T>(pathName);
+  const match = content.find(predicate);
+  expect(match, `${label} not found`).toBeTruthy();
+  return match as T;
+}
+
+export async function findSupplierByCode(code: string) {
+  return findPagedAdmin<{ id: string; supplierCode: string; supplierName: string }>(
+    "/api/suppliers?page=0&size=500",
+    (supplier) => supplier.supplierCode === code,
+    `Supplier ${code}`
+  );
+}
+
+export async function findVendorByCode(code: string) {
+  return findPagedAdmin<{ id: string; vendorCode: string; vendorName: string }>(
+    "/api/vendors?page=0&size=500",
+    (vendor) => vendor.vendorCode === code,
+    `Vendor ${code}`
+  );
+}
+
+export async function findVendorBusinessUnitByCode(code: string) {
+  return findPagedAdmin<{ id: string; buCode: string | null; unitName: string; vendorId: string }>(
+    "/api/vendor-business-units?page=0&size=500",
+    (businessUnit) => businessUnit.buCode === code,
+    `Vendor business unit ${code}`
+  );
+}
+
+export async function findSpecByCode(code: string) {
+  return findPagedAdmin<{ id: string; specCode: string; specName: string; status: string }>(
+    "/api/specs?page=0&size=500",
+    (spec) => spec.specCode === code,
+    `Spec ${code}`
+  );
+}
+
+export async function findMaterialByName(name: string) {
+  return findPagedAdmin<{ id: string; materialCode: string; materialName: string; specId: string | null }>(
+    "/api/materials?page=0&size=500",
+    (material) => material.materialName === name,
+    `Material ${name}`
+  );
+}
+
+export async function findGrnByNumber(grnNumber: string) {
+  const grn = await findPagedAdmin<{
+    id: string;
+    grnNumber: string;
+    items: Array<{ id: string; batchId: string | null; materialId: string }>;
+  }>(
+    "/api/grns?page=0&size=500&sort=createdAt,desc",
+    (grn) => grn.grnNumber === grnNumber,
+    `GRN ${grnNumber}`
+  );
+
+  const api = await createAdminApiContext();
+  const response = await api.get(`/api/grns/${grn.id}`);
+  expect(response.ok()).toBeTruthy();
+  const detail = await response.json();
+  await api.dispose();
+  return detail as {
+    id: string;
+    grnNumber: string;
+    items: Array<{ id: string; batchId: string | null; materialId: string }>;
+  };
+}
+
+export async function fetchGrnItemContainers(grnItemId: string) {
+  const api = await createAdminApiContext();
+  const response = await api.get(`/api/grns/items/${grnItemId}/containers`);
+  expect(response.ok()).toBeTruthy();
+  const containers = await response.json();
+  await api.dispose();
+  return containers as Array<{
+    id: string;
+    containerNumber: string;
+    quantity: number;
+    remainingQuantity: number;
+    status: string;
+  }>;
+}
+
+export async function findSamplingRequestByGrnItemId(grnItemId: string) {
+  return findPagedAdmin<{
+    id: string;
+    grnItemId: string;
+    materialId: string;
+    batchId: string | null;
+    requestStatus: string;
+  }>(
+    "/api/sampling-requests?page=0&size=500&sort=createdAt,desc",
+    (request) => request.grnItemId === grnItemId,
+    `Sampling request for GRN item ${grnItemId}`
+  );
+}
+
+export async function fetchAuditEvents(entityType: string, entityId: string) {
+  const api = await createAdminApiContext();
+  const params = new URLSearchParams({ entityType, entityId });
+  const response = await api.get(`/api/audit-events?${params.toString()}`);
+  expect(response.ok()).toBeTruthy();
+  const events = await response.json();
+  await api.dispose();
+  return events as Array<{
+    entityType: string;
+    entityId: string;
+    eventType: string;
+    oldValue: string | null;
+    newValue: string | null;
+    reason: string | null;
+    actor: string;
+  }>;
+}
+
+export async function fetchESignatures(entityType: string, entityId: string) {
+  const api = await createAdminApiContext();
+  const params = new URLSearchParams({ entityType, entityId });
+  const response = await api.get(`/api/e-signatures?${params.toString()}`);
+  expect(response.ok()).toBeTruthy();
+  const signatures = await response.json();
+  await api.dispose();
+  return signatures as Array<{
+    entityType: string;
+    entityId: string;
+    action: string;
+    meaning: string;
+    signerUsername: string;
+    verificationStatus: string;
+  }>;
+}
+
+export async function findWarehouseByCode(code: string) {
+  const tree = await fetchWarehouseTreeAdmin();
+  const warehouse = tree.find((entry) => entry.warehouseCode === code);
+  expect(warehouse, `Warehouse ${code} not found`).toBeTruthy();
+  return warehouse as (typeof tree)[number];
+}
+
 export async function createApprovedSpec(suffix: string) {
   const api = await createAdminApiContext();
 
@@ -270,8 +424,19 @@ export async function fetchWarehouseTreeAdmin() {
     rooms: Array<{
       id: string;
       roomCode: string;
+      roomName: string;
       racks: Array<{
         id: string;
+        rackCode: string;
+        shelves: Array<{
+          id: string;
+          shelfCode: string;
+          pallets: Array<{
+            id: string;
+            palletCode: string;
+            palletName: string;
+          }>;
+        }>;
       }>;
     }>;
   }>;

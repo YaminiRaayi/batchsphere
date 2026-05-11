@@ -1,6 +1,7 @@
 package com.batchsphere.core.masterdata.material.dto;
 
 import com.batchsphere.core.masterdata.material.entity.StorageCondition;
+import com.batchsphere.core.masterdata.material.entity.MaterialStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -68,6 +69,8 @@ public class MaterialRequest {
     private String casNumber;
 
     private String pharmacopoeialRef;
+
+    private MaterialStatus status;
 
     private String description;
 

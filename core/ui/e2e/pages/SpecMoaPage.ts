@@ -44,15 +44,24 @@ export class SpecMoaPage {
   async addSpecParameter(params: {
     name: string;
     testType?: string;
+    linkedMoaLabel?: string;
     criteriaType?: string;
     lowerLimit?: string;
     upperLimit?: string;
     unit?: string;
+    sequence?: string;
+    textCriteria?: string;
+    notes?: string;
+    compendialChapterRef?: string;
+    isMandatory?: boolean;
   }) {
     await this.page.getByRole("button", { name: "+ Add Test Parameter" }).click();
     await this.page.getByLabel("Parameter Name").fill(params.name);
     if (params.testType) {
       await this.page.getByLabel("Test Type").selectOption(params.testType);
+    }
+    if (params.linkedMoaLabel) {
+      await this.page.getByLabel("Linked MOA").selectOption({ label: params.linkedMoaLabel });
     }
     if (params.criteriaType) {
       await this.page.getByLabel("Criteria Type").selectOption(params.criteriaType);
@@ -65,6 +74,21 @@ export class SpecMoaPage {
     }
     if (params.unit) {
       await this.page.getByLabel("Unit").fill(params.unit);
+    }
+    if (params.sequence) {
+      await this.page.getByLabel("Sequence").fill(params.sequence);
+    }
+    if (params.textCriteria) {
+      await this.page.getByLabel("Text Criteria").fill(params.textCriteria);
+    }
+    if (params.notes) {
+      await this.page.getByLabel("Notes").fill(params.notes);
+    }
+    if (params.compendialChapterRef) {
+      await this.page.getByLabel("Compendial Chapter Ref").fill(params.compendialChapterRef);
+    }
+    if (params.isMandatory !== undefined) {
+      await this.page.getByLabel("Required").selectOption(String(params.isMandatory));
     }
     await this.page.getByRole("button", { name: "Add Parameter" }).click();
   }
@@ -118,8 +142,21 @@ export class SpecMoaPage {
     name: string;
     revision: string;
     methodType?: string;
+    compendialRef?: string;
+    instrumentType?: string;
+    reportableRange?: string;
+    referenceSop?: string;
+    principle?: string;
+    systemSuitabilityCriteria?: string;
+    reagentsAndStandards?: string;
+    calculationFormula?: string;
+    stabilityCondition?: string;
     validationStatus?: string;
     validationReferenceNo?: string;
+    validationAttachmentFileName?: string;
+    validationAttachmentContent?: string;
+    solutionStabilityValue?: string;
+    solutionStabilityUnit?: string;
   }) {
     await this.openNewMoa();
     await this.page.getByLabel("MOA Code *").fill(params.code);
@@ -128,11 +165,51 @@ export class SpecMoaPage {
       await this.page.getByLabel("Method Type *").selectOption(params.methodType);
     }
     await this.page.getByLabel("Revision *").fill(params.revision);
+    if (params.compendialRef) {
+      await this.page.getByLabel("Compendial Reference").selectOption(params.compendialRef);
+    }
+    if (params.instrumentType) {
+      await this.page.getByLabel("Instrument / Equipment").fill(params.instrumentType);
+    }
+    if (params.reportableRange) {
+      await this.page.getByLabel("Reportable Range").fill(params.reportableRange);
+    }
+    if (params.referenceSop) {
+      await this.page.locator("form#moa-form").locator('input[placeholder="SOP-QC-xxx.pdf"]').fill(params.referenceSop);
+    }
+    if (params.principle) {
+      await this.page.getByLabel("Analytical Principle").fill(params.principle);
+    }
+    if (params.systemSuitabilityCriteria) {
+      await this.page.getByLabel("System Suitability Criteria").fill(params.systemSuitabilityCriteria);
+    }
+    if (params.reagentsAndStandards) {
+      await this.page.getByLabel("Reagents & Standards").fill(params.reagentsAndStandards);
+    }
+    if (params.calculationFormula) {
+      await this.page.getByLabel("Calculation Formula").fill(params.calculationFormula);
+    }
+    if (params.stabilityCondition) {
+      await this.page.getByLabel("Notes / Stability Condition").fill(params.stabilityCondition);
+    }
     if (params.validationStatus) {
       await this.page.getByLabel("Validation Status *").selectOption(params.validationStatus);
     }
     if (params.validationReferenceNo) {
       await this.page.getByLabel("Validation Ref").fill(params.validationReferenceNo);
+    }
+    if (params.validationAttachmentFileName) {
+      await this.page.locator('input[type="file"]').nth(1).setInputFiles({
+        name: params.validationAttachmentFileName,
+        mimeType: "application/pdf",
+        buffer: Buffer.from(params.validationAttachmentContent ?? "e2e validation summary")
+      });
+    }
+    if (params.solutionStabilityValue) {
+      await this.page.getByLabel("Solution Stability Value").fill(params.solutionStabilityValue);
+    }
+    if (params.solutionStabilityUnit) {
+      await this.page.getByLabel("Stability Unit").selectOption(params.solutionStabilityUnit);
     }
     await this.page.getByRole("button", { name: "Save Draft" }).click();
     await expect(this.page.getByText(params.code)).toBeVisible();

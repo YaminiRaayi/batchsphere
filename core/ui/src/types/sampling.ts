@@ -87,6 +87,7 @@ export type SamplingRequest = {
   updatedAt: string | null;
   plan: SamplingPlan | null;
   sample: SampleRecord | null;
+  samples: SampleRecord[];
   qcDisposition: QcDisposition | null;
 };
 
@@ -99,11 +100,18 @@ export type SamplingContainerSample = {
   grnContainerId: string;
   containerNumber: string;
   sampledQuantity: number;
+  drawPurpose?: "IDENTITY" | "COMPOSITE_ASSAY" | "RETENTION" | "MICRO" | "OTHER" | null;
+  balanceBefore?: number | null;
+  balanceAfter?: number | null;
 };
 
 export type SamplingContainerSampleRequest = {
   grnContainerId: string;
   sampledQuantity: number;
+  drawPurpose?: "IDENTITY" | "COMPOSITE_ASSAY" | "RETENTION" | "MICRO" | "OTHER";
+  containerCondition?: string;
+  resealed?: boolean;
+  labelApplied?: boolean;
 };
 
 export type SampleRecord = {
@@ -131,6 +139,27 @@ export type SampleRecord = {
   retainedQuantity: number | null;
   retainedUntil: string | null;
   retentionExpired: boolean;
+  remarks: string | null;
+  isActive: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedBy: string | null;
+  updatedAt: string | null;
+  custodyEvents: SampleChainOfCustody[];
+};
+
+export type SampleChainOfCustody = {
+  id: string;
+  sampleId: string;
+  samplingRequestId: string;
+  eventType: "HANDOFF_TO_QC";
+  fromLocation: string | null;
+  toLocation: string | null;
+  handedOverBy: string;
+  handedOverAt: string;
+  receivedBy: string | null;
+  receivedAt: string | null;
+  receiptCondition: string | null;
   remarks: string | null;
   isActive: boolean;
   createdBy: string;
@@ -171,6 +200,13 @@ export type StartQcReviewRequest = {
 export type QcWorksheetRow = {
   id: string;
   sampleId: string;
+  worksheetId: string | null;
+  samplingRequestId: string | null;
+  specId: string | null;
+  worksheetStatus: "GENERATED" | "IN_PROGRESS" | "COMPLETE" | "REVIEWED" | null;
+  assignedAnalyst: string | null;
+  worksheetReviewer: string | null;
+  worksheetGeneratedAt: string | null;
   specParameterId: string;
   moaIdUsed: string | null;
   moaCodeUsed: string | null;
@@ -199,6 +235,34 @@ export type RecordQcWorksheetResultRequest = {
   resultText?: string;
   moaIdUsed?: string;
   remarks?: string;
+};
+
+export type AuditEvent = {
+  id: string;
+  entityType: string;
+  entityId: string;
+  eventType: "CREATE" | "UPDATE" | "STATUS_CHANGE" | "E_SIGNATURE" | "WORKFLOW_ACTION";
+  fieldName: string | null;
+  oldValue: string | null;
+  newValue: string | null;
+  reason: string | null;
+  actor: string;
+  eventAt: string;
+  source: string | null;
+};
+
+export type ESignatureRecord = {
+  id: string;
+  entityType: string;
+  entityId: string;
+  action: string;
+  meaning: string;
+  signerUsername: string;
+  signerRole: string | null;
+  signedAt: string;
+  verificationMethod: "PASSWORD" | "SESSION_CONFIRMATION";
+  verificationStatus: "VERIFIED" | "FAILED";
+  reason: string | null;
 };
 
 export type QcInvestigation = {
@@ -290,6 +354,9 @@ export type QcDecisionRequest = {
   updatedBy: string;
   confirmedBy: string;
   confirmationText: string;
+  eSignatureUsername?: string;
+  eSignaturePassword?: string;
+  eSignatureMeaning?: string;
 };
 
 export type DestroyRetainedSampleRequest = {

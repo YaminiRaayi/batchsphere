@@ -3,6 +3,7 @@ package com.batchsphere.core.transactions.sampling.dto;
 import com.batchsphere.core.masterdata.spec.entity.SpecParameterCriteriaType;
 import com.batchsphere.core.masterdata.spec.entity.SpecParameterTestType;
 import com.batchsphere.core.transactions.sampling.entity.QcTestResultStatus;
+import com.batchsphere.core.transactions.sampling.entity.QcWorksheetStatus;
 import lombok.Builder;
 import lombok.Value;
 
@@ -15,6 +16,13 @@ import java.util.UUID;
 public class QcTestResultResponse {
     UUID id;
     UUID sampleId;
+    UUID worksheetId;
+    UUID samplingRequestId;
+    UUID specId;
+    QcWorksheetStatus worksheetStatus;
+    String assignedAnalyst;
+    String worksheetReviewer;
+    LocalDateTime worksheetGeneratedAt;
     UUID specParameterId;
     UUID moaIdUsed;
     String moaCodeUsed;
