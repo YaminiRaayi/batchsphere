@@ -126,9 +126,17 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       {
         to: "/hrms/employees",
-        label: "HRMS",
+        label: "Employees",
         abbr: "HR",
         color: "#E11D48",
+        lightBg: "#FFF1F2",
+        dimBorder: "#FECDD3"
+      },
+      {
+        to: "/hrms/training",
+        label: "Training",
+        abbr: "TR",
+        color: "#BE123C",
         lightBg: "#FFF1F2",
         dimBorder: "#FECDD3"
       },

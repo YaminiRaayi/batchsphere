@@ -94,12 +94,22 @@ import type {
   UpdateCapaRequest
 } from "../types/capa";
 import type {
+  CompleteTrainingAssignmentRequest,
+  CreateRoleQualificationRequirementRequest,
+  CreateTrainingAssignmentRequest,
+  RoleQualificationRequirement,
+  TrainingAssignment
+} from "../types/training";
+import type {
   ControlledDocument,
   ControlledDocumentPage,
   ControlledDocumentStatus,
   ControlledDocumentType,
   CreateControlledDocumentRequest,
+  CreateDocumentDistributionRequest,
+  DocumentAcknowledgementRequest,
   DocumentApprovalRequest,
+  DocumentDistribution,
   DocumentRevision
 } from "../types/document-control";
 import type {
@@ -570,6 +580,63 @@ export async function submitDocumentRevision(id: string, revisionId: string) {
 
 export async function approveDocumentRevision(id: string, revisionId: string, payload: DocumentApprovalRequest) {
   return requestMutation<ControlledDocument>(`/api/documents/${id}/revisions/${revisionId}/approvals`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchDocumentDistributions(id: string) {
+  return requestJson<DocumentDistribution[]>(`/api/documents/${id}/distributions`);
+}
+
+export async function distributeDocumentRevision(id: string, revisionId: string, payload: CreateDocumentDistributionRequest) {
+  return requestMutation<DocumentDistribution[]>(`/api/documents/${id}/revisions/${revisionId}/distributions`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchMyDocumentAcknowledgements() {
+  return requestJson<DocumentDistribution[]>("/api/documents/my-acknowledgements");
+}
+
+export async function acknowledgeDocumentDistribution(distributionId: string, payload: DocumentAcknowledgementRequest) {
+  return requestMutation<DocumentDistribution>(`/api/documents/distributions/${distributionId}/acknowledge`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchTrainingAssignments(employeeId?: string) {
+  const params = new URLSearchParams();
+  if (employeeId) params.set("employeeId", employeeId);
+  return requestJson<TrainingAssignment[]>(`/api/training/assignments${params.toString() ? `?${params.toString()}` : ""}`);
+}
+
+export async function fetchMyTrainingAssignments() {
+  return requestJson<TrainingAssignment[]>("/api/training/my-assignments");
+}
+
+export async function createTrainingAssignment(payload: CreateTrainingAssignmentRequest) {
+  return requestMutation<TrainingAssignment>("/api/training/assignments", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function completeTrainingAssignment(id: string, payload: CompleteTrainingAssignmentRequest) {
+  return requestMutation<TrainingAssignment>(`/api/training/assignments/${id}/complete`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchRoleQualificationRequirements() {
+  return requestJson<RoleQualificationRequirement[]>("/api/training/requirements");
+}
+
+export async function createRoleQualificationRequirement(payload: CreateRoleQualificationRequirementRequest) {
+  return requestMutation<RoleQualificationRequirement>("/api/training/requirements", {
     method: "POST",
     body: JSON.stringify(payload)
   });

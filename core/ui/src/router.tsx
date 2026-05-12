@@ -53,6 +53,9 @@ const UserManagementPage = lazy(() =>
 const EmployeeDirectoryPage = lazy(() =>
   import("./features/hrms/EmployeeDirectoryPage").then((module) => ({ default: module.EmployeeDirectoryPage }))
 );
+const TrainingPage = lazy(() =>
+  import("./features/hrms/TrainingPage").then((module) => ({ default: module.TrainingPage }))
+);
 
 function renderLazyRoute(element: ReactNode) {
   return (
@@ -160,6 +163,7 @@ export const router = createBrowserRouter([
             element: <ProtectedRoute allowedRoles={["SUPER_ADMIN"]} />,
             children: [
               { path: "hrms/employees", element: renderLazyRoute(<EmployeeDirectoryPage />), handle: { breadcrumb: "Employees" } },
+              { path: "hrms/training", element: renderLazyRoute(<TrainingPage />), handle: { breadcrumb: "Training" } },
               { path: "hrms", element: <Navigate to="/hrms/employees" replace />, handle: { breadcrumb: "HRMS" } },
               { path: "admin/users", element: renderLazyRoute(<UserManagementPage />), handle: { breadcrumb: "User Management" } }
             ]

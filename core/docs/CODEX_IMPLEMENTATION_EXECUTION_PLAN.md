@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-10  
 **Purpose:** Step-by-step implementation plan for the pharma gaps listed in [Codex_plan_later.md](./Codex_plan_later.md) and [IMPLEMENTATION_GAP_ANALYSIS.md](./IMPLEMENTATION_GAP_ANALYSIS.md).  
-**Status:** Implementation in progress. Phase 1, Ticket 2.1, Ticket 2.3, Ticket 3.1, the backend compatibility layer for Ticket 3.2, Ticket 3.4, Phase 4, Phase 5 compliance infrastructure, Phase 6A Ticket 6A.1, Ticket 6A.2 backend guard regression coverage, Improvement 4 generic e-sign API, Ticket 6B.1 Deviation MVP, Ticket 6B.2 CAPA MVP, Ticket 6C.1 Employee / HRMS Foundation, Ticket 6C.2 Auth Hardening, and Ticket 6D.1 Controlled Documents have been implemented/verified in code.
+**Status:** Implementation in progress. Phase 1, Ticket 2.1, Ticket 2.3, Ticket 3.1, the backend compatibility layer for Ticket 3.2, Ticket 3.4, Phase 4, Phase 5 compliance infrastructure, Phase 6A Ticket 6A.1, Ticket 6A.2 backend guard regression coverage, Improvement 4 generic e-sign API, Ticket 6B.1 Deviation MVP, Ticket 6B.2 CAPA MVP, Ticket 6C.1 Employee / HRMS Foundation, Ticket 6C.2 Auth Hardening, Ticket 6D.1 Controlled Documents, Ticket 6D.2 Distribution And Acknowledgment, and Ticket 6E.1 Training Assignment have been implemented/verified in code.
 
 ---
 
@@ -27,13 +27,13 @@ Do not build every future module at once. The first objective is to make the cur
 Latest existing migration:
 
 ```text
-V72__create_controlled_document.sql
+V74__create_training_assignment.sql
 ```
 
 New migrations should start at:
 
 ```text
-V72
+V75
 ```
 
 ---

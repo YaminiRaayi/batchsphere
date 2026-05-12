@@ -90,6 +90,47 @@ class ControlledDocumentControllerIntegrationTest {
         assertTrue(approved.hasNonNull("nextReviewDate"));
         assertEquals(signatureCountBefore + 2, eSignatureRecordRepository.count());
 
+        MvcResult distributionResult = mockMvc.perform(post("/api/documents/{id}/revisions/{revisionId}/distributions", documentId, revisionId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "assignedUsernames": ["admin"],
+                                  "dueDate": "2026-06-30"
+                                }
+                                """))
+                .andReturn();
+        assertEquals(200, distributionResult.getResponse().getStatus(), distributionResult.getResponse().getContentAsString());
+        JsonNode distributions = objectMapper.readTree(distributionResult.getResponse().getContentAsString());
+        assertEquals(1, distributions.size());
+        assertEquals("ASSIGNED", distributions.get(0).get("status").asText());
+        assertEquals("admin", distributions.get(0).get("assignedUsername").asText());
+
+        String distributionId = distributions.get(0).get("id").asText();
+        MvcResult acknowledgementResult = mockMvc.perform(post("/api/documents/distributions/{distributionId}/acknowledge", distributionId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "comments": "Read and understood before GMP use.",
+                                  "username": "admin",
+                                  "password": "Admin@123",
+                                  "meaning": "I acknowledge reading and understanding this controlled document"
+                                }
+                                """))
+                .andReturn();
+        assertEquals(200, acknowledgementResult.getResponse().getStatus(), acknowledgementResult.getResponse().getContentAsString());
+        JsonNode acknowledgement = objectMapper.readTree(acknowledgementResult.getResponse().getContentAsString());
+        assertEquals("ACKNOWLEDGED", acknowledgement.get("status").asText());
+        assertTrue(acknowledgement.hasNonNull("acknowledgementESignatureId"));
+        assertEquals(signatureCountBefore + 3, eSignatureRecordRepository.count());
+
+        MvcResult myAcknowledgements = mockMvc.perform(get("/api/documents/my-acknowledgements")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn();
+        assertEquals(200, myAcknowledgements.getResponse().getStatus(), myAcknowledgements.getResponse().getContentAsString());
+        assertTrue(myAcknowledgements.getResponse().getContentAsString().contains(documentNumber));
+
         MvcResult listResult = mockMvc.perform(get("/api/documents")
                         .header("Authorization", "Bearer " + token)
                         .param("search", documentNumber))

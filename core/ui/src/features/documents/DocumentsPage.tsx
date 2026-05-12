@@ -1,11 +1,16 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  acknowledgeDocumentDistribution,
   approveDocumentRevision,
   createDocument,
   createDocumentRevision,
+  distributeDocumentRevision,
   fetchAuditEvents,
+  fetchDocumentDistributions,
   fetchDocuments,
+  fetchManagedUsers,
+  fetchMyDocumentAcknowledgements,
   submitDocumentRevision
 } from "../../lib/api";
 import { useAuthStore } from "../../stores/authStore";
@@ -14,6 +19,7 @@ import type {
   ControlledDocumentStatus,
   ControlledDocumentType,
   DocumentApproval,
+  DocumentDistribution,
   DocumentRevision
 } from "../../types/document-control";
 
@@ -38,6 +44,11 @@ const initialRevisionForm = {
   file: null as File | null
 };
 
+const initialDistributionForm = {
+  assignedUsernames: "",
+  dueDate: ""
+};
+
 export function DocumentsPage() {
   const queryClient = useQueryClient();
   const authUser = useAuthStore((state) => state.user);
@@ -50,6 +61,9 @@ export function DocumentsPage() {
   const [revisionForm, setRevisionForm] = useState(initialRevisionForm);
   const [signaturePassword, setSignaturePassword] = useState("");
   const [approvalComments, setApprovalComments] = useState("");
+  const [distributionForm, setDistributionForm] = useState(initialDistributionForm);
+  const [acknowledgementPassword, setAcknowledgementPassword] = useState("");
+  const [acknowledgementComments, setAcknowledgementComments] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery({
@@ -70,10 +84,29 @@ export function DocumentsPage() {
     enabled: Boolean(selected?.id)
   });
 
+  const { data: distributions = [] } = useQuery({
+    queryKey: ["document-distributions", selected?.id],
+    queryFn: () => fetchDocumentDistributions(selected?.id as string),
+    enabled: Boolean(selected?.id)
+  });
+
+  const { data: myAcknowledgements = [] } = useQuery({
+    queryKey: ["my-document-acknowledgements"],
+    queryFn: fetchMyDocumentAcknowledgements
+  });
+
+  const { data: managedUsers = [] } = useQuery({
+    queryKey: ["managed-users"],
+    queryFn: fetchManagedUsers
+  });
+
   const invalidateDocuments = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["documents"] }),
       selected?.id ? queryClient.invalidateQueries({ queryKey: ["audit-events", "CONTROLLED_DOCUMENT", selected.id] }) : Promise.resolve()
+      ,
+      selected?.id ? queryClient.invalidateQueries({ queryKey: ["document-distributions", selected.id] }) : Promise.resolve(),
+      queryClient.invalidateQueries({ queryKey: ["my-document-acknowledgements"] })
     ]);
   };
 
@@ -131,6 +164,41 @@ export function DocumentsPage() {
       await invalidateDocuments();
     },
     onError: (mutationError) => setActionError(mutationError instanceof Error ? mutationError.message : "Failed to approve revision")
+  });
+
+  const distributionMutation = useMutation({
+    mutationFn: () => {
+      const usernames = distributionForm.assignedUsernames
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean);
+      return distributeDocumentRevision(selected?.id ?? "", currentRevision?.id ?? "", {
+        assignedUsernames: usernames,
+        dueDate: distributionForm.dueDate || undefined
+      });
+    },
+    onSuccess: async () => {
+      setActionError(null);
+      setDistributionForm(initialDistributionForm);
+      await invalidateDocuments();
+    },
+    onError: (mutationError) => setActionError(mutationError instanceof Error ? mutationError.message : "Failed to distribute revision")
+  });
+
+  const acknowledgementMutation = useMutation({
+    mutationFn: (distribution: DocumentDistribution) => acknowledgeDocumentDistribution(distribution.id, {
+      username: authUser?.username ?? "",
+      password: acknowledgementPassword,
+      comments: acknowledgementComments.trim() || undefined,
+      meaning: "I acknowledge reading and understanding this controlled document"
+    }),
+    onSuccess: async () => {
+      setActionError(null);
+      setAcknowledgementPassword("");
+      setAcknowledgementComments("");
+      await invalidateDocuments();
+    },
+    onError: (mutationError) => setActionError(mutationError instanceof Error ? mutationError.message : "Failed to acknowledge document")
   });
 
   const errorMessage = error instanceof Error ? error.message : null;
@@ -246,8 +314,72 @@ export function DocumentsPage() {
                   </Panel>
 
                   <Panel title="Distribution State">
-                    <div className="rounded-xl border border-dashed border-violet-200 bg-violet-50 p-4 text-sm text-slate-600">
-                      Distribution and acknowledgement are planned in Ticket 6D.2. This ticket establishes the controlled source document and approval state.
+                    <div className="space-y-3">
+                      {currentRevision?.revisionStatus === "APPROVED" ? (
+                        <div className="rounded-xl border border-violet-100 bg-violet-50 p-3">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-violet-500">Assign users</label>
+                          <input
+                            value={distributionForm.assignedUsernames}
+                            onChange={(event) => setDistributionForm((current) => ({ ...current, assignedUsernames: event.target.value }))}
+                            className={fieldClass("mt-2")}
+                            placeholder="admin, qc.analyst"
+                            list="document-usernames"
+                          />
+                          <datalist id="document-usernames">
+                            {managedUsers.filter((user) => user.isActive).map((user) => <option key={user.id} value={user.username} />)}
+                          </datalist>
+                          <input
+                            type="date"
+                            value={distributionForm.dueDate}
+                            onChange={(event) => setDistributionForm((current) => ({ ...current, dueDate: event.target.value }))}
+                            className={fieldClass("mt-2")}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => distributionMutation.mutate()}
+                            disabled={distributionMutation.isPending || !distributionForm.assignedUsernames.trim()}
+                            className="mt-2 rounded-lg bg-violet-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                          >
+                            Distribute
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-violet-200 bg-violet-50 p-3 text-xs text-slate-600">
+                          Approve the current revision before distribution.
+                        </div>
+                      )}
+                      <DistributionList distributions={distributions} />
+                    </div>
+                  </Panel>
+
+                  <Panel title="My Acknowledgments">
+                    <div className="space-y-3">
+                      {myAcknowledgements.slice(0, 4).map((distribution) => {
+                        const needsAck = distribution.status !== "ACKNOWLEDGED";
+                        return (
+                          <div key={distribution.id} className="rounded-xl border border-violet-100 bg-white p-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="text-xs font-bold text-slate-800">{distribution.documentNumber} {distribution.revision}</div>
+                                <div className="mt-0.5 text-[11px] text-slate-500">{distribution.documentTitle}</div>
+                              </div>
+                              <DistributionStatusPill status={distribution.status} />
+                            </div>
+                            {needsAck ? (
+                              <div className="mt-3 space-y-2">
+                                <textarea value={acknowledgementComments} onChange={(event) => setAcknowledgementComments(event.target.value)} className={fieldClass("min-h-16")} placeholder="Acknowledgment comments" />
+                                <input type="password" value={acknowledgementPassword} onChange={(event) => setAcknowledgementPassword(event.target.value)} className={fieldClass()} placeholder={`Password for ${authUser?.username ?? "current user"}`} />
+                                <button type="button" onClick={() => acknowledgementMutation.mutate(distribution)} disabled={acknowledgementMutation.isPending || !acknowledgementPassword} className="rounded-lg bg-slate-800 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
+                                  Acknowledge With E-sign
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="mt-2 text-[11px] text-slate-500">Acknowledged {distribution.acknowledgedAt ? formatDateTime(distribution.acknowledgedAt) : ""}</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {myAcknowledgements.length === 0 ? <div className="text-sm text-slate-500">No assigned documents.</div> : null}
                     </div>
                   </Panel>
 
@@ -359,6 +491,37 @@ function ApprovalStep({ approval }: { approval: DocumentApproval }) {
       </div>
     </div>
   );
+}
+
+function DistributionList({ distributions }: { distributions: DocumentDistribution[] }) {
+  return (
+    <div className="space-y-2">
+      {distributions.map((distribution) => (
+        <div key={distribution.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="text-xs font-bold text-slate-800">{distribution.assignedUsername}</div>
+              <div className="mt-0.5 text-[11px] text-slate-500">
+                {distribution.revision} assigned by {distribution.assignedBy}
+              </div>
+            </div>
+            <DistributionStatusPill status={distribution.status} />
+          </div>
+          <div className="mt-2 grid gap-2 text-[11px] text-slate-500">
+            <span>Due: {distribution.dueDate ?? "-"}</span>
+            <span>Acknowledged: {distribution.acknowledgedAt ? formatDateTime(distribution.acknowledgedAt) : "-"}</span>
+          </div>
+          {distribution.comments ? <div className="mt-2 text-[11px] italic text-slate-500">{distribution.comments}</div> : null}
+        </div>
+      ))}
+      {distributions.length === 0 ? <div className="text-sm text-slate-500">No distributions yet.</div> : null}
+    </div>
+  );
+}
+
+function DistributionStatusPill({ status }: { status: DocumentDistribution["status"] }) {
+  const className = status === "ACKNOWLEDGED" ? "bg-green-100 text-green-700" : status === "OVERDUE" ? "bg-red-100 text-red-700" : status === "WITHDRAWN" ? "bg-slate-100 text-slate-600" : "bg-amber-100 text-amber-700";
+  return <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${className}`}>{formatLabel(status)}</span>;
 }
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {

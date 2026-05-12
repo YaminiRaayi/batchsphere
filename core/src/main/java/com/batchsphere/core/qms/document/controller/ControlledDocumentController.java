@@ -2,8 +2,11 @@ package com.batchsphere.core.qms.document.controller;
 
 import com.batchsphere.core.qms.document.dto.ControlledDocumentResponse;
 import com.batchsphere.core.qms.document.dto.CreateControlledDocumentRequest;
+import com.batchsphere.core.qms.document.dto.CreateDocumentDistributionRequest;
 import com.batchsphere.core.qms.document.dto.CreateDocumentRevisionRequest;
+import com.batchsphere.core.qms.document.dto.DocumentAcknowledgementRequest;
 import com.batchsphere.core.qms.document.dto.DocumentApprovalRequest;
+import com.batchsphere.core.qms.document.dto.DocumentDistributionResponse;
 import com.batchsphere.core.qms.document.dto.DocumentRevisionResponse;
 import com.batchsphere.core.qms.document.entity.ControlledDocumentStatus;
 import com.batchsphere.core.qms.document.entity.ControlledDocumentType;
@@ -24,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/documents")
@@ -71,6 +75,29 @@ public class ControlledDocumentController {
                                                                       @PathVariable UUID revisionId,
                                                                       @Valid @RequestBody DocumentApprovalRequest request) {
         return ResponseEntity.ok(documentService.approveRevision(id, revisionId, request));
+    }
+
+    @PostMapping("/{id}/revisions/{revisionId}/distributions")
+    public ResponseEntity<List<DocumentDistributionResponse>> distributeRevision(@PathVariable UUID id,
+                                                                                @PathVariable UUID revisionId,
+                                                                                @Valid @RequestBody CreateDocumentDistributionRequest request) {
+        return ResponseEntity.ok(documentService.distributeRevision(id, revisionId, request));
+    }
+
+    @GetMapping("/{id}/distributions")
+    public ResponseEntity<List<DocumentDistributionResponse>> getDocumentDistributions(@PathVariable UUID id) {
+        return ResponseEntity.ok(documentService.getDocumentDistributions(id));
+    }
+
+    @GetMapping("/my-acknowledgements")
+    public ResponseEntity<List<DocumentDistributionResponse>> getMyAcknowledgements() {
+        return ResponseEntity.ok(documentService.getMyAcknowledgements());
+    }
+
+    @PostMapping("/distributions/{distributionId}/acknowledge")
+    public ResponseEntity<DocumentDistributionResponse> acknowledgeDistribution(@PathVariable UUID distributionId,
+                                                                               @Valid @RequestBody DocumentAcknowledgementRequest request) {
+        return ResponseEntity.ok(documentService.acknowledgeDistribution(distributionId, request));
     }
 
     @GetMapping("/{id}/revisions/{revisionId}/file")

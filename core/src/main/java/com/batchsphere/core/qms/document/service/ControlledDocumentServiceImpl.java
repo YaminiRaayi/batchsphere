@@ -10,9 +10,12 @@ import com.batchsphere.core.exception.BusinessConflictException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.qms.document.dto.ControlledDocumentResponse;
 import com.batchsphere.core.qms.document.dto.CreateControlledDocumentRequest;
+import com.batchsphere.core.qms.document.dto.CreateDocumentDistributionRequest;
 import com.batchsphere.core.qms.document.dto.CreateDocumentRevisionRequest;
+import com.batchsphere.core.qms.document.dto.DocumentAcknowledgementRequest;
 import com.batchsphere.core.qms.document.dto.DocumentApprovalRequest;
 import com.batchsphere.core.qms.document.dto.DocumentApprovalResponse;
+import com.batchsphere.core.qms.document.dto.DocumentDistributionResponse;
 import com.batchsphere.core.qms.document.dto.DocumentRevisionResponse;
 import com.batchsphere.core.qms.document.entity.ControlledDocument;
 import com.batchsphere.core.qms.document.entity.ControlledDocumentStatus;
@@ -20,10 +23,13 @@ import com.batchsphere.core.qms.document.entity.ControlledDocumentType;
 import com.batchsphere.core.qms.document.entity.DocumentApproval;
 import com.batchsphere.core.qms.document.entity.DocumentApprovalStatus;
 import com.batchsphere.core.qms.document.entity.DocumentApprovalStep;
+import com.batchsphere.core.qms.document.entity.DocumentDistribution;
+import com.batchsphere.core.qms.document.entity.DocumentDistributionStatus;
 import com.batchsphere.core.qms.document.entity.DocumentRevision;
 import com.batchsphere.core.qms.document.entity.DocumentRevisionStatus;
 import com.batchsphere.core.qms.document.repository.ControlledDocumentRepository;
 import com.batchsphere.core.qms.document.repository.DocumentApprovalRepository;
+import com.batchsphere.core.qms.document.repository.DocumentDistributionRepository;
 import com.batchsphere.core.qms.document.repository.DocumentRevisionRepository;
 import com.batchsphere.core.storage.LocalStorageService;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +53,7 @@ public class ControlledDocumentServiceImpl implements ControlledDocumentService 
     private final ControlledDocumentRepository documentRepository;
     private final DocumentRevisionRepository revisionRepository;
     private final DocumentApprovalRepository approvalRepository;
+    private final DocumentDistributionRepository distributionRepository;
     private final LocalStorageService localStorageService;
     private final AuthenticatedActorService authenticatedActorService;
     private final AuditEventService auditEventService;
@@ -218,6 +225,114 @@ public class ControlledDocumentServiceImpl implements ControlledDocumentService 
     }
 
     @Override
+    @Transactional
+    public List<DocumentDistributionResponse> distributeRevision(UUID documentId, UUID revisionId, CreateDocumentDistributionRequest request) {
+        ControlledDocument document = getActiveDocument(documentId);
+        DocumentRevision revision = getRevision(documentId, revisionId);
+        if (document.getStatus() != ControlledDocumentStatus.EFFECTIVE || revision.getRevisionStatus() != DocumentRevisionStatus.APPROVED) {
+            throw new BusinessConflictException("Only an approved effective revision can be distributed");
+        }
+        if (!revision.getId().equals(document.getCurrentRevisionId())) {
+            throw new BusinessConflictException("Only the current effective revision can be distributed");
+        }
+        String actor = authenticatedActorService.currentActor();
+        LocalDateTime now = LocalDateTime.now();
+        List<DocumentDistribution> created = request.getAssignedUsernames().stream()
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .map(username -> {
+                    if (distributionRepository.existsByRevisionIdAndAssignedUsernameAndIsActiveTrue(revisionId, username)) {
+                        throw new BusinessConflictException("Document revision already distributed to " + username);
+                    }
+                    return distributionRepository.save(DocumentDistribution.builder()
+                            .id(UUID.randomUUID())
+                            .documentId(documentId)
+                            .revisionId(revisionId)
+                            .assignedUsername(username)
+                            .status(resolveDistributionStatus(request.getDueDate()))
+                            .dueDate(request.getDueDate())
+                            .assignedBy(actor)
+                            .assignedAt(now)
+                            .isActive(true)
+                            .build());
+                })
+                .toList();
+        if (created.isEmpty()) {
+            throw new BusinessConflictException("At least one assigned username is required");
+        }
+        auditEventService.record("CONTROLLED_DOCUMENT", documentId, AuditEventType.WORKFLOW_ACTION, "distribution",
+                null, String.valueOf(created.size()), "Controlled document revision distributed", actor, "DOCUMENT_CONTROL");
+        return created.stream()
+                .map(item -> toDistributionResponse(item, document, revision))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DocumentDistributionResponse> getDocumentDistributions(UUID documentId) {
+        ControlledDocument document = getActiveDocument(documentId);
+        return distributionRepository.findByDocumentIdAndIsActiveTrueOrderByAssignedAtDesc(documentId)
+                .stream()
+                .map(distribution -> toDistributionResponse(distribution, document, getRevision(documentId, distribution.getRevisionId())))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DocumentDistributionResponse> getMyAcknowledgements() {
+        String actor = authenticatedActorService.currentActor();
+        return distributionRepository.findByAssignedUsernameAndIsActiveTrueOrderByAssignedAtDesc(actor)
+                .stream()
+                .map(distribution -> {
+                    ControlledDocument document = getActiveDocument(distribution.getDocumentId());
+                    DocumentRevision revision = getRevision(distribution.getDocumentId(), distribution.getRevisionId());
+                    return toDistributionResponse(distribution, document, revision);
+                })
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public DocumentDistributionResponse acknowledgeDistribution(UUID distributionId, DocumentAcknowledgementRequest request) {
+        DocumentDistribution distribution = distributionRepository.findByIdAndIsActiveTrue(distributionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Document distribution not found: " + distributionId));
+        String actor = authenticatedActorService.currentActor();
+        if (!distribution.getAssignedUsername().equalsIgnoreCase(actor)) {
+            throw new BusinessConflictException("Only the assigned user can acknowledge this document");
+        }
+        if (distribution.getStatus() == DocumentDistributionStatus.ACKNOWLEDGED) {
+            throw new BusinessConflictException("Document distribution already acknowledged");
+        }
+        ControlledDocument document = getActiveDocument(distribution.getDocumentId());
+        DocumentRevision revision = getRevision(distribution.getDocumentId(), distribution.getRevisionId());
+
+        ESignatureRequest signatureRequest = new ESignatureRequest();
+        signatureRequest.setUsername(request.getUsername());
+        signatureRequest.setPassword(request.getPassword());
+        signatureRequest.setMeaning(StringUtils.hasText(request.getMeaning()) ? request.getMeaning() : "I acknowledge reading and understanding this controlled document");
+        ESignatureRecordResponse signature = eSignatureService.sign(
+                "DOCUMENT_DISTRIBUTION",
+                distributionId,
+                "ACKNOWLEDGEMENT",
+                "I acknowledge reading and understanding this controlled document",
+                actor,
+                signatureRequest,
+                request.getComments()
+        );
+
+        distribution.setStatus(DocumentDistributionStatus.ACKNOWLEDGED);
+        distribution.setAcknowledgedBy(actor);
+        distribution.setAcknowledgedAt(LocalDateTime.now());
+        distribution.setAcknowledgementESignatureId(signature.getId());
+        distribution.setComments(blankToNull(request.getComments()));
+        DocumentDistribution saved = distributionRepository.save(distribution);
+        auditEventService.record("CONTROLLED_DOCUMENT", document.getId(), AuditEventType.WORKFLOW_ACTION, "acknowledgement",
+                DocumentDistributionStatus.ASSIGNED.name(), DocumentDistributionStatus.ACKNOWLEDGED.name(), "Document acknowledged by " + actor, actor, "DOCUMENT_CONTROL");
+        return toDistributionResponse(saved, document, revision);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Resource loadRevisionFile(UUID documentId, UUID revisionId) {
         DocumentRevision revision = getRevision(documentId, revisionId);
@@ -352,6 +467,41 @@ public class ControlledDocumentServiceImpl implements ControlledDocumentService 
                 .approvedAt(approval.getApprovedAt())
                 .eSignatureId(approval.getESignatureId())
                 .build();
+    }
+
+    private DocumentDistributionResponse toDistributionResponse(DocumentDistribution distribution, ControlledDocument document, DocumentRevision revision) {
+        return DocumentDistributionResponse.builder()
+                .id(distribution.getId())
+                .documentId(distribution.getDocumentId())
+                .revisionId(distribution.getRevisionId())
+                .documentNumber(document.getDocumentNumber())
+                .documentTitle(document.getTitle())
+                .revision(revision.getRevision())
+                .assignedUsername(distribution.getAssignedUsername())
+                .status(resolveDistributionStatus(distribution))
+                .dueDate(distribution.getDueDate())
+                .assignedBy(distribution.getAssignedBy())
+                .assignedAt(distribution.getAssignedAt())
+                .acknowledgedBy(distribution.getAcknowledgedBy())
+                .acknowledgedAt(distribution.getAcknowledgedAt())
+                .acknowledgementESignatureId(distribution.getAcknowledgementESignatureId())
+                .comments(distribution.getComments())
+                .isActive(distribution.getIsActive())
+                .build();
+    }
+
+    private DocumentDistributionStatus resolveDistributionStatus(DocumentDistribution distribution) {
+        if (distribution.getStatus() == DocumentDistributionStatus.ACKNOWLEDGED || distribution.getStatus() == DocumentDistributionStatus.WITHDRAWN) {
+            return distribution.getStatus();
+        }
+        return resolveDistributionStatus(distribution.getDueDate());
+    }
+
+    private DocumentDistributionStatus resolveDistributionStatus(LocalDate dueDate) {
+        if (dueDate != null && dueDate.isBefore(LocalDate.now())) {
+            return DocumentDistributionStatus.OVERDUE;
+        }
+        return DocumentDistributionStatus.ASSIGNED;
     }
 
     private String trimRequired(String value, String message) {

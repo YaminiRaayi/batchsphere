@@ -2,8 +2,11 @@ package com.batchsphere.core.qms.document.service;
 
 import com.batchsphere.core.qms.document.dto.ControlledDocumentResponse;
 import com.batchsphere.core.qms.document.dto.CreateControlledDocumentRequest;
+import com.batchsphere.core.qms.document.dto.CreateDocumentDistributionRequest;
 import com.batchsphere.core.qms.document.dto.CreateDocumentRevisionRequest;
+import com.batchsphere.core.qms.document.dto.DocumentAcknowledgementRequest;
 import com.batchsphere.core.qms.document.dto.DocumentApprovalRequest;
+import com.batchsphere.core.qms.document.dto.DocumentDistributionResponse;
 import com.batchsphere.core.qms.document.dto.DocumentRevisionResponse;
 import com.batchsphere.core.qms.document.entity.ControlledDocumentStatus;
 import com.batchsphere.core.qms.document.entity.ControlledDocumentType;
@@ -13,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
+import java.util.List;
 
 public interface ControlledDocumentService {
     ControlledDocumentResponse createDocument(CreateControlledDocumentRequest request);
@@ -29,6 +33,14 @@ public interface ControlledDocumentService {
     ControlledDocumentResponse submitRevision(UUID documentId, UUID revisionId);
 
     ControlledDocumentResponse approveRevision(UUID documentId, UUID revisionId, DocumentApprovalRequest request);
+
+    List<DocumentDistributionResponse> distributeRevision(UUID documentId, UUID revisionId, CreateDocumentDistributionRequest request);
+
+    List<DocumentDistributionResponse> getDocumentDistributions(UUID documentId);
+
+    List<DocumentDistributionResponse> getMyAcknowledgements();
+
+    DocumentDistributionResponse acknowledgeDistribution(UUID distributionId, DocumentAcknowledgementRequest request);
 
     Resource loadRevisionFile(UUID documentId, UUID revisionId);
 }

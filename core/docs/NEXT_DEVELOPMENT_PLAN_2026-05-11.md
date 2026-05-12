@@ -2,7 +2,7 @@
 
 **Prepared:** 2026-05-11  
 **Inputs reviewed:** `BATCHSPHERE_PROJECT_STATUS_2026-04-30.md`, `IMPLEMENTATION_GAP_ANALYSIS.md`, `CODEX_IMPLEMENTATION_EXECUTION_PLAN.md`, `PHASE_6_PLAN_2026-05-11.md`, current code search through migrations V56-V66.  
-**Current baseline:** V72 `Controlled Document`; next new migration should be V73.
+**Current baseline:** V74 `Training Assignment`; next new migration should be V75.
 
 ---
 
@@ -37,7 +37,7 @@ Still genuinely open:
 |---|---|
 | QMS | Deviation MVP and CAPA MVP are implemented; Change Control is still open |
 | HRMS | No Employee entity or real user-to-employee model yet |
-| Document Control | Controlled document/revision/approval MVP implemented; distribution and acknowledgement still pending |
+| Document Control | Controlled document/revision/approval and distribution/acknowledgement MVPs implemented; MoA SOP revision linkage still pending |
 | Training | No SOP training assignment or training gate yet |
 | Compliance UI | Backend audit/e-sign exists, but reusable UI for audit timeline and e-sign dialog is incomplete |
 | Dashboard | KPI cards still need live operational wiring |
@@ -497,6 +497,8 @@ Status: Implemented.
 
 Ticket 6D.2: Distribution And Acknowledgment
 
+Status: Implemented.
+
 - Migration: `V73__create_document_distribution.sql`
 - Assign approved document revisions to users.
 - Users acknowledge assigned SOPs.
@@ -509,6 +511,15 @@ Ticket 6D.2: Distribution And Acknowledgment
   - admin distributes SOP
   - assigned user acknowledges SOP
   - document detail shows acknowledgment status
+- Implemented:
+  - `DocumentDistribution` backend model/API for assigning current approved revisions to users.
+  - document distribution list on document detail.
+  - "My Acknowledgments" panel on `/documents`.
+  - assigned-user acknowledgment action with password-backed e-signature and acknowledgement timestamp.
+  - audit event coverage for distribution and acknowledgement actions.
+  - integration test coverage for document approval, distribution, acknowledgement, e-signature creation, and my-acknowledgements retrieval.
+- Deferred:
+  - formal MoA `sopDocumentId`/revision linkage remains for the MoA enhancement pass, because current MoA records still use code-level linkage.
 
 ---
 
@@ -517,6 +528,8 @@ Ticket 6D.2: Distribution And Acknowledgment
 **Goal:** Prepare training records before enforcing training gates.
 
 Ticket 6E.1: Training Assignment
+
+Status: Implemented.
 
 - Migration: `V74__create_training_assignment.sql`
 - Entities:
@@ -538,6 +551,14 @@ Ticket 6E.1: Training Assignment
   - admin assigns training
   - user completes training
   - admin sees completed/overdue state
+- Implemented:
+  - `TrainingAssignment` backend model/API with employee, assigned username, due date, optional controlled document/revision, role, completion comments, and status.
+  - `RoleQualificationRequirement` backend model/API for role-based training requirements before enforcement gates are added.
+  - `/api/training/my-assignments` user queue.
+  - `/api/training/assignments/{id}/complete` completion action by assigned user.
+  - `/hrms/training` UI with admin assignment view, My Training queue, and role requirement setup.
+  - employee qualification status and training dates are updated when training is assigned/completed.
+  - integration test coverage for assign, my queue, complete, requirement create, and requirement list.
 
 Training gates should come after this MVP is stable:
 

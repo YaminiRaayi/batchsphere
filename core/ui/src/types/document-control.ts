@@ -5,6 +5,7 @@ export type ControlledDocumentStatus = "DRAFT" | "IN_REVIEW" | "EFFECTIVE" | "SU
 export type DocumentRevisionStatus = "DRAFT" | "IN_REVIEW" | "APPROVED" | "SUPERSEDED" | "OBSOLETE";
 export type DocumentApprovalStep = "TECHNICAL_REVIEW" | "QA_APPROVAL";
 export type DocumentApprovalStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type DocumentDistributionStatus = "ASSIGNED" | "ACKNOWLEDGED" | "OVERDUE" | "WITHDRAWN";
 
 export type DocumentApproval = {
   id: string;
@@ -60,6 +61,25 @@ export type ControlledDocument = {
   revisions: DocumentRevision[];
 };
 
+export type DocumentDistribution = {
+  id: string;
+  documentId: string;
+  revisionId: string;
+  documentNumber: string;
+  documentTitle: string;
+  revision: string;
+  assignedUsername: string;
+  status: DocumentDistributionStatus;
+  dueDate: string | null;
+  assignedBy: string;
+  assignedAt: string;
+  acknowledgedBy: string | null;
+  acknowledgedAt: string | null;
+  acknowledgementESignatureId: string | null;
+  comments: string | null;
+  isActive: boolean;
+};
+
 export type CreateControlledDocumentRequest = {
   documentNumber: string;
   title: string;
@@ -73,6 +93,18 @@ export type CreateControlledDocumentRequest = {
 };
 
 export type DocumentApprovalRequest = {
+  comments?: string;
+  username: string;
+  password: string;
+  meaning?: string;
+};
+
+export type CreateDocumentDistributionRequest = {
+  assignedUsernames: string[];
+  dueDate?: string;
+};
+
+export type DocumentAcknowledgementRequest = {
   comments?: string;
   username: string;
   password: string;
