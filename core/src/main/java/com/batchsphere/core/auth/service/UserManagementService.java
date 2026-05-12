@@ -42,6 +42,9 @@ public class UserManagementService {
                 .role(request.getRole())
                 .isActive(true)
                 .employeeId(request.getEmployeeId())
+                .failedLoginAttempts(0)
+                .passwordChangedAt(LocalDateTime.now())
+                .forcePasswordChange(false)
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -69,8 +72,12 @@ public class UserManagementService {
         user.setRole(request.getRole());
         user.setIsActive(request.getIsActive());
         user.setEmployeeId(request.getEmployeeId());
+        user.setForcePasswordChange(Boolean.TRUE.equals(request.getForcePasswordChange()));
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
             user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+            user.setPasswordChangedAt(LocalDateTime.now());
+            user.setFailedLoginAttempts(0);
+            user.setLockedUntil(null);
         }
         user.setUpdatedAt(LocalDateTime.now());
 
@@ -83,6 +90,15 @@ public class UserManagementService {
         user.setIsActive(false);
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.save(user);
+    }
+
+    @Transactional
+    public UserManagementResponse unlockUser(UUID id) {
+        User user = getUser(id);
+        user.setFailedLoginAttempts(0);
+        user.setLockedUntil(null);
+        user.setUpdatedAt(LocalDateTime.now());
+        return toResponse(userRepository.save(user));
     }
 
     private User getUser(UUID id) {
@@ -98,6 +114,10 @@ public class UserManagementService {
                 .role(user.getRole())
                 .isActive(user.getIsActive())
                 .employeeId(user.getEmployeeId())
+                .failedLoginAttempts(user.getFailedLoginAttempts())
+                .lockedUntil(user.getLockedUntil())
+                .passwordChangedAt(user.getPasswordChangedAt())
+                .forcePasswordChange(user.getForcePasswordChange())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();

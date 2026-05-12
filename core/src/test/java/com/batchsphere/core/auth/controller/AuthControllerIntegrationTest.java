@@ -61,6 +61,7 @@ class AuthControllerIntegrationTest {
         assertFalse(token.isBlank());
         assertFalse(refreshToken.isBlank());
         assertEquals("admin", root.get("user").get("username").asText());
+        assertFalse(root.get("user").get("forcePasswordChange").asBoolean());
 
         MvcResult meResult = mockMvc.perform(get("/api/auth/me")
                         .header("Authorization", "Bearer " + token))

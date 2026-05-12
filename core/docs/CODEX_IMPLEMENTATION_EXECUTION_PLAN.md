@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-10  
 **Purpose:** Step-by-step implementation plan for the pharma gaps listed in [Codex_plan_later.md](./Codex_plan_later.md) and [IMPLEMENTATION_GAP_ANALYSIS.md](./IMPLEMENTATION_GAP_ANALYSIS.md).  
-**Status:** Implementation in progress. Phase 1, Ticket 2.1, Ticket 2.3, Ticket 3.1, the backend compatibility layer for Ticket 3.2, Ticket 3.4, Phase 4, and the Phase 5 compliance infrastructure slice have been implemented/verified in code.
+**Status:** Implementation in progress. Phase 1, Ticket 2.1, Ticket 2.3, Ticket 3.1, the backend compatibility layer for Ticket 3.2, Ticket 3.4, Phase 4, Phase 5 compliance infrastructure, Phase 6A Ticket 6A.1, Ticket 6A.2 backend guard regression coverage, Improvement 4 generic e-sign API, Ticket 6B.1 Deviation MVP, Ticket 6B.2 CAPA MVP, Ticket 6C.1 Employee / HRMS Foundation, Ticket 6C.2 Auth Hardening, and Ticket 6D.1 Controlled Documents have been implemented/verified in code.
 
 ---
 
@@ -27,13 +27,13 @@ Do not build every future module at once. The first objective is to make the cur
 Latest existing migration:
 
 ```text
-V66__create_e_signature_record.sql
+V72__create_controlled_document.sql
 ```
 
 New migrations should start at:
 
 ```text
-V67
+V72
 ```
 
 ---
@@ -636,7 +636,7 @@ GET /api/audit-events?entityType=&entityId=
 
 ### Ticket 5.2: E-Signature Service
 
-**Status:** Implemented as backend infrastructure with QC final disposition wiring. Actual migration: `V66__create_e_signature_record.sql`. Password verification is supported when credentials are provided; current QC UI can continue using the typed confirmation/session flow until the reusable e-signature modal is added.
+**Status:** Implemented as backend infrastructure with QC final disposition wiring and a generic signature API. Actual migration: `V66__create_e_signature_record.sql`. Password verification is supported when credentials are provided; reusable approval dialogs should use `POST /api/e-signatures`.
 
 **Migration**
 
@@ -648,6 +648,8 @@ V66__create_e_signature_record.sql
 
 - Add `ESignatureRecord`.
 - Add credential verification service.
+- Add generic endpoint: `POST /api/e-signatures` with `{ entityType, entityId, action, username, password, meaning, reason }`.
+- Keep timeline endpoint: `GET /api/e-signatures?entityType=&entityId=`.
 - Require e-signature on:
   - Spec/MoA approval
   - QC disposition

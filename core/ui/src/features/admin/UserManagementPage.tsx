@@ -4,9 +4,12 @@ import { toast } from "sonner";
 import {
   createManagedUser,
   deactivateManagedUser,
+  fetchEmployees,
   fetchManagedUsers,
+  unlockManagedUser,
   updateManagedUser
 } from "../../lib/api";
+import type { Employee } from "../../types/employee";
 import type {
   CreateManagedUserRequest,
   ManagedUser,
@@ -32,6 +35,7 @@ type UserFormState = {
   employeeId: string;
   password: string;
   isActive: boolean;
+  forcePasswordChange: boolean;
 };
 
 const CREATE_FORM_DEFAULTS: UserFormState = {
@@ -40,7 +44,8 @@ const CREATE_FORM_DEFAULTS: UserFormState = {
   role: "VIEWER",
   employeeId: "",
   password: "",
-  isActive: true
+  isActive: true,
+  forcePasswordChange: false
 };
 
 function roleLabel(role: UserRole) {
@@ -65,7 +70,8 @@ function toUserFormState(user: ManagedUser): UserFormState {
     role: user.role,
     employeeId: user.employeeId ?? "",
     password: "",
-    isActive: user.isActive
+    isActive: user.isActive,
+    forcePasswordChange: user.forcePasswordChange
   };
 }
 
@@ -88,7 +94,8 @@ function buildUpdatePayload(form: UserFormState): UpdateManagedUserRequest {
     email: form.email.trim(),
     role: form.role,
     isActive: form.isActive,
-    employeeId: form.employeeId.trim() ? form.employeeId.trim() : null
+    employeeId: form.employeeId.trim() ? form.employeeId.trim() : null,
+    forcePasswordChange: form.forcePasswordChange
   };
 
   if (form.password.trim()) {
@@ -121,6 +128,7 @@ function UserForm({
   mode,
   form,
   setForm,
+  employees,
   onSubmit,
   onClose,
   isSubmitting,
@@ -129,6 +137,7 @@ function UserForm({
   mode: "create" | "edit";
   form: UserFormState;
   setForm: React.Dispatch<React.SetStateAction<UserFormState>>;
+  employees: Employee[];
   onSubmit: () => void;
   onClose: () => void;
   isSubmitting: boolean;
@@ -201,15 +210,20 @@ function UserForm({
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-medium text-slate-700">Employee ID</span>
-            <input
+            <span className="mb-2 block text-sm font-medium text-slate-700">Linked Employee</span>
+            <select
               data-testid={`user-form-employee-id-${mode}`}
-              type="text"
               value={form.employeeId}
               onChange={(event) => setForm((current) => ({ ...current, employeeId: event.target.value }))}
-              placeholder="Optional UUID"
               className="w-full rounded-2xl border border-sky-100 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-sky-300"
-            />
+            >
+              <option value="">No employee link</option>
+              {employees.map((employee) => (
+                <option key={employee.id} value={employee.id}>
+                  {employee.employeeCode} - {employee.fullName}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label className="block sm:col-span-2">
@@ -228,16 +242,28 @@ function UserForm({
         </div>
 
         {mode === "edit" ? (
-          <label className="mt-4 flex items-center gap-3 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-slate-700">
-            <input
-              data-testid="user-form-is-active-edit"
-              type="checkbox"
-              checked={form.isActive}
-              onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))}
-              className="h-4 w-4 rounded border-sky-300 text-sky-600 focus:ring-sky-500"
-            />
-            User is active
-          </label>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="flex items-center gap-3 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-slate-700">
+              <input
+                data-testid="user-form-is-active-edit"
+                type="checkbox"
+                checked={form.isActive}
+                onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))}
+                className="h-4 w-4 rounded border-sky-300 text-sky-600 focus:ring-sky-500"
+              />
+              User is active
+            </label>
+            <label className="flex items-center gap-3 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-slate-700">
+              <input
+                data-testid="user-form-force-password-change-edit"
+                type="checkbox"
+                checked={form.forcePasswordChange}
+                onChange={(event) => setForm((current) => ({ ...current, forcePasswordChange: event.target.checked }))}
+                className="h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+              />
+              Force password change on next login
+            </label>
+          </div>
         ) : null}
 
         {error ? (
@@ -289,13 +315,20 @@ export function UserManagementPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [deactivatingUserId, setDeactivatingUserId] = useState<string | null>(null);
+  const [unlockingUserId, setUnlockingUserId] = useState<string | null>(null);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["managed-users"],
     queryFn: fetchManagedUsers
   });
+  const { data: employeeData } = useQuery({
+    queryKey: ["employees", false],
+    queryFn: () => fetchEmployees(false)
+  });
 
   const users = data ?? [];
+  const employees = employeeData ?? [];
+  const employeeById = useMemo(() => new Map(employees.map((employee) => [employee.id, employee])), [employees]);
   const errorMessage = error instanceof Error ? error.message : error ? "Unknown error" : null;
 
   const filteredUsers = useMemo(() => {
@@ -383,6 +416,19 @@ export function UserManagementPage() {
     }
   }
 
+  async function handleUnlockUser(user: ManagedUser) {
+    setUnlockingUserId(user.id);
+    try {
+      await unlockManagedUser(user.id);
+      toast.success("User unlocked.");
+      await refetch();
+    } catch (unlockError) {
+      toast.error(unlockError instanceof Error ? unlockError.message : "Failed to unlock user.");
+    } finally {
+      setUnlockingUserId(null);
+    }
+  }
+
   return (
     <div className="space-y-5">
       <section className="flex flex-wrap items-center justify-between gap-4">
@@ -420,7 +466,7 @@ export function UserManagementPage() {
           { label: "Total Users", value: users.length },
           { label: "Active", value: users.filter((user) => user.isActive).length },
           { label: "Inactive", value: users.filter((user) => !user.isActive).length },
-          { label: "Admin Accounts", value: users.filter((user) => user.role === "SUPER_ADMIN").length }
+          { label: "Locked", value: users.filter((user) => user.lockedUntil && new Date(user.lockedUntil) > new Date()).length }
         ].map((item) => (
           <article key={item.label} className="rounded-xl border border-sky-100 bg-white p-4 shadow-sm">
             <p className="text-xs text-slate-500">{item.label}</p>
@@ -464,6 +510,7 @@ export function UserManagementPage() {
                 <th className="px-4 py-3">Role</th>
                 <th className="px-4 py-3">Employee ID</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Security</th>
                 <th className="px-4 py-3">Created</th>
                 <th className="px-4 py-3">Updated</th>
                 <th className="px-4 py-3 text-right">Actions</th>
@@ -472,11 +519,11 @@ export function UserManagementPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td className="px-4 py-8 text-slate-500" colSpan={7}>Loading users...</td>
+                  <td className="px-4 py-8 text-slate-500" colSpan={8}>Loading users...</td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-8 text-slate-500" colSpan={7}>No users match the current filter.</td>
+                  <td className="px-4 py-8 text-slate-500" colSpan={8}>No users match the current filter.</td>
                 </tr>
               ) : (
                 filteredUsers.map((user) => (
@@ -495,7 +542,9 @@ export function UserManagementPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-500">
-                      {user.employeeId ?? "—"}
+                      {user.employeeId && employeeById.get(user.employeeId)
+                        ? `${employeeById.get(user.employeeId)?.employeeCode} - ${employeeById.get(user.employeeId)?.fullName}`
+                        : user.employeeId ?? "—"}
                     </td>
                     <td className="px-4 py-3">
                       <span
@@ -509,6 +558,28 @@ export function UserManagementPage() {
                       >
                         {user.isActive ? "Active" : "Inactive"}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-1 text-xs text-slate-500">
+                        <span
+                          data-testid={`user-lock-status-${user.id}`}
+                          className={
+                            user.lockedUntil && new Date(user.lockedUntil) > new Date()
+                              ? "font-semibold text-rose-700"
+                              : "text-slate-500"
+                          }
+                        >
+                          {user.lockedUntil && new Date(user.lockedUntil) > new Date()
+                            ? `Locked until ${toLocalDate(user.lockedUntil)}`
+                            : `${user.failedLoginAttempts} failed attempts`}
+                        </span>
+                        <span
+                          data-testid={`user-force-password-change-${user.id}`}
+                          className={user.forcePasswordChange ? "font-semibold text-amber-700" : "text-slate-400"}
+                        >
+                          {user.forcePasswordChange ? "Password change required" : "Password current"}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-slate-500">{toLocalDate(user.createdAt)}</td>
                     <td className="px-4 py-3 text-slate-500">{toLocalDate(user.updatedAt)}</td>
@@ -525,6 +596,15 @@ export function UserManagementPage() {
                           className="rounded-xl border border-sky-200 px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-50"
                         >
                           Edit
+                        </button>
+                        <button
+                          data-testid={`btn-unlock-user-${user.id}`}
+                          type="button"
+                          onClick={() => void handleUnlockUser(user)}
+                          disabled={!user.lockedUntil || new Date(user.lockedUntil) <= new Date() || unlockingUserId === user.id}
+                          className="rounded-xl border border-amber-200 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
+                        >
+                          {unlockingUserId === user.id ? "Working..." : "Unlock"}
                         </button>
                         <button
                           data-testid={`btn-deactivate-user-${user.id}`}
@@ -550,6 +630,7 @@ export function UserManagementPage() {
           mode="create"
           form={createForm}
           setForm={setCreateForm}
+          employees={employees}
           onSubmit={() => void handleCreateUser()}
           onClose={() => setIsCreateOpen(false)}
           isSubmitting={isCreating}
@@ -562,6 +643,7 @@ export function UserManagementPage() {
           mode="edit"
           form={editForm}
           setForm={setEditForm}
+          employees={employees}
           onSubmit={() => void handleUpdateUser()}
           onClose={() => setEditingUser(null)}
           isSubmitting={isUpdating}

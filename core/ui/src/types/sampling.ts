@@ -265,6 +265,16 @@ export type ESignatureRecord = {
   reason: string | null;
 };
 
+export type CreateESignatureRequest = {
+  entityType: string;
+  entityId: string;
+  action: string;
+  username?: string;
+  password?: string;
+  meaning?: string;
+  reason?: string;
+};
+
 export type QcInvestigation = {
   id: string;
   qcDispositionId: string;

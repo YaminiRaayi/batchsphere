@@ -93,6 +93,61 @@ export async function findVendorBusinessUnitByCode(code: string) {
   );
 }
 
+export async function qualifyVendorBusinessUnitByCode(code: string, runId: string) {
+  const businessUnit = await findPagedAdmin<{
+    id: string;
+    vendorId: string;
+    buCode: string | null;
+    unitName: string;
+    siteType: string | null;
+    address: string | null;
+    city: string | null;
+    state: string | null;
+    country: string | null;
+  }>(
+    "/api/vendor-business-units?page=0&size=500",
+    (entry) => entry.buCode === code,
+    `Vendor business unit ${code}`
+  );
+
+  const api = await createAdminApiContext();
+  const response = await api.patch(`/api/vendor-business-units/${businessUnit.id}/qualification`, {
+    data: {
+      unitName: businessUnit.unitName,
+      buCode: businessUnit.buCode ?? undefined,
+      siteType: businessUnit.siteType ?? "MANUFACTURING",
+      address: businessUnit.address ?? "Plot 42, APIIC Industrial Park",
+      city: businessUnit.city ?? "Hyderabad",
+      state: businessUnit.state ?? "Telangana",
+      country: businessUnit.country ?? "India",
+      siteContactPerson: "Dr. Priya Sharma",
+      siteEmail: `site-${runId.toLowerCase()}@vendor.example.com`,
+      sitePhone: "+91 40 2345 6789",
+      drugLicenseNumber: `TG-MFG-${runId}`,
+      drugLicenseExpiry: "2028-12-31",
+      gmpCertBody: "WHO GMP / EU GMP",
+      gmpCertNumber: `GMP-${runId}`,
+      gmpCertExpiry: "2027-12-31",
+      isWhoGmpCertified: true,
+      isUsfda: false,
+      isEuGmp: true,
+      qualificationStatus: "QUALIFIED",
+      qualifiedDate: "2026-05-10",
+      nextRequalificationDue: "2028-05-10",
+      lastAuditDate: "2026-05-10",
+      openCapaCount: 0,
+      qaRating: 4.7,
+      deliveryScore: 98.5,
+      rejectionRate: 0.25,
+      updatedBy: "admin"
+    }
+  });
+  expect(response.ok(), await response.text()).toBeTruthy();
+  const updated = await response.json();
+  await api.dispose();
+  return updated as { id: string; qualificationStatus: string; isApproved: boolean };
+}
+
 export async function findSpecByCode(code: string) {
   return findPagedAdmin<{ id: string; specCode: string; specName: string; status: string }>(
     "/api/specs?page=0&size=500",

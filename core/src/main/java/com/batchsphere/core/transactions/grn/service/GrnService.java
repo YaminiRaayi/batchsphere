@@ -1,5 +1,6 @@
 package com.batchsphere.core.transactions.grn.service;
 
+import com.batchsphere.core.transactions.grn.dto.CoaReviewRequest;
 import com.batchsphere.core.transactions.grn.dto.CreateGrnRequest;
 import com.batchsphere.core.transactions.grn.dto.ContainerSamplingLabelRequest;
 import com.batchsphere.core.transactions.grn.dto.GrnContainerResponse;
@@ -30,6 +31,8 @@ public interface GrnService {
     Page<GrnResponse> getGrnsByVendor(UUID vendorId, Pageable pageable);
 
     GrnResponse updateGrn(UUID id, UpdateGrnRequest request);
+
+    GrnResponse reviewCoa(UUID id, CoaReviewRequest request);
 
     GrnResponse receiveGrn(UUID id, String updatedBy);
     List<GrnContainerResponse> getContainersByGrnItemId(UUID grnItemId);

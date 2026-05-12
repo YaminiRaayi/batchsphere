@@ -15,6 +15,7 @@ import {
   fetchVendorBusinessUnits,
   fetchVendors,
   receiveGrn,
+  reviewGrnCoa,
   uploadGrnDocument
 } from "../../lib/api";
 import type { Batch } from "../../types/batch";
@@ -23,6 +24,7 @@ import type { Pallet } from "../../types/location";
 import type { Supplier } from "../../types/supplier";
 import type {
   ContainerType,
+  CoaReviewStatus,
   CreateGrnRequest,
   CreateGrnItemRequest,
   Grn,
@@ -49,6 +51,16 @@ type CancelDraft = {
 };
 
 type QueueFilter = "ALL" | Grn["status"];
+
+type CoaReviewForm = {
+  coaReviewStatus: CoaReviewStatus;
+  coaReviewRemarks: string;
+  temperatureOnArrival: string;
+  coldChainCompliant: boolean;
+  containerCondition: string;
+  labelVerificationStatus: string;
+  quantityVarianceReason: string;
+};
 
 function formatQuantity(value: number, uom: string) {
   return `${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value)} ${uom}`;
@@ -168,6 +180,24 @@ function buildLabelPrintHtml(data: GrnLabelPrintData) {
 const containerTypes: ContainerType[] = ["BAG", "DRUM", "BOX", "CAN", "BOTTLE", "FIBER_DRUM"];
 const qcStatuses: QcStatus[] = ["PENDING", "APPROVED", "REJECTED", "PARTIALLY_APPROVED"];
 const PAGE_SIZE = 15;
+const coaStatusLabels: Record<CoaReviewStatus, string> = {
+  PENDING: "Pending",
+  IN_REVIEW: "In Review",
+  ACCEPTED: "Accepted",
+  REJECTED: "Rejected"
+};
+
+function createCoaReviewForm(grn?: Grn | null): CoaReviewForm {
+  return {
+    coaReviewStatus: grn?.coaReviewStatus ?? "PENDING",
+    coaReviewRemarks: grn?.coaReviewRemarks ?? "",
+    temperatureOnArrival: grn?.temperatureOnArrival != null ? String(grn.temperatureOnArrival) : "",
+    coldChainCompliant: grn?.coldChainCompliant ?? true,
+    containerCondition: grn?.containerCondition ?? "",
+    labelVerificationStatus: grn?.labelVerificationStatus ?? "",
+    quantityVarianceReason: grn?.quantityVarianceReason ?? ""
+  };
+}
 
 function createEmptyGrnItem(): CreateGrnItemRequest {
   return {
@@ -238,6 +268,8 @@ export function GrnPage() {
   const [containerPage, setContainerPage] = useState(0);
   const [queueFilter, setQueueFilter] = useState<QueueFilter>("ALL");
   const [queueSearch, setQueueSearch] = useState("");
+  const [coaReviewForm, setCoaReviewForm] = useState<CoaReviewForm>(() => createCoaReviewForm());
+  const [coaReviewSaving, setCoaReviewSaving] = useState(false);
   const detailSectionRef = useRef<HTMLElement | null>(null);
   const [createDocumentDraft, setCreateDocumentDraft] = useState<DocumentDraft>({
     lineItemIndex: 0,
@@ -370,6 +402,7 @@ export function GrnPage() {
     try {
       const grn = await fetchGrnById(grnId);
       setSelectedGrn(grn);
+      setCoaReviewForm(createCoaReviewForm(grn));
 
       const containerPairs = await Promise.all(
         grn.items.map(async (item) => [item.id, await fetchGrnItemContainers(item.id)] as const)
@@ -544,6 +577,36 @@ export function GrnPage() {
       setError(message);
     } finally {
       setReceivingGrnId(null);
+    }
+  }
+
+  async function handleCoaReviewSubmit(grnId: string) {
+    setCoaReviewSaving(true);
+    setError(null);
+    setQueueMessage(null);
+
+    try {
+      const updatedGrn = await reviewGrnCoa(grnId, {
+        coaReviewStatus: coaReviewForm.coaReviewStatus,
+        coaReviewRemarks: coaReviewForm.coaReviewRemarks.trim() || undefined,
+        temperatureOnArrival: coaReviewForm.temperatureOnArrival
+          ? Number(coaReviewForm.temperatureOnArrival)
+          : undefined,
+        coldChainCompliant: coaReviewForm.coldChainCompliant,
+        containerCondition: coaReviewForm.containerCondition.trim() || undefined,
+        labelVerificationStatus: coaReviewForm.labelVerificationStatus.trim() || undefined,
+        quantityVarianceReason: coaReviewForm.quantityVarianceReason.trim() || undefined
+      });
+      setSelectedGrn(updatedGrn);
+      setCoaReviewForm(createCoaReviewForm(updatedGrn));
+      await loadGrns(currentPage);
+      setQueueMessage(`CoA review updated for ${updatedGrn.grnNumber}.`);
+    } catch (reviewError) {
+      const message =
+        reviewError instanceof Error ? reviewError.message : "Unknown error while saving CoA review";
+      setError(message);
+    } finally {
+      setCoaReviewSaving(false);
     }
   }
 
@@ -957,6 +1020,111 @@ export function GrnPage() {
                                   </div>
                                 </div>
                               ))}
+                            </div>
+                          </div>
+
+                          <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                                <div className="h-4 w-1 rounded bg-emerald-500" />
+                                CoA Review
+                              </div>
+                              <span className={[
+                                "rounded-full px-3 py-1 text-[10px] font-semibold",
+                                selectedGrn.coaReviewStatus === "ACCEPTED"
+                                  ? "bg-green-100 text-green-700"
+                                  : selectedGrn.coaReviewStatus === "REJECTED"
+                                    ? "bg-red-100 text-red-700"
+                                    : "bg-amber-100 text-amber-700"
+                              ].join(" ")}>
+                                {coaStatusLabels[selectedGrn.coaReviewStatus]}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <label className="text-[11px] font-semibold text-slate-500">
+                                Status
+                                <select
+                                  value={coaReviewForm.coaReviewStatus}
+                                  onChange={(event) => setCoaReviewForm((current) => ({ ...current, coaReviewStatus: event.target.value as CoaReviewStatus }))}
+                                  className="mt-1 w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-blue-300"
+                                >
+                                  {(Object.keys(coaStatusLabels) as CoaReviewStatus[]).map((status) => (
+                                    <option key={status} value={status}>{coaStatusLabels[status]}</option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label className="text-[11px] font-semibold text-slate-500">
+                                Arrival temp
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={coaReviewForm.temperatureOnArrival}
+                                  onChange={(event) => setCoaReviewForm((current) => ({ ...current, temperatureOnArrival: event.target.value }))}
+                                  placeholder="25.00"
+                                  className="mt-1 w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-blue-300"
+                                />
+                              </label>
+                              <label className="text-[11px] font-semibold text-slate-500">
+                                Container condition
+                                <input
+                                  value={coaReviewForm.containerCondition}
+                                  onChange={(event) => setCoaReviewForm((current) => ({ ...current, containerCondition: event.target.value }))}
+                                  placeholder="Intact"
+                                  className="mt-1 w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-blue-300"
+                                />
+                              </label>
+                              <label className="text-[11px] font-semibold text-slate-500">
+                                Label verification
+                                <input
+                                  value={coaReviewForm.labelVerificationStatus}
+                                  onChange={(event) => setCoaReviewForm((current) => ({ ...current, labelVerificationStatus: event.target.value }))}
+                                  placeholder="Matched"
+                                  className="mt-1 w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-blue-300"
+                                />
+                              </label>
+                              <label className="col-span-2 flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-semibold text-slate-700">
+                                <input
+                                  type="checkbox"
+                                  checked={coaReviewForm.coldChainCompliant}
+                                  onChange={(event) => setCoaReviewForm((current) => ({ ...current, coldChainCompliant: event.target.checked }))}
+                                  className="h-4 w-4 rounded border-blue-200 text-blue-600"
+                                />
+                                Cold-chain / storage condition compliant
+                              </label>
+                              <label className="col-span-2 text-[11px] font-semibold text-slate-500">
+                                Review remarks
+                                <textarea
+                                  rows={3}
+                                  value={coaReviewForm.coaReviewRemarks}
+                                  onChange={(event) => setCoaReviewForm((current) => ({ ...current, coaReviewRemarks: event.target.value }))}
+                                  placeholder="CoA matches approved specification, batch, and label details."
+                                  className="mt-1 w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-blue-300"
+                                />
+                              </label>
+                              <label className="col-span-2 text-[11px] font-semibold text-slate-500">
+                                Quantity variance reason
+                                <input
+                                  value={coaReviewForm.quantityVarianceReason}
+                                  onChange={(event) => setCoaReviewForm((current) => ({ ...current, quantityVarianceReason: event.target.value }))}
+                                  placeholder="No variance observed"
+                                  className="mt-1 w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-xs text-slate-800 outline-none focus:border-blue-300"
+                                />
+                              </label>
+                            </div>
+                            <div className="mt-3 flex items-center justify-between gap-3 border-t border-blue-50 pt-3">
+                              <div className="text-[11px] text-slate-500">
+                                {selectedGrn.coaReviewedBy
+                                  ? `Reviewed by ${selectedGrn.coaReviewedBy} · ${formatDisplayDateTime(selectedGrn.coaReviewedAt)}`
+                                  : "Pending QC review of CoA and receipt condition"}
+                              </div>
+                              <button
+                                type="button"
+                                disabled={coaReviewSaving}
+                                onClick={() => void handleCoaReviewSubmit(selectedGrn.id)}
+                                className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                              >
+                                {coaReviewSaving ? "Saving..." : "Save Review"}
+                              </button>
                             </div>
                           </div>
 

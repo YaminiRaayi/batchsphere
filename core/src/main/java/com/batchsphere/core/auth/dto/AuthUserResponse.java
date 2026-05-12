@@ -11,6 +11,7 @@ public record AuthUserResponse(
         String username,
         String email,
         UserRole role,
-        UUID employeeId
+        UUID employeeId,
+        Boolean forcePasswordChange
 ) {
 }

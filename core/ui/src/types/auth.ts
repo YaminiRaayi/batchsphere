@@ -4,6 +4,7 @@ export type AuthUser = {
   email: string;
   role: string;
   employeeId: string | null;
+  forcePasswordChange: boolean;
 };
 
 export type LoginResponse = {

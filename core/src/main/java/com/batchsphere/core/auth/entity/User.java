@@ -47,6 +47,18 @@ public class User {
     @Column(name = "employee_id")
     private UUID employeeId;
 
+    @Column(name = "failed_login_attempts", nullable = false)
+    private Integer failedLoginAttempts;
+
+    @Column(name = "locked_until")
+    private LocalDateTime lockedUntil;
+
+    @Column(name = "password_changed_at")
+    private LocalDateTime passwordChangedAt;
+
+    @Column(name = "force_password_change", nullable = false)
+    private Boolean forcePasswordChange;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

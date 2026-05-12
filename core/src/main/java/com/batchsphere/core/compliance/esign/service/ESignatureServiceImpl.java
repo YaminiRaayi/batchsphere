@@ -2,6 +2,8 @@ package com.batchsphere.core.compliance.esign.service;
 
 import com.batchsphere.core.auth.entity.User;
 import com.batchsphere.core.auth.repository.UserRepository;
+import com.batchsphere.core.auth.service.AuthenticatedActorService;
+import com.batchsphere.core.compliance.esign.dto.CreateESignatureRequest;
 import com.batchsphere.core.compliance.esign.dto.ESignatureRequest;
 import com.batchsphere.core.compliance.esign.dto.ESignatureRecordResponse;
 import com.batchsphere.core.compliance.esign.entity.ESignatureRecord;
@@ -25,6 +27,20 @@ public class ESignatureServiceImpl implements ESignatureService {
     private final ESignatureRecordRepository eSignatureRecordRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuthenticatedActorService authenticatedActorService;
+
+    @Override
+    public ESignatureRecordResponse sign(CreateESignatureRequest request) {
+        String action = request.getAction() != null ? request.getAction().trim() : null;
+        return sign(
+                request.getEntityType() != null ? request.getEntityType().trim() : null,
+                request.getEntityId(),
+                action,
+                action,
+                authenticatedActorService.currentActor(),
+                request,
+                request.getReason());
+    }
 
     @Override
     public ESignatureRecordResponse sign(String entityType,
@@ -54,9 +70,9 @@ public class ESignatureServiceImpl implements ESignatureService {
 
         ESignatureRecord record = eSignatureRecordRepository.save(ESignatureRecord.builder()
                 .id(UUID.randomUUID())
-                .entityType(entityType)
+                .entityType(entityType.trim())
                 .entityId(entityId)
-                .action(action)
+                .action(action.trim())
                 .meaning(StringUtils.hasText(request != null ? request.getMeaning() : null)
                         ? request.getMeaning().trim()
                         : defaultMeaning)

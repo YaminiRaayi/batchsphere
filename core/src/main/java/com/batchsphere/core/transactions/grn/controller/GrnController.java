@@ -1,5 +1,6 @@
 package com.batchsphere.core.transactions.grn.controller;
 
+import com.batchsphere.core.transactions.grn.dto.CoaReviewRequest;
 import com.batchsphere.core.transactions.grn.dto.CreateGrnRequest;
 import com.batchsphere.core.transactions.grn.dto.ContainerSamplingLabelRequest;
 import com.batchsphere.core.transactions.grn.dto.GrnContainerResponse;
@@ -65,6 +66,11 @@ public class GrnController {
     @PutMapping("/{id}")
     public ResponseEntity<GrnResponse> updateGrn(@PathVariable UUID id, @Valid @RequestBody UpdateGrnRequest request) {
         return ResponseEntity.ok(grnService.updateGrn(id, request));
+    }
+
+    @PostMapping("/{id}/coa-review")
+    public ResponseEntity<GrnResponse> reviewCoa(@PathVariable UUID id, @Valid @RequestBody CoaReviewRequest request) {
+        return ResponseEntity.ok(grnService.reviewCoa(id, request));
     }
 
     @PostMapping("/{id}/receive")

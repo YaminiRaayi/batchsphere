@@ -3,6 +3,8 @@
 **Prepared:** 2026-04-30  
 **Scope:** Full codebase review across backend (Java/Spring Boot), frontend (React/TypeScript), database migrations (V1–V53), and existing documentation.
 
+> Status note (2026-05-11): this file is now historical. Use `NEXT_DEVELOPMENT_PLAN_2026-05-11.md` and `CODEX_IMPLEMENTATION_EXECUTION_PLAN.md` for the active implementation path, because multiple gaps listed here have since been closed by migrations V56-V67 and related UI/service work.
+
 ---
 
 ## 1. Project Summary

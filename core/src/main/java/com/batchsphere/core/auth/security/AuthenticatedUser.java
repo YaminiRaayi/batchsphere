@@ -6,6 +6,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +21,8 @@ public class AuthenticatedUser implements UserDetails {
     private final String role;
     private final UUID employeeId;
     private final boolean active;
+    private final boolean locked;
+    private final boolean forcePasswordChange;
 
     public AuthenticatedUser(User user) {
         this.id = user.getId();
@@ -29,6 +32,8 @@ public class AuthenticatedUser implements UserDetails {
         this.role = user.getRole().name();
         this.employeeId = user.getEmployeeId();
         this.active = Boolean.TRUE.equals(user.getIsActive());
+        this.locked = user.getLockedUntil() != null && user.getLockedUntil().isAfter(LocalDateTime.now());
+        this.forcePasswordChange = Boolean.TRUE.equals(user.getForcePasswordChange());
     }
 
     @Override
@@ -53,7 +58,7 @@ public class AuthenticatedUser implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return active;
+        return active && !locked;
     }
 
     @Override

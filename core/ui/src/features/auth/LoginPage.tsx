@@ -33,6 +33,11 @@ export function LoginPage() {
 
     try {
       const response = await login(username.trim(), password);
+      if (response.user.forcePasswordChange) {
+        setAccessToken(null);
+        setError("Password change is required before access. Contact an administrator to reset this account password.");
+        return;
+      }
       setAccessToken(response.accessToken);
       setSession({
         accessToken: response.accessToken,

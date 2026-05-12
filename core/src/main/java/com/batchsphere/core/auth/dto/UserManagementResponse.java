@@ -14,6 +14,10 @@ public record UserManagementResponse(
         UserRole role,
         Boolean isActive,
         UUID employeeId,
+        Integer failedLoginAttempts,
+        LocalDateTime lockedUntil,
+        LocalDateTime passwordChangedAt,
+        Boolean forcePasswordChange,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

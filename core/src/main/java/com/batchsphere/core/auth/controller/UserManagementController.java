@@ -42,6 +42,11 @@ public class UserManagementController {
         return ResponseEntity.ok(userManagementService.updateUser(id, request));
     }
 
+    @PostMapping("/{id}/unlock")
+    public ResponseEntity<UserManagementResponse> unlockUser(@PathVariable UUID id) {
+        return ResponseEntity.ok(userManagementService.unlockUser(id));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deactivateUser(@PathVariable UUID id) {
         userManagementService.deactivateUser(id);

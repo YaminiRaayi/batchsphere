@@ -71,7 +71,21 @@ export class VmsPage {
     if (params.gmpExpiryDate) {
       await this.page.getByLabel("GMP expiry").fill(params.gmpExpiryDate);
     }
+    this.page.on("console", (msg) => {
+      if (msg.type() === "error") {
+        console.log(`[Browser Console Error]: ${msg.text()}`);
+      }
+    });
+    const responsePromise = this.page.waitForResponse((resp) =>
+      resp.url().includes("/api/suppliers") && resp.request().method() === "POST"
+    );
     await this.page.getByRole("button", { name: "Create supplier" }).click();
+    const response = await responsePromise;
+    const responseBody = await response.text();
+    console.log(`[API Response]: ${response.status()} - ${responseBody}`);
+    if (!response.ok()) {
+      throw new Error(`Supplier creation failed: ${response.status()} - ${responseBody}`);
+    }
     await expect(
       this.page
         .getByText(`Supplier ${params.code} created successfully.`)
@@ -307,7 +321,7 @@ export class VmsPage {
   }
 
   async openEditSelectedSite() {
-    await this.page.getByRole("button", { name: "Edit" }).click();
+    await this.page.getByRole("button", { name: "Edit" }).first().click();
     await expect(this.page.getByRole("heading", { name: "Edit Business Unit" })).toBeVisible();
   }
 
@@ -418,14 +432,34 @@ export class VmsPage {
   }
 
   async ensureSelectedSiteQualified() {
-    const approveButton = this.page.getByRole("button", { name: "Approve Site" });
-    if (await approveButton.count()) {
-      await approveButton.click();
+    const qualifiedStatus = this.page.locator("div.rounded-xl").filter({ hasText: /^QualificationQualified$/ }).first();
+    if (await qualifiedStatus.isVisible({ timeout: 1000 }).catch(() => false)) {
+      return;
     }
+
+    const approveButton = this.page.getByRole("button", { name: "Approve Site", exact: true });
+    if (await approveButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await approveButton.click();
+      await expect(this.page.locator("div.rounded-xl").filter({ hasText: /^QualificationQualified$/ }).first()).toBeVisible();
+      return;
+    }
+
+    await this.openEditSelectedSite();
+    const form = this.page.locator("form#vbu-form");
+    await form.getByLabel("Status").selectOption("QUALIFIED");
+    const saveResponse = this.page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/vendor-business-units/") &&
+        response.request().method() === "PUT"
+    );
+    await this.page.getByRole("button", { name: "Save Changes" }).click();
+    const response = await saveResponse;
+    expect(response.ok(), await response.text()).toBeTruthy();
+    await expect(this.page.locator("div.rounded-xl").filter({ hasText: /^QualificationQualified$/ }).first()).toBeVisible();
   }
 
   async expectSelectedSiteQualified() {
-    const qualificationCard = this.page.locator("div").filter({ hasText: "Qualification" }).filter({ hasText: "Qualified" }).first();
+    const qualificationCard = this.page.locator("div.rounded-xl").filter({ hasText: /^QualificationQualified$/ }).first();
     await expect(qualificationCard).toBeVisible();
   }
 

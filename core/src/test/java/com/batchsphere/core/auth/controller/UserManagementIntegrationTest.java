@@ -65,6 +65,8 @@ class UserManagementIntegrationTest {
         String userId = createdUser.get("id").asText();
         assertEquals("viewer_one", createdUser.get("username").asText());
         assertTrue(createdUser.get("isActive").asBoolean());
+        assertEquals(0, createdUser.get("failedLoginAttempts").asInt());
+        assertFalse(createdUser.get("forcePasswordChange").asBoolean());
 
         MvcResult listResult = mockMvc.perform(get("/api/auth/users")
                         .header("Authorization", "Bearer " + adminToken))
@@ -80,6 +82,7 @@ class UserManagementIntegrationTest {
                                   "email": "viewer.updated@batchsphere.local",
                                   "role": "PROCUREMENT",
                                   "isActive": true,
+                                  "forcePasswordChange": true,
                                   "password": "Viewer@456"
                                 }
                                 """))
@@ -88,6 +91,7 @@ class UserManagementIntegrationTest {
         JsonNode updatedUser = objectMapper.readTree(updateResult.getResponse().getContentAsString());
         assertEquals("viewer.updated@batchsphere.local", updatedUser.get("email").asText());
         assertEquals("PROCUREMENT", updatedUser.get("role").asText());
+        assertTrue(updatedUser.get("forcePasswordChange").asBoolean());
 
         String updatedToken = login("viewer_one", "Viewer@456");
         assertFalse(updatedToken.isBlank());
@@ -98,6 +102,64 @@ class UserManagementIntegrationTest {
         assertEquals(204, deactivateResult.getResponse().getStatus(), deactivateResult.getResponse().getContentAsString());
 
         assertFalse(userRepository.findByUsername("viewer_one").orElseThrow().getIsActive());
+    }
+
+    @Test
+    void superAdminCanUnlockLockedUser() throws Exception {
+        String adminToken = login("admin", "Admin@123");
+
+        MvcResult createResult = mockMvc.perform(post("/api/auth/users")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "locked.viewer",
+                                  "email": "locked.viewer@batchsphere.local",
+                                  "password": "Viewer@123",
+                                  "role": "VIEWER"
+                                }
+                                """))
+                .andReturn();
+        assertEquals(200, createResult.getResponse().getStatus(), createResult.getResponse().getContentAsString());
+
+        for (int attempt = 0; attempt < 5; attempt++) {
+            MvcResult failedLogin = mockMvc.perform(post("/api/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "username": "locked.viewer",
+                                      "password": "Wrong@123"
+                                    }
+                                    """))
+                    .andReturn();
+            assertEquals(409, failedLogin.getResponse().getStatus(), failedLogin.getResponse().getContentAsString());
+        }
+
+        var lockedUser = userRepository.findByUsername("locked.viewer").orElseThrow();
+        assertEquals(5, lockedUser.getFailedLoginAttempts());
+        assertTrue(lockedUser.getLockedUntil() != null);
+
+        MvcResult lockedLogin = mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "locked.viewer",
+                                  "password": "Viewer@123"
+                                }
+                                """))
+                .andReturn();
+        assertEquals(409, lockedLogin.getResponse().getStatus(), lockedLogin.getResponse().getContentAsString());
+        assertTrue(lockedLogin.getResponse().getContentAsString().contains("locked"));
+
+        MvcResult unlockResult = mockMvc.perform(post("/api/auth/users/" + lockedUser.getId() + "/unlock")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andReturn();
+        assertEquals(200, unlockResult.getResponse().getStatus(), unlockResult.getResponse().getContentAsString());
+        JsonNode unlocked = objectMapper.readTree(unlockResult.getResponse().getContentAsString());
+        assertEquals(0, unlocked.get("failedLoginAttempts").asInt());
+        assertTrue(unlocked.get("lockedUntil").isNull());
+
+        assertFalse(login("locked.viewer", "Viewer@123").isBlank());
     }
 
     private String login(String username, String password) throws Exception {

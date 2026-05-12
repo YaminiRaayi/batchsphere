@@ -1,6 +1,8 @@
 package com.batchsphere.core.transactions.grn.service;
 
 import com.batchsphere.core.auth.service.AuthenticatedActorService;
+import com.batchsphere.core.compliance.audit.entity.AuditEventType;
+import com.batchsphere.core.compliance.audit.service.AuditEventService;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
@@ -13,6 +15,7 @@ import com.batchsphere.core.batch.repository.BatchRepository;
 import com.batchsphere.core.exception.BusinessConflictException;
 import com.batchsphere.core.exception.DuplicateResourceException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
+import com.batchsphere.core.transactions.grn.dto.CoaReviewRequest;
 import com.batchsphere.core.transactions.grn.dto.CreateGrnRequest;
 import com.batchsphere.core.transactions.grn.dto.ContainerSamplingLabelRequest;
 import com.batchsphere.core.transactions.grn.dto.GrnContainerResponse;
@@ -25,6 +28,7 @@ import com.batchsphere.core.transactions.grn.dto.MaterialLabelResponse;
 import com.batchsphere.core.transactions.grn.dto.GrnResponse;
 import com.batchsphere.core.transactions.grn.dto.GrnSummaryResponse;
 import com.batchsphere.core.transactions.grn.dto.UpdateGrnRequest;
+import com.batchsphere.core.transactions.grn.entity.CoaReviewStatus;
 import com.batchsphere.core.transactions.grn.entity.GrnContainer;
 import com.batchsphere.core.transactions.grn.entity.GrnDocument;
 import com.batchsphere.core.transactions.grn.entity.Grn;
@@ -113,6 +117,7 @@ public class GrnServiceImpl implements GrnService {
     private final SamplingService samplingService;
     private final LocalStorageService localStorageService;
     private final AuthenticatedActorService authenticatedActorService;
+    private final AuditEventService auditEventService;
 
     @Override
     @Transactional
@@ -133,6 +138,7 @@ public class GrnServiceImpl implements GrnService {
                 .receiptDate(request.getReceiptDate())
                 .invoiceNumber(request.getInvoiceNumber())
                 .remarks(request.getRemarks())
+                .coaReviewStatus(CoaReviewStatus.PENDING)
                 .status(GrnStatus.DRAFT)
                 .isActive(true)
                 .createdBy(actor)
@@ -143,6 +149,41 @@ public class GrnServiceImpl implements GrnService {
         List<GrnItem> savedItems = createItems(savedGrn.getId(), request.getItems(), actor);
 
         return toResponse(savedGrn, savedItems);
+    }
+
+    @Override
+    @Transactional
+    public GrnResponse reviewCoa(UUID id, CoaReviewRequest request) {
+        String actor = authenticatedActorService.currentActor();
+        Grn grn = getActiveGrn(id);
+        CoaReviewStatus oldStatus = grn.getCoaReviewStatus();
+        CoaReviewStatus nextStatus = request.getCoaReviewStatus();
+
+        grn.setCoaReviewStatus(nextStatus);
+        grn.setCoaReviewedBy(actor);
+        grn.setCoaReviewedAt(LocalDateTime.now());
+        grn.setCoaReviewRemarks(blankToNull(request.getCoaReviewRemarks()));
+        grn.setTemperatureOnArrival(request.getTemperatureOnArrival());
+        grn.setColdChainCompliant(request.getColdChainCompliant());
+        grn.setContainerCondition(blankToNull(request.getContainerCondition()));
+        grn.setLabelVerificationStatus(blankToNull(request.getLabelVerificationStatus()));
+        grn.setQuantityVarianceReason(blankToNull(request.getQuantityVarianceReason()));
+        grn.setUpdatedBy(actor);
+        grn.setUpdatedAt(LocalDateTime.now());
+
+        Grn savedGrn = grnRepository.save(grn);
+        auditEventService.record(
+                "GRN",
+                savedGrn.getId(),
+                AuditEventType.STATUS_CHANGE,
+                "coaReviewStatus",
+                oldStatus == null ? null : oldStatus.name(),
+                nextStatus.name(),
+                request.getCoaReviewRemarks(),
+                actor,
+                "GRN_COA_REVIEW"
+        );
+        return toResponse(savedGrn, grnItemRepository.findByGrnIdAndIsActiveTrueOrderByLineNumber(id));
     }
 
     @Override
@@ -783,6 +824,15 @@ public class GrnServiceImpl implements GrnService {
                 .receiptDate(grn.getReceiptDate())
                 .invoiceNumber(grn.getInvoiceNumber())
                 .remarks(grn.getRemarks())
+                .coaReviewStatus(grn.getCoaReviewStatus())
+                .coaReviewedBy(grn.getCoaReviewedBy())
+                .coaReviewedAt(grn.getCoaReviewedAt())
+                .coaReviewRemarks(grn.getCoaReviewRemarks())
+                .temperatureOnArrival(grn.getTemperatureOnArrival())
+                .coldChainCompliant(grn.getColdChainCompliant())
+                .containerCondition(grn.getContainerCondition())
+                .labelVerificationStatus(grn.getLabelVerificationStatus())
+                .quantityVarianceReason(grn.getQuantityVarianceReason())
                 .status(grn.getStatus())
                 .isActive(grn.getIsActive())
                 .createdBy(grn.getCreatedBy())
@@ -791,6 +841,10 @@ public class GrnServiceImpl implements GrnService {
                 .updatedAt(grn.getUpdatedAt())
                 .items(items.stream().map(this::toItemResponse).toList())
                 .build();
+    }
+
+    private String blankToNull(String value) {
+        return value == null || value.trim().isEmpty() ? null : value.trim();
     }
 
     private GrnItemResponse toItemResponse(GrnItem item) {

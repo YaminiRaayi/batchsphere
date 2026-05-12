@@ -29,4 +29,6 @@ public class UpdateUserRequest {
     private String password;
 
     private UUID employeeId;
+
+    private Boolean forcePasswordChange;
 }

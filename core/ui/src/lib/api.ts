@@ -6,6 +6,7 @@ import type {
   ManagedUser,
   UpdateManagedUserRequest
 } from "../types/user-management";
+import type { Employee, EmployeeRequest } from "../types/employee";
 import type { CreateMoaRequest, Moa } from "../types/moa";
 import type { InventoryRecord, InventorySummary, InventoryTransaction } from "../types/inventory";
 import type {
@@ -48,6 +49,7 @@ import type {
 } from "../types/vendor-material-approval";
 import type {
   CreateGrnRequest,
+  CoaReviewRequest,
   Grn,
   GrnContainer,
   GrnLabelPrintData,
@@ -59,6 +61,7 @@ import type {
 import type {
   CompleteQaInvestigationReviewRequest,
   AuditEvent,
+  CreateESignatureRequest,
   DestroyRetainedSampleRequest,
   ESignatureRecord,
   EscalateQcInvestigationRequest,
@@ -76,6 +79,29 @@ import type {
   SamplingSummary,
   StartQcReviewRequest
 } from "../types/sampling";
+import type {
+  CreateDeviationRequest,
+  Deviation,
+  DeviationStatusUpdateRequest,
+  DeviationSummary,
+  UpdateDeviationRequest
+} from "../types/deviation";
+import type {
+  Capa,
+  CapaStatusUpdateRequest,
+  CapaSummary,
+  CreateCapaRequest,
+  UpdateCapaRequest
+} from "../types/capa";
+import type {
+  ControlledDocument,
+  ControlledDocumentPage,
+  ControlledDocumentStatus,
+  ControlledDocumentType,
+  CreateControlledDocumentRequest,
+  DocumentApprovalRequest,
+  DocumentRevision
+} from "../types/document-control";
 import type {
   CreateVendorBusinessUnitRequest,
   CreateVendorBusinessUnitAuditRequest,
@@ -327,6 +353,40 @@ export async function deactivateManagedUser(id: string) {
   });
 }
 
+export async function unlockManagedUser(id: string) {
+  return requestMutation<ManagedUser>(`/api/auth/users/${id}/unlock`, {
+    method: "POST"
+  });
+}
+
+export async function fetchEmployees(includeInactive = false) {
+  return requestJson<Employee[]>(`/api/employees?includeInactive=${includeInactive}`);
+}
+
+export async function fetchEmployee(id: string) {
+  return requestJson<Employee>(`/api/employees/${id}`);
+}
+
+export async function createEmployee(payload: EmployeeRequest) {
+  return requestMutation<Employee>("/api/employees", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateEmployee(id: string, payload: EmployeeRequest) {
+  return requestMutation<Employee>(`/api/employees/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function deactivateEmployee(id: string, updatedBy: string) {
+  return requestVoid(`/api/employees/${id}?updatedBy=${encodeURIComponent(updatedBy)}`, {
+    method: "DELETE"
+  });
+}
+
 export async function logout() {
   return requestVoid("/api/auth/logout", {
     method: "POST"
@@ -366,6 +426,13 @@ export async function receiveGrn(id: string, updatedBy: string) {
   });
 }
 
+export async function reviewGrnCoa(id: string, payload: CoaReviewRequest) {
+  return requestMutation<Grn>(`/api/grns/${id}/coa-review`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function cancelGrn(id: string, updatedBy: string, reason?: string) {
   return requestMutation<Grn>(`/api/grns/${id}/cancel`, {
     method: "POST",
@@ -379,6 +446,133 @@ export async function fetchGrnById(id: string) {
 
 export async function fetchGrnSummary() {
   return requestJson<GrnSummary>("/api/grns/summary");
+}
+
+export async function fetchDeviations(page = 0, size = 100) {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    sort: "createdAt,desc"
+  });
+  return requestJson<PageResponse<Deviation>>(`/api/deviations?${params.toString()}`);
+}
+
+export async function fetchDeviation(id: string) {
+  return requestJson<Deviation>(`/api/deviations/${id}`);
+}
+
+export async function fetchDeviationSummary() {
+  return requestJson<DeviationSummary>("/api/deviations/summary");
+}
+
+export async function createDeviation(payload: CreateDeviationRequest) {
+  return requestMutation<Deviation>("/api/deviations", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateDeviation(id: string, payload: UpdateDeviationRequest) {
+  return requestMutation<Deviation>(`/api/deviations/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateDeviationStatus(id: string, payload: DeviationStatusUpdateRequest) {
+  return requestMutation<Deviation>(`/api/deviations/${id}/status`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchCapas(deviationId?: string, page = 0, size = 100) {
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    sort: "createdAt,desc"
+  });
+  if (deviationId) params.set("deviationId", deviationId);
+  return requestJson<PageResponse<Capa>>(`/api/capas?${params.toString()}`);
+}
+
+export async function fetchCapa(id: string) {
+  return requestJson<Capa>(`/api/capas/${id}`);
+}
+
+export async function fetchCapaSummary() {
+  return requestJson<CapaSummary>("/api/capas/summary");
+}
+
+export async function createCapa(payload: CreateCapaRequest) {
+  return requestMutation<Capa>("/api/capas", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateCapa(id: string, payload: UpdateCapaRequest) {
+  return requestMutation<Capa>(`/api/capas/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateCapaStatus(id: string, payload: CapaStatusUpdateRequest) {
+  return requestMutation<Capa>(`/api/capas/${id}/status`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchDocuments(filters: {
+  type?: ControlledDocumentType | "ALL";
+  status?: ControlledDocumentStatus | "ALL";
+  search?: string;
+  page?: number;
+  size?: number;
+} = {}) {
+  const params = new URLSearchParams({
+    page: String(filters.page ?? 0),
+    size: String(filters.size ?? 100),
+    sort: "createdAt,desc"
+  });
+  if (filters.type && filters.type !== "ALL") params.set("type", filters.type);
+  if (filters.status && filters.status !== "ALL") params.set("status", filters.status);
+  if (filters.search?.trim()) params.set("search", filters.search.trim());
+  return requestJson<ControlledDocumentPage>(`/api/documents?${params.toString()}`);
+}
+
+export async function fetchDocument(id: string) {
+  return requestJson<ControlledDocument>(`/api/documents/${id}`);
+}
+
+export async function createDocument(payload: CreateControlledDocumentRequest) {
+  return requestMutation<ControlledDocument>("/api/documents", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function createDocumentRevision(id: string, payload: { revision: string; changeSummary: string; file?: File | null }) {
+  const formData = new FormData();
+  formData.set("revision", payload.revision);
+  formData.set("changeSummary", payload.changeSummary);
+  if (payload.file) formData.set("file", payload.file);
+  return requestMultipart<DocumentRevision>(`/api/documents/${id}/revisions`, formData);
+}
+
+export async function submitDocumentRevision(id: string, revisionId: string) {
+  return requestMutation<ControlledDocument>(`/api/documents/${id}/revisions/${revisionId}/submit`, {
+    method: "POST"
+  });
+}
+
+export async function approveDocumentRevision(id: string, revisionId: string, payload: DocumentApprovalRequest) {
+  return requestMutation<ControlledDocument>(`/api/documents/${id}/revisions/${revisionId}/approvals`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
 }
 
 export async function fetchGrnItemContainers(grnItemId: string) {
@@ -1322,6 +1516,13 @@ export async function fetchAuditEvents(entityType: string, entityId: string) {
 export async function fetchESignatures(entityType: string, entityId: string) {
   const params = new URLSearchParams({ entityType, entityId });
   return requestJson<ESignatureRecord[]>(`/api/e-signatures?${params.toString()}`);
+}
+
+export async function createESignature(payload: CreateESignatureRequest) {
+  return requestMutation<ESignatureRecord>("/api/e-signatures", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
 }
 
 export async function fetchSamplingCycles(samplingRequestId: string) {

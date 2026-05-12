@@ -250,6 +250,127 @@ class GrnControllerIntegrationTest {
     }
 
     @Test
+    void coaReviewCapturesInboundConditionAndReviewer() throws Exception {
+        FixtureData fixture = createFixtureData();
+        SecurityContextHolder.clearContext();
+        String token = loginAsAdmin();
+        UUID grnId = createGrn(fixture, "GRN-COA-" + UUID.randomUUID().toString().substring(0, 8), token);
+
+        MvcResult reviewResult = mockMvc.perform(post("/api/grns/{id}/coa-review", grnId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "coaReviewStatus": "ACCEPTED",
+                                  "coaReviewRemarks": "CoA matches approved specification and supplier batch.",
+                                  "temperatureOnArrival": 24.50,
+                                  "coldChainCompliant": true,
+                                  "containerCondition": "INTACT",
+                                  "labelVerificationStatus": "MATCHED",
+                                  "quantityVarianceReason": "No variance observed"
+                                }
+                                """))
+                .andReturn();
+
+        assertEquals(200, reviewResult.getResponse().getStatus(), reviewResult.getResponse().getContentAsString());
+        JsonNode root = objectMapper.readTree(reviewResult.getResponse().getContentAsString());
+        assertEquals("ACCEPTED", root.get("coaReviewStatus").asText());
+        assertEquals("admin", root.get("coaReviewedBy").asText());
+        assertEquals("INTACT", root.get("containerCondition").asText());
+        assertEquals("MATCHED", root.get("labelVerificationStatus").asText());
+        assertTrue(root.get("coldChainCompliant").asBoolean());
+    }
+
+    @Test
+    void grnCreationRejectsInactiveMaterial() throws Exception {
+        FixtureData fixture = createFixtureData();
+        fixture.material().setStatus(MaterialStatus.DISCONTINUED);
+        materialRepository.save(fixture.material());
+        SecurityContextHolder.clearContext();
+        String token = loginAsAdmin();
+
+        MvcResult result = attemptCreateGrn(fixture, "GRN-INACTIVE-MAT-" + UUID.randomUUID().toString().substring(0, 8), token);
+
+        assertEquals(409, result.getResponse().getStatus(), result.getResponse().getContentAsString());
+        assertTrue(result.getResponse().getContentAsString().contains("Material must be ACTIVE"));
+    }
+
+    @Test
+    void grnCreationRejectsSuspendedSupplier() throws Exception {
+        FixtureData fixture = createFixtureData();
+        fixture.supplier().setQualificationStatus(SupplierQualificationStatus.SUSPENDED);
+        supplierRepository.save(fixture.supplier());
+        SecurityContextHolder.clearContext();
+        String token = loginAsAdmin();
+
+        MvcResult result = attemptCreateGrn(fixture, "GRN-SUSP-SUP-" + UUID.randomUUID().toString().substring(0, 8), token);
+
+        assertEquals(409, result.getResponse().getStatus(), result.getResponse().getContentAsString());
+        assertTrue(result.getResponse().getContentAsString().contains("Supplier is not qualified"));
+    }
+
+    @Test
+    void grnCreationRejectsUnqualifiedVendorBusinessUnit() throws Exception {
+        FixtureData fixture = createFixtureData();
+        fixture.vendorBusinessUnit().setQualificationStatus(QualificationStatus.CAPA_PENDING);
+        fixture.vendorBusinessUnit().setIsApproved(false);
+        vendorBusinessUnitRepository.save(fixture.vendorBusinessUnit());
+        SecurityContextHolder.clearContext();
+        String token = loginAsAdmin();
+
+        MvcResult result = attemptCreateGrn(fixture, "GRN-UNQUAL-VBU-" + UUID.randomUUID().toString().substring(0, 8), token);
+
+        assertEquals(409, result.getResponse().getStatus(), result.getResponse().getContentAsString());
+        assertTrue(result.getResponse().getContentAsString().contains("Vendor business unit must be QUALIFIED"));
+    }
+
+    @Test
+    void grnCreationRejectsMissingVendorMaterialApproval() throws Exception {
+        FixtureData fixture = createFixtureData();
+        vendorMaterialApprovalRepository.findAll().stream()
+                .filter(approval -> approval.getVendorId().equals(fixture.vendor().getId())
+                        && approval.getVendorBusinessUnitId().equals(fixture.vendorBusinessUnit().getId())
+                        && approval.getSupplierId().equals(fixture.supplier().getId())
+                        && approval.getMaterialId().equals(fixture.material().getId()))
+                .forEach(approval -> {
+                    approval.setIsActive(false);
+                    vendorMaterialApprovalRepository.save(approval);
+                });
+        SecurityContextHolder.clearContext();
+        String token = loginAsAdmin();
+
+        MvcResult result = attemptCreateGrn(fixture, "GRN-NO-AVL-" + UUID.randomUUID().toString().substring(0, 8), token);
+
+        assertEquals(409, result.getResponse().getStatus(), result.getResponse().getContentAsString());
+        assertTrue(result.getResponse().getContentAsString().contains("No approved vendor-material-source"));
+    }
+
+    @Test
+    void grnCreationRejectsMaterialWithoutApprovedSpec() throws Exception {
+        FixtureData fixture = createFixtureData();
+        fixture.material().setSpecId(null);
+        materialRepository.save(fixture.material());
+        SecurityContextHolder.clearContext();
+        String token = loginAsAdmin();
+
+        MvcResult result = attemptCreateGrn(fixture, "GRN-NO-SPEC-" + UUID.randomUUID().toString().substring(0, 8), token);
+
+        assertEquals(409, result.getResponse().getStatus(), result.getResponse().getContentAsString());
+        assertTrue(result.getResponse().getContentAsString().contains("approved specification"));
+    }
+
+    @Test
+    void grnCreationAllowsApprovedMaterialSourceCombination() throws Exception {
+        FixtureData fixture = createFixtureData();
+        SecurityContextHolder.clearContext();
+        String token = loginAsAdmin();
+
+        MvcResult result = attemptCreateGrn(fixture, "GRN-GUARD-PASS-" + UUID.randomUUID().toString().substring(0, 8), token);
+
+        assertEquals(200, result.getResponse().getStatus(), result.getResponse().getContentAsString());
+    }
+
+    @Test
     void deactivatingDraftGrnAlsoDeactivatesItemsAndDocuments() throws Exception {
         FixtureData fixture = createFixtureData();
         SecurityContextHolder.clearContext();
@@ -668,7 +789,15 @@ class GrnControllerIntegrationTest {
     }
 
     private UUID createGrn(FixtureData fixture, String grnNumber, String token) throws Exception {
-        MvcResult createResult = mockMvc.perform(post("/api/grns")
+        MvcResult createResult = attemptCreateGrn(fixture, grnNumber, token);
+
+        assertEquals(200, createResult.getResponse().getStatus(), createResult.getResponse().getContentAsString());
+        JsonNode root = objectMapper.readTree(createResult.getResponse().getContentAsString());
+        return UUID.fromString(root.get("id").asText());
+    }
+
+    private MvcResult attemptCreateGrn(FixtureData fixture, String grnNumber, String token) throws Exception {
+        return mockMvc.perform(post("/api/grns")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -717,10 +846,6 @@ class GrnControllerIntegrationTest {
                                 LocalDate.now().plusMonths(6)
                         )))
                 .andReturn();
-
-        assertEquals(200, createResult.getResponse().getStatus(), createResult.getResponse().getContentAsString());
-        JsonNode root = objectMapper.readTree(createResult.getResponse().getContentAsString());
-        return UUID.fromString(root.get("id").asText());
     }
 
     private UUID createMultiItemGrn(FixtureData fixture, Material secondMaterial, String grnNumber, String token) throws Exception {

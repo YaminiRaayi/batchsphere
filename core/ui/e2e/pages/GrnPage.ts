@@ -103,7 +103,12 @@ export class GrnPage {
       });
     }
 
+    const createResponse = this.page.waitForResponse(
+      (response) => response.url().includes("/api/grns") && response.request().method() === "POST"
+    );
     await this.page.getByRole("button", { name: "Submit GRN →" }).click();
+    const response = await createResponse;
+    expect(response.ok(), await response.text()).toBeTruthy();
     await expect(this.page.getByRole("heading", { name: params.grnNumber })).toBeVisible();
   }
 

@@ -10,7 +10,7 @@ flowchart TD
     Repos[Repositories]
     DB[(PostgreSQL)]
 
-    Client --> Controllers
+    Client --> C ontrollers
     Controllers --> Services
     Services --> Repos
     Repos --> DB

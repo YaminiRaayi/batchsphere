@@ -87,13 +87,28 @@ const NAV_GROUPS: NavGroup[] = [
         dimBorder: "#99F6E4",
       },
       {
-        to: "/qms",
-        label: "QMS",
+        to: "/qms/deviations",
+        label: "Deviations",
         abbr: "QM",
         color: "#D97706",
         lightBg: "#FFFBEB",
-        dimBorder: "#FDE68A",
-        soon: true,
+        dimBorder: "#FDE68A"
+      },
+      {
+        to: "/qms/capas",
+        label: "CAPAs",
+        abbr: "CA",
+        color: "#B45309",
+        lightBg: "#FFFBEB",
+        dimBorder: "#FDE68A"
+      },
+      {
+        to: "/documents",
+        label: "Documents",
+        abbr: "DC",
+        color: "#7C3AED",
+        lightBg: "#F5F3FF",
+        dimBorder: "#DDD6FE"
       },
       {
         to: "/lims",
@@ -110,13 +125,12 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Enterprise",
     items: [
       {
-        to: "/hrms",
+        to: "/hrms/employees",
         label: "HRMS",
         abbr: "HR",
         color: "#E11D48",
         lightBg: "#FFF1F2",
-        dimBorder: "#FECDD3",
-        soon: true,
+        dimBorder: "#FECDD3"
       },
       {
         to: "/master-data",

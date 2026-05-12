@@ -38,15 +38,15 @@ export class SamplingPage {
     await this.page.getByLabel("Sampling tool").selectOption({ label: params.toolLabel });
     await this.page.getByPlaceholder(/Sample qty/).fill(params.individualSampleQuantity);
     if (params.containerDraws?.length) {
-      const drawRows = this.page.locator('input[readonly][value*="Remaining"]').locator("xpath=..");
-
+      const containerRows = this.page.locator("input[value*='BAG-']");
       for (const [index, draw] of params.containerDraws.entries()) {
-        const row = drawRows.nth(index);
+        const row = containerRows.nth(index);
         await expect(row).toBeVisible();
+        const rowContainer = row.locator("..");
         if (draw.purpose) {
-          await row.locator("select").selectOption(draw.purpose);
+          await rowContainer.locator("select").selectOption(draw.purpose);
         }
-        await row.locator('input[type="number"]').fill(draw.quantity);
+        await rowContainer.locator('input[type="number"]').first().fill(draw.quantity);
       }
     }
     if (params.rationale) {

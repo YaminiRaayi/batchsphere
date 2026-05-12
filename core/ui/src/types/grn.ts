@@ -1,4 +1,5 @@
 export type GrnStatus = "DRAFT" | "RECEIVED" | "CANCELLED";
+export type CoaReviewStatus = "PENDING" | "IN_REVIEW" | "ACCEPTED" | "REJECTED";
 export type ContainerType = "BAG" | "DRUM" | "BOX" | "CAN" | "BOTTLE" | "FIBER_DRUM";
 export type QcStatus = "PENDING" | "APPROVED" | "REJECTED" | "PARTIALLY_APPROVED";
 export type LabelType = "IN_HOUSE_RECEIPT" | "QC_SAMPLING";
@@ -42,6 +43,15 @@ export type Grn = {
   receiptDate: string;
   invoiceNumber: string;
   remarks: string | null;
+  coaReviewStatus: CoaReviewStatus;
+  coaReviewedBy: string | null;
+  coaReviewedAt: string | null;
+  coaReviewRemarks: string | null;
+  temperatureOnArrival: number | null;
+  coldChainCompliant: boolean | null;
+  containerCondition: string | null;
+  labelVerificationStatus: string | null;
+  quantityVarianceReason: string | null;
   status: GrnStatus;
   isActive: boolean;
   createdBy: string;
@@ -49,6 +59,16 @@ export type Grn = {
   updatedBy: string | null;
   updatedAt: string | null;
   items: GrnItem[];
+};
+
+export type CoaReviewRequest = {
+  coaReviewStatus: CoaReviewStatus;
+  coaReviewRemarks?: string;
+  temperatureOnArrival?: number;
+  coldChainCompliant?: boolean;
+  containerCondition?: string;
+  labelVerificationStatus?: string;
+  quantityVarianceReason?: string;
 };
 
 export type PageResponse<T> = {

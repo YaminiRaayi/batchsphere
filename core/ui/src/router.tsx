@@ -23,6 +23,18 @@ const InventoryPage = lazy(() =>
 const SamplingPage = lazy(() =>
   import("./features/sampling/SamplingPage").then((module) => ({ default: module.SamplingPage }))
 );
+const DeviationListPage = lazy(() =>
+  import("./features/qms/DeviationListPage").then((module) => ({ default: module.DeviationListPage }))
+);
+const DeviationDetailPage = lazy(() =>
+  import("./features/qms/DeviationDetailPage").then((module) => ({ default: module.DeviationDetailPage }))
+);
+const CapaBoardPage = lazy(() =>
+  import("./features/qms/CapaBoardPage").then((module) => ({ default: module.CapaBoardPage }))
+);
+const DocumentsPage = lazy(() =>
+  import("./features/documents/DocumentsPage").then((module) => ({ default: module.DocumentsPage }))
+);
 const WarehousePage = lazy(() =>
   import("./features/warehouse/WarehousePage").then((module) => ({ default: module.WarehousePage }))
 );
@@ -37,6 +49,9 @@ const MoaPage = lazy(() => import("./features/master-data/qc-refs/MoaPage"));
 const SamplingToolsPage = lazy(() => import("./features/master-data/qc-refs/SamplingToolsPage"));
 const UserManagementPage = lazy(() =>
   import("./features/admin/UserManagementPage").then((module) => ({ default: module.UserManagementPage }))
+);
+const EmployeeDirectoryPage = lazy(() =>
+  import("./features/hrms/EmployeeDirectoryPage").then((module) => ({ default: module.EmployeeDirectoryPage }))
 );
 
 function renderLazyRoute(element: ReactNode) {
@@ -134,12 +149,18 @@ export const router = createBrowserRouter([
           {
             element: <ProtectedRoute allowedRoles={["SUPER_ADMIN", "QC_ANALYST", "QC_MANAGER"]} />,
             children: [
-              { path: "qc/sampling", element: renderLazyRoute(<SamplingPage />), handle: { breadcrumb: "Sampling & QC" } }
+              { path: "qc/sampling", element: renderLazyRoute(<SamplingPage />), handle: { breadcrumb: "Sampling & QC" } },
+              { path: "qms/deviations", element: renderLazyRoute(<DeviationListPage />), handle: { breadcrumb: "Deviations" } },
+              { path: "qms/deviations/:deviationId", element: renderLazyRoute(<DeviationDetailPage />), handle: { breadcrumb: "Deviation Detail" } },
+              { path: "qms/capas", element: renderLazyRoute(<CapaBoardPage />), handle: { breadcrumb: "CAPAs" } },
+              { path: "documents", element: renderLazyRoute(<DocumentsPage />), handle: { breadcrumb: "Documents" } }
             ]
           },
           {
             element: <ProtectedRoute allowedRoles={["SUPER_ADMIN"]} />,
             children: [
+              { path: "hrms/employees", element: renderLazyRoute(<EmployeeDirectoryPage />), handle: { breadcrumb: "Employees" } },
+              { path: "hrms", element: <Navigate to="/hrms/employees" replace />, handle: { breadcrumb: "HRMS" } },
               { path: "admin/users", element: renderLazyRoute(<UserManagementPage />), handle: { breadcrumb: "User Management" } }
             ]
           },

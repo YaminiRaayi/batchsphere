@@ -4,6 +4,8 @@ import com.batchsphere.core.auth.dto.AuthUserResponse;
 import com.batchsphere.core.auth.dto.LoginRequest;
 import com.batchsphere.core.auth.dto.LoginResponse;
 import com.batchsphere.core.auth.dto.RefreshTokenRequest;
+import com.batchsphere.core.auth.entity.User;
+import com.batchsphere.core.auth.repository.UserRepository;
 import com.batchsphere.core.auth.security.AuthenticatedUser;
 import com.batchsphere.core.auth.security.CustomUserDetailsService;
 import com.batchsphere.core.auth.security.JwtService;
@@ -12,24 +14,42 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
+    private static final int MAX_FAILED_LOGIN_ATTEMPTS = 5;
+    private static final int LOCKOUT_MINUTES = 15;
+
     private final CustomUserDetailsService userDetailsService;
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
+    @Transactional(noRollbackFor = BusinessConflictException.class)
     public LoginResponse login(LoginRequest request) {
-        AuthenticatedUser user = (AuthenticatedUser) userDetailsService.loadUserByUsername(request.getUsername());
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+        User account = userRepository.findByUsername(request.getUsername().trim())
+                .orElseThrow(() -> new BusinessConflictException("Invalid username or password"));
+        validateLoginAllowed(account);
+
+        if (!passwordEncoder.matches(request.getPassword(), account.getPasswordHash())) {
+            recordFailedLogin(account);
             throw new BusinessConflictException("Invalid username or password");
         }
 
+        account.setFailedLoginAttempts(0);
+        account.setLockedUntil(null);
+        account.setUpdatedAt(LocalDateTime.now());
+        User saved = userRepository.save(account);
+        AuthenticatedUser user = new AuthenticatedUser(saved);
         return buildLoginResponse(user);
     }
 
+    @Transactional(readOnly = true)
     public LoginResponse refresh(RefreshTokenRequest request) {
         String username;
         try {
@@ -71,6 +91,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .role(com.batchsphere.core.auth.entity.UserRole.valueOf(user.getRole()))
                 .employeeId(user.getEmployeeId())
+                .forcePasswordChange(user.isForcePasswordChange())
                 .build();
     }
 
@@ -83,5 +104,25 @@ public class AuthService {
                 .refreshExpiresInSeconds(jwtService.getRefreshExpirationSeconds())
                 .user(toResponse(user))
                 .build();
+    }
+
+    private void validateLoginAllowed(User account) {
+        if (!Boolean.TRUE.equals(account.getIsActive())) {
+            throw new BusinessConflictException("User account is inactive. Contact an administrator.");
+        }
+        if (account.getLockedUntil() != null && account.getLockedUntil().isAfter(LocalDateTime.now())) {
+            throw new BusinessConflictException("User account is locked until " + account.getLockedUntil() + ". Contact an administrator.");
+        }
+    }
+
+    private void recordFailedLogin(User account) {
+        int attempts = account.getFailedLoginAttempts() == null ? 0 : account.getFailedLoginAttempts();
+        attempts += 1;
+        account.setFailedLoginAttempts(attempts);
+        if (attempts >= MAX_FAILED_LOGIN_ATTEMPTS) {
+            account.setLockedUntil(LocalDateTime.now().plusMinutes(LOCKOUT_MINUTES));
+        }
+        account.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(account);
     }
 }

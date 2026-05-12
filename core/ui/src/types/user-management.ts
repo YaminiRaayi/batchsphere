@@ -13,6 +13,10 @@ export type ManagedUser = {
   role: UserRole;
   isActive: boolean;
   employeeId: string | null;
+  failedLoginAttempts: number;
+  lockedUntil: string | null;
+  passwordChangedAt: string | null;
+  forcePasswordChange: boolean;
   createdAt: string;
   updatedAt: string | null;
 };
@@ -31,4 +35,5 @@ export type UpdateManagedUserRequest = {
   isActive: boolean;
   password?: string;
   employeeId: string | null;
+  forcePasswordChange: boolean;
 };
