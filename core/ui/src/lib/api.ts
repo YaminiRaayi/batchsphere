@@ -88,9 +88,15 @@ import type {
 } from "../types/deviation";
 import type {
   Capa,
+  CapaApproveRequest,
+  CapaAttachment,
+  CapaAttachmentStage,
+  CapaEffectivenessReviewRequest,
+  CapaRejectRequest,
   CapaStatusUpdateRequest,
   CapaSummary,
   CreateCapaRequest,
+  ScheduleEffectivenessReviewRequest,
   UpdateCapaRequest
 } from "../types/capa";
 import type {
@@ -535,6 +541,155 @@ export async function updateCapaStatus(id: string, payload: CapaStatusUpdateRequ
   });
 }
 
+export async function submitCapaForApproval(id: string) {
+  return requestMutation<Capa>(`/api/capas/${id}/submit-for-approval`, { method: "POST", body: "{}" });
+}
+
+export async function approveCapaAction(id: string, payload: CapaApproveRequest) {
+  return requestMutation<Capa>(`/api/capas/${id}/approve`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function rejectCapaAction(id: string, payload: CapaRejectRequest) {
+  return requestMutation<Capa>(`/api/capas/${id}/reject`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function scheduleCapaEffectivenessReview(id: string, payload: ScheduleEffectivenessReviewRequest) {
+  return requestMutation<Capa>(`/api/capas/${id}/schedule-effectiveness-review`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function reviewCapaEffectiveness(id: string, payload: CapaEffectivenessReviewRequest) {
+  return requestMutation<Capa>(`/api/capas/${id}/review-effectiveness`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchCapaAttachments(capaId: string) {
+  return requestJson<CapaAttachment[]>(`/api/capas/${capaId}/attachments`);
+}
+
+export async function uploadCapaAttachment(capaId: string, stage: CapaAttachmentStage, file: File) {
+  const formData = new FormData();
+  formData.set("stage", stage);
+  formData.set("file", file);
+  return requestMultipart<CapaAttachment>(`/api/capas/${capaId}/attachments`, formData);
+}
+
+export async function deleteCapaAttachment(capaId: string, attachmentId: string) {
+  return requestVoid(`/api/capas/${capaId}/attachments/${attachmentId}`, { method: "DELETE" });
+}
+
+export async function fetchCapaAttachmentFile(capaId: string, attachmentId: string) {
+  return requestBlob(`/api/capas/${capaId}/attachments/${attachmentId}/file`);
+}
+
+export async function reassignCapa(id: string, payload: import("../types/capa").ReassignCapaRequest) {
+  return requestMutation<import("../types/capa").Capa>(`/api/capas/${id}/reassign`, {
+    method: "POST", body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchCapaReassignmentHistory(id: string) {
+  return requestJson<import("../types/capa").CapaReassignment[]>(`/api/capas/${id}/reassignments`);
+}
+
+export async function fetchQmsAnalytics() {
+  return requestJson<import("../types/qms-analytics").QmsAnalytics>("/api/qms/analytics");
+}
+
+export async function fetchChangeControls(page = 0, size = 50) {
+  return requestJson<import("../types/change-control").ChangeControlPage>(
+    `/api/change-controls?page=${page}&size=${size}&sort=createdAt,desc`
+  );
+}
+
+export async function fetchChangeControl(id: string) {
+  return requestJson<import("../types/change-control").ChangeControl>(`/api/change-controls/${id}`);
+}
+
+export async function createChangeControl(payload: import("../types/change-control").CreateChangeControlRequest) {
+  return requestMutation<import("../types/change-control").ChangeControl>("/api/change-controls", {
+    method: "POST", body: JSON.stringify(payload),
+  });
+}
+
+export async function updateChangeControl(id: string, payload: import("../types/change-control").CreateChangeControlRequest) {
+  return requestMutation<import("../types/change-control").ChangeControl>(`/api/change-controls/${id}`, {
+    method: "PUT", body: JSON.stringify(payload),
+  });
+}
+
+export async function submitChangeControlForReview(id: string) {
+  return requestMutation<import("../types/change-control").ChangeControl>(`/api/change-controls/${id}/submit-for-review`, { method: "POST" });
+}
+
+export async function approveChangeControl(id: string, payload: import("../types/change-control").ChangeControlApproveRequest) {
+  return requestMutation<import("../types/change-control").ChangeControl>(`/api/change-controls/${id}/approve`, {
+    method: "POST", body: JSON.stringify(payload),
+  });
+}
+
+export async function rejectChangeControl(id: string, reason: string) {
+  return requestMutation<import("../types/change-control").ChangeControl>(`/api/change-controls/${id}/reject`, {
+    method: "POST", body: JSON.stringify({ reason }),
+  });
+}
+
+export async function startChangeControlImplementation(id: string) {
+  return requestMutation<import("../types/change-control").ChangeControl>(`/api/change-controls/${id}/start-implementation`, { method: "POST" });
+}
+
+export async function moveChangeControlToEffectivenessCheck(id: string) {
+  return requestMutation<import("../types/change-control").ChangeControl>(`/api/change-controls/${id}/move-to-effectiveness-check`, { method: "POST" });
+}
+
+export async function closeChangeControl(id: string, payload: import("../types/change-control").ChangeControlCloseRequest) {
+  return requestMutation<import("../types/change-control").ChangeControl>(`/api/change-controls/${id}/close`, {
+    method: "POST", body: JSON.stringify(payload),
+  });
+}
+
+export async function cancelChangeControl(id: string, reason?: string) {
+  return requestMutation<import("../types/change-control").ChangeControl>(`/api/change-controls/${id}/cancel`, {
+    method: "POST", body: JSON.stringify({ reason }),
+  });
+}
+
+export async function addChangeControlAffectedEntity(id: string, payload: import("../types/change-control").AddAffectedEntityRequest) {
+  return requestMutation<import("../types/change-control").ChangeControlAffectedEntity>(`/api/change-controls/${id}/affected-entities`, {
+    method: "POST", body: JSON.stringify(payload),
+  });
+}
+
+export async function removeChangeControlAffectedEntity(id: string, entityId: string) {
+  return requestVoid(`/api/change-controls/${id}/affected-entities/${entityId}`, { method: "DELETE" });
+}
+
+export async function addChangeControlTask(id: string, payload: import("../types/change-control").CreateTaskRequest) {
+  return requestMutation<import("../types/change-control").ChangeControlTask>(`/api/change-controls/${id}/tasks`, {
+    method: "POST", body: JSON.stringify(payload),
+  });
+}
+
+export async function updateChangeControlTaskStatus(id: string, taskId: string, status: import("../types/change-control").ChangeControlTaskStatus) {
+  return requestMutation<import("../types/change-control").ChangeControlTask>(`/api/change-controls/${id}/tasks/${taskId}/status`, {
+    method: "PUT", body: JSON.stringify({ status }),
+  });
+}
+
+export async function removeChangeControlTask(id: string, taskId: string) {
+  return requestVoid(`/api/change-controls/${id}/tasks/${taskId}`, { method: "DELETE" });
+}
+
 export async function fetchDocuments(filters: {
   type?: ControlledDocumentType | "ALL";
   status?: ControlledDocumentStatus | "ALL";
@@ -598,6 +753,10 @@ export async function distributeDocumentRevision(id: string, revisionId: string,
 
 export async function fetchMyDocumentAcknowledgements() {
   return requestJson<DocumentDistribution[]>("/api/documents/my-acknowledgements");
+}
+
+export async function fetchDocumentRevisionFile(documentId: string, revisionId: string): Promise<Blob> {
+  return requestBlob(`/api/documents/${documentId}/revisions/${revisionId}/file`);
 }
 
 export async function acknowledgeDocumentDistribution(distributionId: string, payload: DocumentAcknowledgementRequest) {

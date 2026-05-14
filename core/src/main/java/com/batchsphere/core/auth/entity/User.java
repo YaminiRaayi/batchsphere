@@ -47,8 +47,9 @@ public class User {
     @Column(name = "employee_id")
     private UUID employeeId;
 
+    @Builder.Default
     @Column(name = "failed_login_attempts", nullable = false)
-    private Integer failedLoginAttempts;
+    private Integer failedLoginAttempts = 0;
 
     @Column(name = "locked_until")
     private LocalDateTime lockedUntil;
@@ -56,8 +57,9 @@ public class User {
     @Column(name = "password_changed_at")
     private LocalDateTime passwordChangedAt;
 
+    @Builder.Default
     @Column(name = "force_password_change", nullable = false)
-    private Boolean forcePasswordChange;
+    private Boolean forcePasswordChange = false;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

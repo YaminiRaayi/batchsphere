@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-10  
 **Purpose:** Step-by-step implementation plan for the pharma gaps listed in [Codex_plan_later.md](./Codex_plan_later.md) and [IMPLEMENTATION_GAP_ANALYSIS.md](./IMPLEMENTATION_GAP_ANALYSIS.md).  
-**Status:** Implementation in progress. Phase 1, Ticket 2.1, Ticket 2.3, Ticket 3.1, the backend compatibility layer for Ticket 3.2, Ticket 3.4, Phase 4, Phase 5 compliance infrastructure, Phase 6A Ticket 6A.1, Ticket 6A.2 backend guard regression coverage, Improvement 4 generic e-sign API, Ticket 6B.1 Deviation MVP, Ticket 6B.2 CAPA MVP, Ticket 6C.1 Employee / HRMS Foundation, Ticket 6C.2 Auth Hardening, Ticket 6D.1 Controlled Documents, Ticket 6D.2 Distribution And Acknowledgment, and Ticket 6E.1 Training Assignment have been implemented/verified in code.
+**Status:** Implementation in progress. Phase 1, Ticket 2.1, Ticket 2.3, Ticket 3.1, the backend compatibility layer for Ticket 3.2, Ticket 3.4, Phase 4, Phase 5 compliance infrastructure, Phase 6A Ticket 6A.1, Ticket 6A.2 backend guard regression coverage, Improvement 4 generic e-sign API, Ticket 6B.1 Deviation MVP, Ticket 6B.2 CAPA MVP, Ticket 6B.3 CAPA Approval Workflow, Ticket 6B.4 CAPA Ownership and Reassignment, Ticket 6B.5 CAPA Attachments, Ticket 6B.6 CAPA Effectiveness Review, Ticket 6B.7 QMS Analytics, Ticket 6B.9 Change Control Module, Ticket 6C.1 Employee / HRMS Foundation, Ticket 6C.2 Auth Hardening, Ticket 6D.1 Controlled Documents, Ticket 6D.2 Distribution And Acknowledgment, Ticket 6D.3 Fix Document Approval E-Sign Flow, Ticket 6D.4 Document Control UI Polish, Ticket 6E.1 Training Assignment, Ticket 6F.1 Reusable E-Signature Dialog, Ticket 6F.2 Audit Timeline, and Ticket 6F.3 Dashboard Live KPIs have been implemented/verified in code. Phase 6G (Pharma Compliance Gap Backfill — 10 tickets 6G.1–6G.10) defined 2026-05-13; not yet implemented.
 
 ---
 
@@ -753,6 +753,420 @@ V69__create_training_assignment.sql
 **Done Means**
 
 - Sampling/QC can later check whether the actor is trained.
+
+---
+
+## Phase 6B: QMS Enhancements (CAPA + Change Control)
+
+### Goal
+
+Extend the implemented Deviation and CAPA MVPs with approval, ownership, evidence, effectiveness, analytics, and change control.
+
+### Ticket 6B.3: CAPA Approval Workflow
+
+**Status:** Implemented.
+
+**Backend**
+- Add `PENDING_APPROVAL`, `APPROVED`, `REJECTED` states to CAPA lifecycle (or approval sub-status).
+- Submit-for-approval action after action plan completion.
+- QA/QC manager approve/reject with comments; require e-sign.
+- Audit events for submission, approval, rejection, resubmission.
+
+**Frontend**
+- Approval action panel on CAPA detail.
+- Approval queue/filter on `/qms/capas`.
+- Rejected state with comments and resubmit action.
+
+**Tests**
+- Owner can submit; manager can approve/reject with e-sign; unauthorized role blocked.
+
+---
+
+### Ticket 6B.4: CAPA Ownership And Reassignment
+
+**Status:** Implemented.
+
+**Backend**
+- Replace free-text owner with employee/user reference.
+- Add reassignment action: reason, previous owner, new owner, assigned by, assigned at.
+- Reassignment history.
+
+**Frontend**
+- Owner selector using employees.
+- Reassignment drawer with reason.
+- Ownership history timeline.
+
+**Tests**
+- Assign to active employee; reassign requires reason; inactive employee cannot receive ownership.
+
+---
+
+### Ticket 6B.5: CAPA Attachments And Evidence
+
+**Status:** Implemented.
+
+**Backend**
+- Attachment records for each CAPA stage (investigation evidence, corrective action proof, preventive action proof, effectiveness check evidence).
+- File metadata, uploaded by, uploaded at, stage/purpose.
+- Audit events on upload/remove.
+
+**Frontend**
+- Evidence upload area on CAPA detail.
+- Grouped evidence list by stage.
+- Preview/download actions.
+
+**Tests**
+- Upload evidence for a stage; evidence appears on detail; closed CAPA evidence changes are audited.
+
+---
+
+### Ticket 6B.6: CAPA Effectiveness Review Expansion
+
+**Status:** Implemented.
+
+**Backend**
+- Scheduled effectiveness review date and reviewer assignment.
+- Pass/fail outcome with reviewer comments.
+- Failed review → reopen or create linked follow-up CAPA/deviation.
+- E-sign required for final effectiveness pass/fail.
+
+**Frontend**
+- Effectiveness review section on CAPA detail.
+- Due/overdue filters on CAPA board.
+- Failed review follow-up action.
+
+**Tests**
+- CAPA cannot close before effectiveness review; failed review creates follow-up; pass allows final closure with e-sign.
+
+---
+
+### Ticket 6B.7: Recurring CAPA And Deviation Analytics
+
+**Status:** Implemented.
+
+**Backend**
+- Recurrence detection by root cause, department, source module, material, supplier/vendor, location.
+- Summary endpoint: open/overdue/recurring counts, CAPA closure aging, repeat deviation source.
+
+**Frontend**
+- QMS analytics dashboard.
+- Trend cards and filters.
+- Drill-down from metric to record list.
+
+**Tests**
+- Summary endpoint calculates grouped counts; filters return expected records.
+
+---
+
+### Ticket 6B.8: CAPA Escalation Alerts
+
+**Status:** Not implemented. Requires HRMS ownership + alert/notification foundation (Phase 7).
+
+**Backend**
+- Due-soon and overdue escalation rules.
+- Escalate to owner, owner manager, QA/QC manager based on thresholds.
+- Alert records tied to alert center.
+
+**Frontend**
+- Alert badge/count on CAPA board.
+- Overdue escalation panel on CAPA detail.
+- Escalation history timeline.
+
+**Tests**
+- Due-soon creates alert; overdue escalates to configured role; closed CAPA stops escalating.
+
+---
+
+### Ticket 6B.9: Change Control Module
+
+**Status:** Implemented.
+
+**Migration**
+```text
+V75__create_change_control.sql
+```
+
+**Backend**
+- `ChangeControl` entity: number, title, change type, reason, risk classification, status.
+- Affected entity linking (material, spec, vendor, warehouse/process, document, system config).
+- Impact assessment, approval routing, implementation tasks, effectiveness verification, closure e-sign.
+
+**Frontend**
+- `/qms/change-controls` list.
+- Change control detail page.
+- Affected entity selector/linking.
+- Approval and implementation task panels.
+
+**Tests**
+- Create change control linked to affected entity; approval requires authorized role + e-sign; closure blocked until tasks and effectiveness checks complete.
+
+---
+
+## Phase 6F: Compliance UI Catch-Up
+
+### Goal
+
+Make the already-built compliance backend (audit events, e-signatures) visible and usable across all modules.
+
+### Ticket 6F.1: Reusable E-Signature Dialog
+
+**Status:** Implemented.
+
+- `core/ui/src/components/ESignatureDialog.tsx`
+- Props: `entityType`, `entityId`, `action`, `defaultMeaning`, `reason`, `onSigned`, `visible`, `onClose`
+- Calls `POST /api/e-signatures` with password-verified credentials
+- Wired into QC final approval/rejection (`SamplingPage`) and deviation closure (`DeviationDetailPage`)
+
+---
+
+### Ticket 6F.2: Audit Timeline
+
+**Status:** Implemented.
+
+- `core/ui/src/components/AuditTimeline.tsx`
+- Reads `GET /api/audit-events?entityType=&entityId=` via React Query
+- Color-coded by event type: CREATE, UPDATE, STATUS_CHANGE, E_SIGNATURE, WORKFLOW_ACTION
+- Wired into `SamplingPage`, `GrnPage`, `DeviationDetailPage`, `DocumentsPage`
+
+---
+
+### Ticket 6F.3: Dashboard Live KPIs
+
+**Status:** Implemented.
+
+**Backend**
+
+- Added `countExpiringBetween(@Param from, @Param to)` JPQL query to `InventoryRepository`
+- Added `expiringIn30Days` field to `InventorySummaryResponse`
+- Updated `InventoryServiceImpl.getInventorySummary()` to populate expiry count
+
+**Frontend**
+
+- Added `expiringIn30Days: number` to `InventorySummary` type
+- Dashboard 5 live KPI cards:
+  - Quarantine Lots → `/inventory`
+  - Pending Sampling → `/qc/sampling`
+  - Open Deviations (OPEN + UNDER_INVESTIGATION + CAPA_IN_PROGRESS) → `/qms/deviations`
+  - Expiring ≤30d → `/inventory`
+  - Overdue Requalifications (VBU `nextRequalificationDue ≤ today`) → `/master-data/partners/vendors`
+- All cards are role-gated and navigable
+
+### Ticket 6D.3: Fix Document Approval E-Sign Flow
+
+**Status:** Implemented.
+
+**Problem:** `ApprovalDialog` in `DocumentsPage.tsx` wraps `ESignatureDialog`, which only calls `POST /api/e-signatures`. `approveDocumentRevision` is never invoked — `DocumentApproval.status` stays `PENDING` and revision never advances from `IN_REVIEW`.
+
+**Dead code to remove:**
+- `signaturePassword` state
+- `approvalComments` state (parent scope)
+- `approvalMutation`
+- `ApprovalDialog` component
+
+**Fix:**
+- Restore inline approval form in "Approval Workflow" panel calling `approveDocumentRevision` directly.
+- Backend approval endpoint already records e-signature internally.
+
+**File:** `core/ui/src/features/documents/DocumentsPage.tsx`
+
+### Ticket 6D.4: Document Control UI Polish
+
+**Status:** Implemented.
+
+**Gaps in `DocumentsPage.tsx`:**
+- "My Acknowledgments" uses `.slice(0, 4)` — no "View all" toggle.
+- Distribution form uses comma-separated text for usernames — replace with checkbox list from `managedUsers`.
+- `RevisionCard.fileName` shown as plain text — should be a download anchor via `GET /api/documents/{id}/revisions/{revId}/file`.
+
+**File:** `core/ui/src/features/documents/DocumentsPage.tsx`
+
+---
+
+## Phase 6G: Pharma Compliance Gap Backfill
+
+**Goal:** Close regulatory gaps identified post-Phase-6B. Each ticket has a specific FDA/EU GMP anchor. Full ticket definitions are in `NEXT_DEVELOPMENT_PLAN_2026-05-11.md` Phase 6G section.
+
+---
+
+### Ticket 6G.1: Fix Pre-Existing Backend Compile Errors
+
+**Status:** Not implemented. Blocker.
+
+**Backend**
+- Fix `AuthDataInitializer.java` — builder missing 6C.2 security fields.
+- Fix `BatchServiceImpl.java` — partial implementation compile failure.
+- `./mvnw compile` must pass with zero errors.
+
+**Done Means**
+- Backend compiles clean; all existing integration tests run.
+
+---
+
+### Ticket 6G.2: Audit Timeline Wiring — CAPA and Change Control
+
+**Status:** Not implemented.
+
+**Regulatory basis:** FDA 21 CFR Part 11 §11.10(e) — audit trails required for all CAPA and change control records.
+
+**Backend**
+- Add missing `AuditEventService.record(...)` calls in `CapaServiceImpl` and `ChangeControlServiceImpl` for every state transition.
+
+**Frontend**
+- Add `<AuditTimeline entityType="QMS_CAPA" entityId={...} />` to `CapaBoardPage.tsx` CAPA detail panel.
+- Add `<AuditTimeline entityType="CHANGE_CONTROL" entityId={...} />` to `ChangeControlPage.tsx` detail view.
+
+**Done Means**
+- CAPA and Change Control detail pages show complete audit history. No regulated action is missing from the trail.
+
+---
+
+### Ticket 6G.3: Dashboard QMS/Compliance KPI Expansion
+
+**Status:** Not implemented.
+
+**Regulatory basis:** FDA QSIT + EU GMP Chapter 1 — management review of quality metrics.
+
+**Backend**
+- Extend `GET /api/qms/analytics` with: `openChangeControls`, `pendingCCApprovals`, `overdueEffectivenessChecks`, `documentsAwaitingReview`, `overdueTrainingAssignments`.
+
+**Frontend**
+- Add KPI cards to `DashboardPage.tsx`: Open Change Controls, Overdue Effectiveness Reviews, Documents Due for Review, Overdue Training. Role-gated.
+
+**Done Means**
+- QC Manager sees live QMS health on dashboard.
+
+---
+
+### Ticket 6G.4: Document Review Date Tracking
+
+**Status:** Not implemented.
+
+**Regulatory basis:** EU GMP Chapter 4.7 — documents must be reviewed periodically; past-review SOPs are uncontrolled.
+
+**Migration:** `V80__add_document_review_tracking.sql`
+- Add `review_interval_months INT DEFAULT 24`, `next_review_date DATE`, `review_status VARCHAR(30)` to `controlled_document`.
+
+**Backend**
+- Compute `nextReviewDate` at final approval. Derive `reviewStatus` from date vs today.
+- Add `GET /api/documents/due-for-review` endpoint.
+
+**Frontend**
+- Document list: `Next Review` column, `reviewStatus` badge, "Due for Review" filter tab.
+
+**Done Means**
+- No SOP can silently age past its review date without visibility.
+
+---
+
+### Ticket 6G.5: GRN Rejection → Deviation Auto-Creation
+
+**Status:** Not implemented.
+
+**Regulatory basis:** EU GMP Chapter 6.14 — material rejection events must be investigated with traceable documentation.
+
+**Backend**
+- On GRN `REJECTED` or CoA `REJECTED`: auto-create `Deviation` with `sourceModule=GRN`, `sourceEntityId=grn.id`, title, severity `MAJOR`, status `OPEN`. Return `linkedDeviationId` in GRN response.
+
+**Frontend**
+- Toast after rejection: `"Deviation [DEV-XXXX] automatically created."` GRN detail shows linked deviations section.
+
+**Done Means**
+- Every rejected GRN has an automatic traceable deviation. Source link navigable in both directions.
+
+---
+
+### Ticket 6G.6: MoA → Controlled SOP Document Linkage
+
+**Status:** Not implemented. Deferred from 6D.2.
+
+**Regulatory basis:** EU GMP Chapter 6.9 — test methods must reference approved analytical procedure SOPs.
+
+**Migration:** `V81__add_moa_sop_document_link.sql`
+- Add `sop_document_id UUID`, `sop_revision_id UUID` to `moa` table.
+
+**Backend**
+- `MoaServiceImpl`: validate linked document is `EFFECTIVE`. Include linked doc metadata in `MoaResponse`.
+
+**Frontend**
+- MoA form: "Linked SOP" selector filtered to `EFFECTIVE` documents. MoA detail shows SOP link.
+
+**Done Means**
+- Every MoA traces to its controlling SOP. MoA → SOP revision path is navigable.
+
+---
+
+### Ticket 6G.7: Training Gate Enforcement for Sampling and QC
+
+**Status:** Not implemented. Training assignment infrastructure from 6E.1 exists.
+
+**Regulatory basis:** EU GMP Chapter 2.8–2.9 + FDA 211.68 — only trained personnel may perform regulated operations.
+
+**Backend**
+- Add `TrainingGateService.assertTrainedForRequirement(username, requirementKey)`.
+- Wire into `SamplingServiceImpl`: `startSampling` checks `SAMPLING_SOP`, `enterQcResult` checks `QC_ANALYST_TRAINING`, `finalDisposition` checks `QC_MANAGER_QUALIFICATION`.
+
+**Frontend**
+- Training gate error shows resolution path: `"Assign training in HRMS → Training."`
+
+**Done Means**
+- Untrained personnel cannot perform regulated sampling or QC operations at the system boundary.
+
+---
+
+### Ticket 6G.8: OOS/OOT Investigation Two-Phase Workflow
+
+**Status:** Not implemented.
+
+**Regulatory basis:** FDA OOS Guidance (2006) + EU GMP Chapter 6.15–6.18 — mandatory two-phase OOS investigation (Phase 1: lab; Phase 2: full investigation).
+
+**Migration:** `V82__add_oos_investigation_phases.sql`
+- Add to `qc_investigation`: `investigation_phase`, `phase1_outcome`, `phase1_root_cause`, `phase1_completed_by/at`, `phase2_required`, `oot_flag`, `retest_authorized`, `retest_sample_count`.
+
+**Backend**
+- `completePhase1()`: no-assignable-cause → Phase 2; invalid-result → retest. `completePhase2()`: requires e-sign by QC Manager.
+
+**Frontend**
+- Phase 1 and Phase 2 sections on QC investigation panel. OOT flag toggle. Status pill: PHASE_1 / PHASE_2 / COMPLETED / INVALID_RESULT.
+
+**Done Means**
+- OOS investigation follows FDA two-phase structure. Phase transition is explicit and audited.
+
+---
+
+### Ticket 6G.9: Lot/Batch Traceability View
+
+**Status:** Not implemented.
+
+**Regulatory basis:** EU GMP Annex 15 + FDA 211.188 — full lot history from receipt to disposition must be reconstructable.
+
+**Backend**
+- No migration. Add `GET /api/lots/{lotNumber}/traceability` returning `LotTraceabilityResponse`: GRN → containers → CoA review → sampling → QC worksheet/results → disposition → inventory transactions → linked deviations → CAPAs.
+
+**Frontend**
+- New page `/qms/traceability`. Search by lot/GRN number. Vertical timeline showing each step with date, actor, status, and link to source record.
+
+**Done Means**
+- QC Manager can reconstruct a lot's complete history in one view for inspection readiness.
+
+---
+
+### Ticket 6G.10: Change Control Affected Entity Navigation and Display
+
+**Status:** Not implemented.
+
+**Regulatory basis:** EU GMP Chapter 13 — change records must explicitly identify controlled items being changed; raw UUIDs are not inspection-readable.
+
+**Migration:** `V83__add_cc_affected_entity_display_fields.sql`
+- Add `entity_display_name VARCHAR(255)`, `entity_number VARCHAR(100)` to `qms_change_control_affected_entity`.
+
+**Backend**
+- `ChangeControlServiceImpl.addAffectedEntity()`: resolve display name/number from actual entity tables by type. Include `navigationPath` in response.
+
+**Frontend**
+- Replace raw entity IDs with `entityDisplayName` + clickable navigation links. "Add entity" form uses search/autocomplete pickers instead of manual UUID entry.
+
+**Done Means**
+- Change Control records show human-readable entity names. Inspectors can navigate directly to changed items. No raw UUIDs visible.
 
 ---
 

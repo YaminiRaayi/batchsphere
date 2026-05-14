@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BatchSphere — Equipment Qualification (IQ/OQ/PQ)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #f8fafc; color: #1e293b; }
+  .screen-label { background: #0f172a; color: #94a3b8; font-family: 'Courier New', monospace; font-size: 11px; padding: 6px 16px; letter-spacing: 0.05em; }
+  .status-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .tab { padding: 5px 14px; border-radius: 8px; font-size: 12px; cursor: pointer; font-weight: 500; }
+  .tab.active { background: #1d4ed8; color: white; }
+  .tab:not(.active) { color: #1e3a8a; background: #eff6ff; }
+  .tab:not(.active):hover { background: #dbeafe; }
+  .inner-tab { padding: 5px 12px; border-radius: 7px; font-size: 11px; cursor: pointer; font-weight: 500; border-bottom: 2px solid transparent; }
+  .inner-tab.active { color: #1d4ed8; border-bottom-color: #1d4ed8; background: transparent; font-weight: 700; }
+  .inner-tab:not(.active) { color: #64748b; }
+  .inner-tab:not(.active):hover { color: #1e3a8a; }
+  tr.tbl-row:hover td { background: #eff6ff; }
+  input, select, textarea { font-size: 12px; }
+</style>
+</head>
+<body>
+
+<!-- ===== SCREEN 1 ===== -->
+<div class="screen-label">SCREEN 1/2 — /lims/equipment — Equipment List</div>
+<div class="flex h-screen overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="w-64 shrink-0 flex flex-col bg-blue-900 border-r border-blue-800 overflow-y-auto">
+    <div class="flex h-16 shrink-0 items-center border-b border-blue-800 px-4 gap-3">
+      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">BS</div>
+      <div><p class="text-[10px] font-bold uppercase tracking-widest text-blue-200">BatchSphere</p><p class="text-sm font-semibold text-white leading-none">Core ERP</p></div>
+    </div>
+    <div class="border-b border-blue-800 p-3">
+      <div class="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">YR</div>
+        <div class="min-w-0"><div class="truncate text-xs font-semibold text-white">Yamini Raayi</div><div class="text-[10px] text-blue-200">QC_MANAGER</div></div>
+        <div class="ml-auto h-2 w-2 rounded-full bg-green-400 shrink-0"></div>
+      </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto p-3 space-y-3">
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Main</p>
+        <a href="01-dashboard.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⊞ Command Center</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Master Data</p>
+        <a href="07-vms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏢 Partners</a>
+        <a href="08-materials.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Materials</a>
+        <a href="11-spec-moa.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📋 QC Refs</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Operations</p>
+        <a href="02-grn.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📦 Inbound GRN</a>
+        <a href="09-inventory.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 Inventory</a>
+        <a href="06-sampling.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚗ QC Sampling</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Quality</p>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚠ Deviations</a>
+        <a href="03-qms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✔ CAPAs</a>
+        <a href="05-documents.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📄 Documents</a>
+        <a href="12-complaint-management.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🔔 Complaints</a>
+        <a href="13-risk-assessment.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚡ Risk Register</a>
+        <a href="18-lot-traceability.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🔗 Traceability</a>
+        <a href="16-apqr.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 APQR</a>
+        <a href="17-qp-batch-release.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✅ QP Release</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Laboratory</p>
+        <a href="14-retention-samples.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Retention Samples</a>
+        <a href="15-equipment-qualification.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-white/10 font-semibold text-white">⚙ Equipment Qual</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">HR</p>
+        <a href="06-hrms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">👤 Employees</a>
+        <a href="06-hrms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🎓 Training</a></div>
+    </nav>
+    <div class="border-t border-blue-800 p-3 text-center text-[10px] text-blue-400">BatchSphere © 2026</div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <header class="h-14 shrink-0 flex items-center border-b border-blue-100 bg-white px-6 gap-3">
+      <nav class="text-xs text-slate-400">
+        <span>Laboratory</span>
+        <span class="mx-1.5 text-slate-300">/</span>
+        <span class="text-slate-700 font-medium">Equipment</span>
+      </nav>
+      <div class="ml-auto flex items-center gap-2">
+        <span class="text-[10px] text-slate-400">2026-05-14 11:42</span>
+        <div class="h-4 w-px bg-slate-200"></div>
+        <div class="flex h-7 w-7 items-center justify-center rounded-full bg-rose-100 text-[10px] font-bold text-rose-600">YR</div>
+      </div>
+    </header>
+
+    <main class="flex-1 overflow-y-auto p-6 space-y-5">
+
+      <!-- Page header -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-lg font-bold text-slate-800">Equipment Qualification Register</h1>
+          <p class="text-xs text-slate-500 mt-0.5">IQ/OQ/PQ qualification status and calibration records for all laboratory equipment</p>
+        </div>
+        <button class="flex items-center gap-2 rounded-xl bg-blue-700 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-800 shadow-sm">
+          + Register Equipment
+        </button>
+      </div>
+
+      <!-- KPI Strip -->
+      <div class="grid grid-cols-4 gap-4">
+        <div class="bg-white border border-blue-100 rounded-xl p-4 flex flex-col gap-1 border-l-4 border-l-green-500">
+          <span class="text-2xl font-bold text-green-700">24</span>
+          <span class="text-[11px] text-slate-500 font-medium">Total Active Equipment</span>
+        </div>
+        <div class="bg-white border border-blue-100 rounded-xl p-4 flex flex-col gap-1 border-l-4 border-l-orange-400">
+          <span class="text-2xl font-bold text-orange-500">4</span>
+          <span class="text-[11px] text-slate-500 font-medium">Calibration Due 30d</span>
+        </div>
+        <div class="bg-white border border-blue-100 rounded-xl p-4 flex flex-col gap-1 border-l-4 border-l-red-500">
+          <span class="text-2xl font-bold text-red-600">2</span>
+          <span class="text-[11px] text-slate-500 font-medium">Qualification Due</span>
+        </div>
+        <div class="bg-white border border-blue-100 rounded-xl p-4 flex flex-col gap-1 border-l-4 border-l-amber-400">
+          <span class="text-2xl font-bold text-amber-600">1</span>
+          <span class="text-[11px] text-slate-500 font-medium">Under Maintenance</span>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="bg-white border border-blue-100 rounded-xl p-4">
+        <div class="flex items-center gap-3 flex-wrap">
+          <div class="flex gap-1">
+            <button class="tab active">ALL</button>
+            <button class="tab">ACTIVE</button>
+            <button class="tab">UNDER_MAINTENANCE</button>
+            <button class="tab">PENDING_QUALIFICATION</button>
+            <button class="tab">RETIRED</button>
+          </div>
+          <div class="h-5 w-px bg-slate-200"></div>
+          <select class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300">
+            <option>All Types</option>
+            <option>HPLC</option>
+            <option>GC</option>
+            <option>BALANCE</option>
+            <option>UV_SPECTROPHOTOMETER</option>
+            <option>DISSOLUTION</option>
+            <option>PH_METER</option>
+          </select>
+          <select class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300">
+            <option>All Locations</option>
+            <option>Lab A</option>
+            <option>Lab B</option>
+            <option>Lab C</option>
+          </select>
+          <div class="ml-auto text-[10px] text-slate-400">Showing 8 of 24 records</div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="bg-white border border-blue-100 rounded-xl overflow-hidden">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="border-b border-blue-100 bg-blue-50">
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Equipment ID</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Name</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Type</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Location</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Status</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Last Calibration</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Next Calibration</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Qual Status</th>
+              <th class="px-4 py-3 text-left font-semibold text-slate-600">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <!-- Row 1 -->
+            <tr class="tbl-row cursor-pointer">
+              <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">EQ-HPLC-001</td>
+              <td class="px-4 py-2.5 text-slate-700">Agilent 1260 Infinity HPLC</td>
+              <td class="px-4 py-2.5"><span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-mono font-semibold">HPLC</span></td>
+              <td class="px-4 py-2.5 text-slate-600">Lab A, Bench 1</td>
+              <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="inline-block w-1.5 h-1.5 rounded-full bg-green-500"></span>ACTIVE</span></td>
+              <td class="px-4 py-2.5 text-slate-600">2026-02-15</td>
+              <td class="px-4 py-2.5 text-green-700 font-medium">2027-02-15</td>
+              <td class="px-4 py-2.5 text-green-700 font-semibold">IQ/OQ/PQ ✓</td>
+              <td class="px-4 py-2.5"><a href="15-equipment-qualification.html#detail" class="text-blue-600 hover:underline font-medium">View</a></td>
+            </tr>
+            <!-- Row 2 — calibration OVERDUE -->
+            <tr class="tbl-row cursor-pointer bg-red-50">
+              <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">EQ-HPLC-002</td>
+              <td class="px-4 py-2.5 text-slate-700">Waters Alliance HPLC</td>
+              <td class="px-4 py-2.5"><span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-mono font-semibold">HPLC</span></td>
+              <td class="px-4 py-2.5 text-slate-600">Lab A, Bench 2</td>
+              <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="inline-block w-1.5 h-1.5 rounded-full bg-green-500"></span>ACTIVE</span></td>
+              <td class="px-4 py-2.5 text-slate-600">2025-11-20</td>
+              <td class="px-4 py-2.5">
+                <span class="text-red-600 font-bold">2026-05-20</span>
+                <span class="ml-1 text-[9px] bg-red-100 text-red-600 px-1 rounded font-semibold">OVERDUE</span>
+              </td>
+              <td class="px-4 py-2.5 text-green-700 font-semibold">IQ/OQ/PQ ✓</td>
+              <td class="px-4 py-2.5"><a href="15-equipment-qualification.html" class="text-blue-600 hover:underline font-medium">View</a></td>
+            </tr>
+            <!-- Row 3 -->
+            <tr class="tbl-row cursor-pointer">
+              <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">EQ-BAL-001</td>
+              <td class="px-4 py-2.5 text-slate-700">Mettler Toledo XS205</td>
+              <td class="px-4 py-2.5"><span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono font-semibold">BALANCE</span></td>
+              <td class="px-4 py-2.5 text-slate-600">Lab B, Bench 3</td>
+              <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="inline-block w-1.5 h-1.5 rounded-full bg-green-500"></span>ACTIVE</span></td>
+              <td class="px-4 py-2.5 text-slate-600">2026-04-01</td>
+              <td class="px-4 py-2.5 text-green-700 font-medium">2026-10-01</td>
+              <td class="px-4 py-2.5 text-green-700 font-semibold">IQ/OQ/PQ ✓</td>
+              <td class="px-4 py-2.5"><a href="15-equipment-qualification.html" class="text-blue-600 hover:underline font-medium">View</a></td>
+            </tr>
+            <!-- Row 4 -->
+            <tr class="tbl-row cursor-pointer">
+              <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">EQ-BAL-002</td>
+              <td class="px-4 py-2.5 text-slate-700">Sartorius Secura</td>
+              <td class="px-4 py-2.5"><span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono font-semibold">BALANCE</span></td>
+              <td class="px-4 py-2.5 text-slate-600">Lab B, Bench 4</td>
+              <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="inline-block w-1.5 h-1.5 rounded-full bg-green-500"></span>ACTIVE</span></td>
+              <td class="px-4 py-2.5 text-slate-600">2026-03-10</td>
+              <td class="px-4 py-2.5 text-green-700 font-medium">2026-09-10</td>
+              <td class="px-4 py-2.5 text-green-700 font-semibold">IQ/OQ/PQ ✓</td>
+              <td class="px-4 py-2.5"><a href="15-equipment-qualification.html" class="text-blue-600 hover:underline font-medium">View</a></td>
+            </tr>
+            <!-- Row 5 — amber due 52d -->
+            <tr class="tbl-row cursor-pointer">
+              <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">EQ-GC-001</td>
+              <td class="px-4 py-2.5 text-slate-700">Agilent 7890B GC</td>
+              <td class="px-4 py-2.5"><span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded font-mono font-semibold">GC</span></td>
+              <td class="px-4 py-2.5 text-slate-600">Lab C, Bench 1</td>
+              <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="inline-block w-1.5 h-1.5 rounded-full bg-green-500"></span>ACTIVE</span></td>
+              <td class="px-4 py-2.5 text-slate-600">2026-01-05</td>
+              <td class="px-4 py-2.5">
+                <span class="text-amber-600 font-medium">2026-07-05</span>
+                <span class="ml-1 text-[9px] bg-amber-100 text-amber-600 px-1 rounded">52d</span>
+              </td>
+              <td class="px-4 py-2.5 text-green-700 font-semibold">IQ/OQ/PQ ✓</td>
+              <td class="px-4 py-2.5"><a href="15-equipment-qualification.html" class="text-blue-600 hover:underline font-medium">View</a></td>
+            </tr>
+            <!-- Row 6 — amber due 32d -->
+            <tr class="tbl-row cursor-pointer">
+              <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">EQ-UV-001</td>
+              <td class="px-4 py-2.5 text-slate-700">Shimadzu UV-2600</td>
+              <td class="px-4 py-2.5"><span class="bg-violet-50 text-violet-700 px-2 py-0.5 rounded font-mono font-semibold text-[10px]">UV_SPEC</span></td>
+              <td class="px-4 py-2.5 text-slate-600">Lab A, Bench 3</td>
+              <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700"><span class="inline-block w-1.5 h-1.5 rounded-full bg-green-500"></span>ACTIVE</span></td>
+              <td class="px-4 py-2.5 text-slate-600">2025-12-15</td>
+              <td class="px-4 py-2.5">
+                <span class="text-amber-600 font-medium">2026-06-15</span>
+                <span class="ml-1 text-[9px] bg-amber-100 text-amber-600 px-1 rounded">32d</span>
+              </td>
+              <td class="px-4 py-2.5 text-green-700 font-semibold">IQ/OQ/PQ ✓</td>
+              <td class="px-4 py-2.5"><a href="15-equipment-qualification.html" class="text-blue-600 hover:underline font-medium">View</a></td>
+            </tr>
+            <!-- Row 7 — UNDER_MAINTENANCE + requalification pending -->
+            <tr class="tbl-row cursor-pointer bg-orange-50">
+              <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">EQ-DIS-001</td>
+              <td class="px-4 py-2.5 text-slate-700">Erweka DT 720 Dissolution</td>
+              <td class="px-4 py-2.5"><span class="bg-orange-50 text-orange-700 px-2 py-0.5 rounded font-mono font-semibold text-[10px]">DISSOLUTION</span></td>
+              <td class="px-4 py-2.5 text-slate-600">Lab C, Bench 2</td>
+              <td class="px-4 py-2.5"><span class="status-pill bg-orange-100 text-orange-700"><span class="inline-block w-1.5 h-1.5 rounded-full bg-orange-500"></span>UNDER_MAINT</span></td>
+              <td class="px-4 py-2.5 text-slate-600">2025-08-20</td>
+              <td class="px-4 py-2.5 text-red-600 font-bold">2026-02-20 <span class="text-[9px] bg-red-100 px-1 rounded">OVERDUE</span></td>
+              <td class="px-4 py-2.5 text-orange-600 font-semibold">Requalification Pending</td>
+              <td class="px-4 py-2.5"><a href="15-equipment-qualification.html" class="text-blue-600 hover:underline font-medium">View</a></td>
+            </tr>
+            <!-- Row 8 — PENDING_QUALIFICATION -->
+            <tr class="tbl-row cursor-pointer">
+              <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">EQ-PH-001</td>
+              <td class="px-4 py-2.5 text-slate-700">Mettler Toledo SevenExcellence</td>
+              <td class="px-4 py-2.5"><span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono font-semibold text-[10px]">PH_METER</span></td>
+              <td class="px-4 py-2.5 text-slate-600">Lab B, Bench 2</td>
+              <td class="px-4 py-2.5"><span class="status-pill bg-slate-100 text-slate-500"><span class="inline-block w-1.5 h-1.5 rounded-full bg-slate-400"></span>PENDING_QUAL</span></td>
+              <td class="px-4 py-2.5 text-slate-400">—</td>
+              <td class="px-4 py-2.5 text-slate-400">—</td>
+              <td class="px-4 py-2.5 text-slate-400 italic">No records</td>
+              <td class="px-4 py-2.5"><a href="15-equipment-qualification.html" class="text-blue-600 hover:underline font-medium">View</a></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="border-t border-slate-100 px-4 py-2.5 flex items-center justify-between bg-slate-50">
+          <span class="text-[10px] text-slate-400">Showing 8 of 24 equipment records</span>
+          <div class="flex items-center gap-1">
+            <button class="px-2.5 py-1 text-[10px] rounded border border-slate-200 text-slate-500 hover:bg-white">← Prev</button>
+            <button class="px-2.5 py-1 text-[10px] rounded border border-blue-300 bg-blue-700 text-white">1</button>
+            <button class="px-2.5 py-1 text-[10px] rounded border border-slate-200 text-slate-500 hover:bg-white">2</button>
+            <button class="px-2.5 py-1 text-[10px] rounded border border-slate-200 text-slate-500 hover:bg-white">3</button>
+            <button class="px-2.5 py-1 text-[10px] rounded border border-slate-200 text-slate-500 hover:bg-white">Next →</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div><!-- /Screen 1 -->
+
+
+<!-- ===== SCREEN 2 ===== -->
+<div class="screen-label" id="detail">SCREEN 2/2 — /lims/equipment/EQ-HPLC-001 — Equipment Detail</div>
+<div class="flex h-screen overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="w-64 shrink-0 flex flex-col bg-blue-900 border-r border-blue-800 overflow-y-auto">
+    <div class="flex h-16 shrink-0 items-center border-b border-blue-800 px-4 gap-3">
+      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">BS</div>
+      <div><p class="text-[10px] font-bold uppercase tracking-widest text-blue-200">BatchSphere</p><p class="text-sm font-semibold text-white leading-none">Core ERP</p></div>
+    </div>
+    <div class="border-b border-blue-800 p-3">
+      <div class="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">YR</div>
+        <div class="min-w-0"><div class="truncate text-xs font-semibold text-white">Yamini Raayi</div><div class="text-[10px] text-blue-200">QC_MANAGER</div></div>
+        <div class="ml-auto h-2 w-2 rounded-full bg-green-400 shrink-0"></div>
+      </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto p-3 space-y-3">
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Main</p>
+        <a href="01-dashboard.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⊞ Command Center</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Master Data</p>
+        <a href="07-vms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏢 Partners</a>
+        <a href="08-materials.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Materials</a>
+        <a href="11-spec-moa.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📋 QC Refs</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Operations</p>
+        <a href="02-grn.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📦 Inbound GRN</a>
+        <a href="09-inventory.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 Inventory</a>
+        <a href="06-sampling.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚗ QC Sampling</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Quality</p>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚠ Deviations</a>
+        <a href="03-qms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✔ CAPAs</a>
+        <a href="05-documents.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📄 Documents</a>
+        <a href="12-complaint-management.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🔔 Complaints</a>
+        <a href="13-risk-assessment.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚡ Risk Register</a>
+        <a href="18-lot-traceability.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🔗 Traceability</a>
+        <a href="16-apqr.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 APQR</a>
+        <a href="17-qp-batch-release.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✅ QP Release</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Laboratory</p>
+        <a href="14-retention-samples.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Retention Samples</a>
+        <a href="15-equipment-qualification.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-white/10 font-semibold text-white">⚙ Equipment Qual</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">HR</p>
+        <a href="06-hrms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">👤 Employees</a>
+        <a href="06-hrms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🎓 Training</a></div>
+    </nav>
+    <div class="border-t border-blue-800 p-3 text-center text-[10px] text-blue-400">BatchSphere © 2026</div>
+  </aside>
+
+  <!-- Main -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <header class="h-14 shrink-0 flex items-center border-b border-blue-100 bg-white px-6 gap-3">
+      <nav class="text-xs text-slate-400">
+        <span>Laboratory</span>
+        <span class="mx-1.5 text-slate-300">/</span>
+        <a href="15-equipment-qualification.html" class="hover:text-blue-600">Equipment</a>
+        <span class="mx-1.5 text-slate-300">/</span>
+        <span class="text-slate-700 font-medium">EQ-HPLC-001</span>
+      </nav>
+      <div class="ml-auto flex items-center gap-2">
+        <span class="text-[10px] text-slate-400">2026-05-14 11:42</span>
+        <div class="h-4 w-px bg-slate-200"></div>
+        <div class="flex h-7 w-7 items-center justify-center rounded-full bg-rose-100 text-[10px] font-bold text-rose-600">YR</div>
+      </div>
+    </header>
+
+    <main class="flex-1 overflow-y-auto p-6 space-y-5">
+
+      <!-- Page header -->
+      <div class="flex items-start justify-between">
+        <div>
+          <div class="flex items-center gap-3 mb-1">
+            <h1 class="text-base font-bold text-slate-800">EQ-HPLC-001 — Agilent 1260 Infinity HPLC</h1>
+            <span class="status-pill bg-green-100 text-green-700"><span class="inline-block w-1.5 h-1.5 rounded-full bg-green-500"></span>ACTIVE</span>
+            <span class="bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">HPLC</span>
+          </div>
+          <p class="text-xs text-slate-500">Serial: DE12345678 &bull; Lab A, Bench 1 &bull; Responsible: qc.analyst</p>
+        </div>
+        <button class="flex items-center gap-2 rounded-xl bg-blue-700 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-800 shadow-sm shrink-0">
+          + Add Qualification Record
+        </button>
+      </div>
+
+      <!-- Info grid -->
+      <div class="bg-white border border-blue-100 rounded-xl p-5">
+        <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Equipment Details</h2>
+        <div class="grid grid-cols-3 gap-x-8 gap-y-3 text-xs">
+          <div class="flex flex-col gap-0.5">
+            <span class="text-slate-400 text-[10px] uppercase font-semibold tracking-wider">Manufacturer</span>
+            <span class="font-semibold text-slate-800">Agilent Technologies</span>
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-slate-400 text-[10px] uppercase font-semibold tracking-wider">Model</span>
+            <span class="font-semibold text-slate-800">1260 Infinity II</span>
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-slate-400 text-[10px] uppercase font-semibold tracking-wider">Serial Number</span>
+            <span class="font-mono font-semibold text-slate-800">DE12345678</span>
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-slate-400 text-[10px] uppercase font-semibold tracking-wider">Installation Date</span>
+            <span class="font-semibold text-slate-800">2023-06-15</span>
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-slate-400 text-[10px] uppercase font-semibold tracking-wider">Location</span>
+            <span class="font-semibold text-slate-800">Lab A, Bench 1</span>
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-slate-400 text-[10px] uppercase font-semibold tracking-wider">Responsible Analyst</span>
+            <span class="font-semibold text-slate-800">qc.analyst</span>
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-slate-400 text-[10px] uppercase font-semibold tracking-wider">Last Qualification</span>
+            <span class="font-semibold text-slate-800">2024-06-15 <span class="text-blue-600">(PQ)</span></span>
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-slate-400 text-[10px] uppercase font-semibold tracking-wider">Next Qualification Due</span>
+            <span class="font-semibold text-green-700">2025-06-15 ✓</span>
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-slate-400 text-[10px] uppercase font-semibold tracking-wider">Calibration Interval</span>
+            <span class="font-semibold text-slate-800">12 months</span>
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-slate-400 text-[10px] uppercase font-semibold tracking-wider">Last Calibration</span>
+            <span class="font-semibold text-slate-800">2026-02-15</span>
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-slate-400 text-[10px] uppercase font-semibold tracking-wider">Next Calibration</span>
+            <span class="font-semibold text-green-700">2027-02-15 ✓</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab bar -->
+      <div class="bg-white border border-blue-100 rounded-xl overflow-hidden">
+        <div class="flex items-center gap-0 border-b border-blue-100 px-4 pt-3">
+          <button class="inner-tab active pb-2.5">Qualification History</button>
+          <button class="inner-tab pb-2.5">Calibration Records</button>
+          <button class="inner-tab pb-2.5">Maintenance Log</button>
+        </div>
+
+        <!-- Qualification History tab -->
+        <div class="p-0">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="border-b border-blue-50 bg-blue-50">
+                <th class="px-4 py-2.5 text-left font-semibold text-slate-600">Record ID</th>
+                <th class="px-4 py-2.5 text-left font-semibold text-slate-600">Type</th>
+                <th class="px-4 py-2.5 text-left font-semibold text-slate-600">Protocol</th>
+                <th class="px-4 py-2.5 text-left font-semibold text-slate-600">Performed By</th>
+                <th class="px-4 py-2.5 text-left font-semibold text-slate-600">Date</th>
+                <th class="px-4 py-2.5 text-left font-semibold text-slate-600">Reviewed By</th>
+                <th class="px-4 py-2.5 text-left font-semibold text-slate-600">Result</th>
+                <th class="px-4 py-2.5 text-left font-semibold text-slate-600">Next Due</th>
+                <th class="px-4 py-2.5 text-left font-semibold text-slate-600">Report</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr class="tbl-row">
+                <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">QR-001</td>
+                <td class="px-4 py-2.5"><span class="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold">IQ</span></td>
+                <td class="px-4 py-2.5 font-mono text-slate-600 text-[10px]">IQ-HPLC-001-v1.0</td>
+                <td class="px-4 py-2.5 text-slate-600">ext.engineer</td>
+                <td class="px-4 py-2.5 text-slate-600">2023-06-20</td>
+                <td class="px-4 py-2.5 text-slate-600">yamini.raayi</td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700">PASS</span></td>
+                <td class="px-4 py-2.5 text-slate-400">—</td>
+                <td class="px-4 py-2.5"><a href="#" class="text-blue-600 hover:underline text-[10px]">SOP-IQ-001</a></td>
+              </tr>
+              <tr class="tbl-row">
+                <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">QR-002</td>
+                <td class="px-4 py-2.5"><span class="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded text-[10px] font-bold">OQ</span></td>
+                <td class="px-4 py-2.5 font-mono text-slate-600 text-[10px]">OQ-HPLC-001-v1.0</td>
+                <td class="px-4 py-2.5 text-slate-600">ext.engineer</td>
+                <td class="px-4 py-2.5 text-slate-600">2023-07-05</td>
+                <td class="px-4 py-2.5 text-slate-600">yamini.raayi</td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700">PASS</span></td>
+                <td class="px-4 py-2.5 text-slate-400">—</td>
+                <td class="px-4 py-2.5"><a href="#" class="text-blue-600 hover:underline text-[10px]">SOP-OQ-001</a></td>
+              </tr>
+              <tr class="tbl-row">
+                <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">QR-003</td>
+                <td class="px-4 py-2.5"><span class="bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded text-[10px] font-bold">PQ</span></td>
+                <td class="px-4 py-2.5 font-mono text-slate-600 text-[10px]">PQ-HPLC-001-v1.0</td>
+                <td class="px-4 py-2.5 text-slate-600">qc.analyst</td>
+                <td class="px-4 py-2.5 text-slate-600">2023-08-10</td>
+                <td class="px-4 py-2.5 text-slate-600">yamini.raayi</td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700">PASS</span></td>
+                <td class="px-4 py-2.5 text-slate-600">2024-08-10</td>
+                <td class="px-4 py-2.5"><a href="#" class="text-blue-600 hover:underline text-[10px]">SOP-PQ-001</a></td>
+              </tr>
+              <tr class="tbl-row">
+                <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">QR-004</td>
+                <td class="px-4 py-2.5"><span class="bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded text-[10px] font-bold">REQUALIF.</span></td>
+                <td class="px-4 py-2.5 font-mono text-slate-600 text-[10px]">PQ-HPLC-001-v2.0</td>
+                <td class="px-4 py-2.5 text-slate-600">qc.analyst</td>
+                <td class="px-4 py-2.5 text-slate-600">2024-08-15</td>
+                <td class="px-4 py-2.5 text-slate-600">yamini.raayi</td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700">PASS</span></td>
+                <td class="px-4 py-2.5 text-slate-600">2025-08-15</td>
+                <td class="px-4 py-2.5"><a href="#" class="text-blue-600 hover:underline text-[10px]">SOP-PQ-002</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Calibration Records (shown below as a second mini-card to make it visible in mockup) -->
+      <div class="bg-white border border-blue-100 rounded-xl overflow-hidden">
+        <div class="flex items-center gap-0 border-b border-blue-100 px-4 pt-3">
+          <button class="inner-tab pb-2.5 text-slate-400">Qualification History</button>
+          <button class="inner-tab active pb-2.5">Calibration Records</button>
+          <button class="inner-tab pb-2.5 text-slate-400">Maintenance Log</button>
+        </div>
+        <div class="p-0">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="border-b border-blue-50 bg-blue-50">
+                <th class="px-4 py-2.5 text-left font-semibold text-slate-600">Cert No.</th>
+                <th class="px-4 py-2.5 text-left font-semibold text-slate-600">Calibration Date</th>
+                <th class="px-4 py-2.5 text-left font-semibold text-slate-600">Performed By</th>
+                <th class="px-4 py-2.5 text-left font-semibold text-slate-600">Expiry</th>
+                <th class="px-4 py-2.5 text-left font-semibold text-slate-600">Result</th>
+                <th class="px-4 py-2.5 text-left font-semibold text-slate-600">Certificate</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr class="tbl-row">
+                <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">CAL-2026-0021</td>
+                <td class="px-4 py-2.5 text-slate-600">2026-02-15</td>
+                <td class="px-4 py-2.5 text-slate-600">AccuCal Services Ltd</td>
+                <td class="px-4 py-2.5 text-green-700 font-medium">2027-02-15</td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700">PASS</span></td>
+                <td class="px-4 py-2.5"><a href="#" class="text-blue-600 hover:underline text-[10px] flex items-center gap-1">↓ Download</a></td>
+              </tr>
+              <tr class="tbl-row">
+                <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">CAL-2025-0018</td>
+                <td class="px-4 py-2.5 text-slate-600">2025-02-10</td>
+                <td class="px-4 py-2.5 text-slate-600">AccuCal Services Ltd</td>
+                <td class="px-4 py-2.5 text-slate-500">2026-02-10</td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700">PASS</span></td>
+                <td class="px-4 py-2.5"><a href="#" class="text-blue-600 hover:underline text-[10px] flex items-center gap-1">↓ Download</a></td>
+              </tr>
+              <tr class="tbl-row">
+                <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">CAL-2024-0012</td>
+                <td class="px-4 py-2.5 text-slate-600">2024-02-08</td>
+                <td class="px-4 py-2.5 text-slate-600">AccuCal Services Ltd</td>
+                <td class="px-4 py-2.5 text-slate-500">2025-02-08</td>
+                <td class="px-4 py-2.5"><span class="status-pill bg-green-100 text-green-700">PASS</span></td>
+                <td class="px-4 py-2.5"><a href="#" class="text-blue-600 hover:underline text-[10px] flex items-center gap-1">↓ Download</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Add Qualification Record Form -->
+      <div class="bg-white border border-blue-200 rounded-xl p-5">
+        <div class="flex items-center gap-2 mb-5">
+          <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Add Qualification / Calibration Record</h2>
+          <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">Form</span>
+        </div>
+        <div class="grid grid-cols-3 gap-4">
+          <!-- Type -->
+          <div>
+            <label class="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Type <span class="text-red-400">*</span></label>
+            <select class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white text-slate-700">
+              <option>IQ</option>
+              <option>OQ</option>
+              <option>PQ</option>
+              <option>REQUALIFICATION</option>
+              <option>CALIBRATION</option>
+            </select>
+          </div>
+          <!-- Protocol Reference -->
+          <div>
+            <label class="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Protocol Reference <span class="text-red-400">*</span></label>
+            <input type="text" placeholder="e.g. PQ-HPLC-001-v3.0" class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300" />
+          </div>
+          <!-- Performed By -->
+          <div>
+            <label class="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Performed By <span class="text-red-400">*</span></label>
+            <input type="text" placeholder="username or external org" class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300" />
+          </div>
+          <!-- Performed Date -->
+          <div>
+            <label class="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Performed Date <span class="text-red-400">*</span></label>
+            <input type="date" class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300" />
+          </div>
+          <!-- Result -->
+          <div>
+            <label class="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Result <span class="text-red-400">*</span></label>
+            <select class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white text-slate-700">
+              <option>PASS</option>
+              <option>FAIL</option>
+              <option>CONDITIONAL</option>
+            </select>
+          </div>
+          <!-- Next Requalification Due -->
+          <div>
+            <label class="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Next Requalification Due</label>
+            <input type="date" class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300" />
+          </div>
+          <!-- Calibration Certificate No. -->
+          <div>
+            <label class="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Calibration Certificate No.</label>
+            <input type="text" placeholder="e.g. CAL-2026-XXXX" class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300" />
+          </div>
+          <!-- Cert Expiry -->
+          <div>
+            <label class="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Certificate Expiry</label>
+            <input type="date" class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300" />
+          </div>
+          <!-- Report Document -->
+          <div>
+            <label class="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Report Document Link</label>
+            <input type="text" placeholder="e.g. SOP-PQ-003 or upload ref" class="w-full rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-300" />
+          </div>
+        </div>
+        <div class="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2">
+          <button class="px-6 py-2 text-xs font-semibold rounded-lg bg-blue-700 text-white hover:bg-blue-800 shadow-sm">Submit</button>
+          <button class="px-5 py-2 text-xs font-semibold rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200">Cancel</button>
+          <span class="ml-auto text-[10px] text-slate-400">Record will be saved with reviewer: yamini.raayi</span>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div><!-- /Screen 2 -->
+
+</body>
+</html>

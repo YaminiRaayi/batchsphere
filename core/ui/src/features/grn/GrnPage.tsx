@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AuditTimeline } from "../../components/AuditTimeline";
 import { useAppShellStore } from "../../stores/appShellStore";
 import {
   cancelGrn,
@@ -1005,13 +1006,6 @@ export function GrnPage() {
                                 { label: "Total Received", value: sumQuantity(selectedGrn, "receivedQuantity"), mono: false, bold: true },
                                 { label: "Total Accepted", value: sumQuantity(selectedGrn, "acceptedQuantity"), mono: false, bold: true },
                                 { label: "Remarks", value: selectedGrn.remarks || "No remarks", mono: false },
-                                {
-                                  label: "Audit Trail",
-                                  value: selectedGrn.updatedBy
-                                    ? `Created by ${selectedGrn.createdBy} · Last updated by ${selectedGrn.updatedBy}`
-                                    : `Created by ${selectedGrn.createdBy}`,
-                                  mono: false
-                                },
                               ].map(({ label, value, mono, accent, bold }) => (
                                 <div key={label}>
                                   <div className="text-[10px] font-semibold uppercase text-slate-400">{label}</div>
@@ -1154,6 +1148,14 @@ export function GrnPage() {
                               </div>
                             </div>
                           ) : null}
+
+                          <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+                            <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+                              <div className="h-4 w-1 rounded bg-slate-400" />
+                              Audit Trail
+                            </div>
+                            <AuditTimeline entityType="GRN" entityId={selectedGrn.id} />
+                          </div>
                         </div>
 
                         {/* Right column: Containers with pagination */}

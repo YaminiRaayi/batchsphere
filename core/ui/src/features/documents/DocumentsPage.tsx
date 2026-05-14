@@ -6,14 +6,15 @@ import {
   createDocument,
   createDocumentRevision,
   distributeDocumentRevision,
-  fetchAuditEvents,
   fetchDocumentDistributions,
+  fetchDocumentRevisionFile,
   fetchDocuments,
   fetchManagedUsers,
   fetchMyDocumentAcknowledgements,
   submitDocumentRevision
 } from "../../lib/api";
 import { useAuthStore } from "../../stores/authStore";
+import { AuditTimeline } from "../../components/AuditTimeline";
 import type {
   ControlledDocument,
   ControlledDocumentStatus,
@@ -65,6 +66,7 @@ export function DocumentsPage() {
   const [acknowledgementPassword, setAcknowledgementPassword] = useState("");
   const [acknowledgementComments, setAcknowledgementComments] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
+  const [showAllAck, setShowAllAck] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["documents", typeFilter, statusFilter, search],
@@ -77,12 +79,6 @@ export function DocumentsPage() {
   );
   const currentRevision = selected?.currentRevision ?? selected?.revisions[0] ?? null;
   const pendingApproval = currentRevision?.approvals.find((approval) => approval.status === "PENDING") ?? null;
-
-  const { data: auditEvents = [] } = useQuery({
-    queryKey: ["audit-events", "CONTROLLED_DOCUMENT", selected?.id],
-    queryFn: () => fetchAuditEvents("CONTROLLED_DOCUMENT", selected?.id as string),
-    enabled: Boolean(selected?.id)
-  });
 
   const { data: distributions = [] } = useQuery({
     queryKey: ["document-distributions", selected?.id],
@@ -263,6 +259,7 @@ export function DocumentsPage() {
                         <RevisionCard
                           key={revision.id}
                           revision={revision}
+                          documentId={selected.id}
                           isCurrent={revision.id === selected.currentRevisionId}
                           onSubmit={() => submitMutation.mutate(revision)}
                           disableSubmit={submitMutation.isPending || revision.revisionStatus !== "DRAFT"}
@@ -278,11 +275,11 @@ export function DocumentsPage() {
                         {pendingApproval && currentRevision.revisionStatus === "IN_REVIEW" ? (
                           <div className="rounded-xl border border-violet-100 bg-violet-50 p-4">
                             <div className="text-sm font-bold text-slate-800">Approve {formatLabel(pendingApproval.approvalStep)}</div>
-                            <div className="mt-1 text-xs text-slate-500">Electronic signature is recorded against the revision approval step.</div>
-                            <textarea value={approvalComments} onChange={(event) => setApprovalComments(event.target.value)} className={fieldClass("mt-3 min-h-20")} placeholder="Approval comments" />
-                            <input type="password" value={signaturePassword} onChange={(event) => setSignaturePassword(event.target.value)} className={fieldClass("mt-3")} placeholder={`Password for ${authUser?.username ?? "current user"}`} />
-                            <button type="button" onClick={() => approvalMutation.mutate(currentRevision)} disabled={approvalMutation.isPending || !signaturePassword} className="mt-3 rounded-lg bg-violet-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-50">
-                              Approve With E-sign
+                            <div className="mt-1 text-xs text-slate-500">Electronic signature recorded against revision approval step.</div>
+                            <textarea value={approvalComments} onChange={(event) => setApprovalComments(event.target.value)} className={fieldClass("mt-3 min-h-14")} placeholder="Approval comments (optional)" />
+                            <input type="password" value={signaturePassword} onChange={(event) => setSignaturePassword(event.target.value)} className={fieldClass("mt-2")} placeholder={`Password for ${authUser?.username ?? "current user"}`} />
+                            <button type="button" onClick={() => approvalMutation.mutate(currentRevision)} disabled={approvalMutation.isPending || !signaturePassword} className="mt-3 rounded-lg bg-violet-600 px-4 py-2 text-xs font-bold text-white hover:bg-violet-700 disabled:opacity-50">
+                              {approvalMutation.isPending ? "Approving..." : "Approve With E-sign"}
                             </button>
                           </div>
                         ) : null}
@@ -318,16 +315,29 @@ export function DocumentsPage() {
                       {currentRevision?.revisionStatus === "APPROVED" ? (
                         <div className="rounded-xl border border-violet-100 bg-violet-50 p-3">
                           <label className="text-[10px] font-bold uppercase tracking-wider text-violet-500">Assign users</label>
-                          <input
-                            value={distributionForm.assignedUsernames}
-                            onChange={(event) => setDistributionForm((current) => ({ ...current, assignedUsernames: event.target.value }))}
-                            className={fieldClass("mt-2")}
-                            placeholder="admin, qc.analyst"
-                            list="document-usernames"
-                          />
-                          <datalist id="document-usernames">
-                            {managedUsers.filter((user) => user.isActive).map((user) => <option key={user.id} value={user.username} />)}
-                          </datalist>
+                          <div className="mt-2 max-h-36 overflow-y-auto rounded-xl border border-violet-100 bg-white p-2 space-y-1">
+                            {managedUsers.filter((user) => user.isActive).length === 0
+                              ? <span className="text-xs text-slate-400">No active users</span>
+                              : managedUsers.filter((user) => user.isActive).map((user) => {
+                                  const checked = distributionForm.assignedUsernames.split(",").map((s) => s.trim()).includes(user.username);
+                                  return (
+                                    <label key={user.id} className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs hover:bg-violet-50">
+                                      <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={(event) => {
+                                          const current = distributionForm.assignedUsernames.split(",").map((s) => s.trim()).filter(Boolean);
+                                          const next = event.target.checked ? [...current, user.username] : current.filter((u) => u !== user.username);
+                                          setDistributionForm((f) => ({ ...f, assignedUsernames: next.join(", ") }));
+                                        }}
+                                        className="accent-violet-600"
+                                      />
+                                      <span className="font-medium text-slate-700">{user.username}</span>
+                                    </label>
+                                  );
+                                })
+                            }
+                          </div>
                           <input
                             type="date"
                             value={distributionForm.dueDate}
@@ -354,7 +364,7 @@ export function DocumentsPage() {
 
                   <Panel title="My Acknowledgments">
                     <div className="space-y-3">
-                      {myAcknowledgements.slice(0, 4).map((distribution) => {
+                      {(showAllAck ? myAcknowledgements : myAcknowledgements.slice(0, 4)).map((distribution) => {
                         const needsAck = distribution.status !== "ACKNOWLEDGED";
                         return (
                           <div key={distribution.id} className="rounded-xl border border-violet-100 bg-white p-3">
@@ -380,20 +390,16 @@ export function DocumentsPage() {
                         );
                       })}
                       {myAcknowledgements.length === 0 ? <div className="text-sm text-slate-500">No assigned documents.</div> : null}
+                      {myAcknowledgements.length > 4 ? (
+                        <button type="button" onClick={() => setShowAllAck((v) => !v)} className="text-xs font-semibold text-violet-600 hover:underline">
+                          {showAllAck ? "Show less" : `View all ${myAcknowledgements.length}`}
+                        </button>
+                      ) : null}
                     </div>
                   </Panel>
 
                   <Panel title="Audit Timeline">
-                    <div className="space-y-3">
-                      {auditEvents.map((event) => (
-                        <div key={event.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                          <div className="text-xs font-bold text-slate-700">{formatLabel(event.eventType)}</div>
-                          <div className="mt-1 text-[11px] text-slate-500">{event.reason ?? `${event.fieldName ?? "Record"} changed`}</div>
-                          <div className="mt-2 text-[10px] text-slate-400">{event.actor} · {formatDateTime(event.eventAt)}</div>
-                        </div>
-                      ))}
-                      {auditEvents.length === 0 ? <div className="text-sm text-slate-500">No audit events yet.</div> : null}
-                    </div>
+                    <AuditTimeline entityType="CONTROLLED_DOCUMENT" entityId={selected?.id} />
                   </Panel>
                 </div>
               </div>
@@ -458,7 +464,24 @@ function DocumentRow({ document, selected, onClick }: { document: ControlledDocu
   );
 }
 
-function RevisionCard({ revision, isCurrent, onSubmit, disableSubmit }: { revision: DocumentRevision; isCurrent: boolean; onSubmit: () => void; disableSubmit: boolean }) {
+function RevisionCard({ revision, documentId, isCurrent, onSubmit, disableSubmit }: { revision: DocumentRevision; documentId: string; isCurrent: boolean; onSubmit: () => void; disableSubmit: boolean }) {
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  async function handleDownload() {
+    setIsDownloading(true);
+    try {
+      const blob = await fetchDocumentRevisionFile(documentId, revision.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = revision.fileName ?? "document";
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsDownloading(false);
+    }
+  }
+
   return (
     <div className={`rounded-xl border p-3 ${isCurrent ? "border-violet-200 bg-violet-50" : "border-slate-200 bg-white"}`}>
       <div className="flex items-start justify-between gap-3">
@@ -469,7 +492,11 @@ function RevisionCard({ revision, isCurrent, onSubmit, disableSubmit }: { revisi
           </div>
           <div className="mt-2 text-sm text-slate-700">{revision.changeSummary}</div>
           <div className="mt-2 text-[11px] text-slate-400">Created by {revision.createdBy} · {formatDateTime(revision.createdAt)}</div>
-          {revision.fileName ? <div className="mt-1 text-[11px] font-semibold text-violet-700">{revision.fileName}</div> : null}
+          {revision.fileName ? (
+            <button type="button" onClick={handleDownload} disabled={isDownloading} className="mt-1 text-[11px] font-semibold text-violet-700 hover:underline disabled:opacity-50">
+              {isDownloading ? "Downloading..." : `↓ ${revision.fileName}`}
+            </button>
+          ) : null}
         </div>
         <button type="button" onClick={onSubmit} disabled={disableSubmit} className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-40">
           Submit
@@ -548,3 +575,4 @@ function formatLabel(value: string) {
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
+

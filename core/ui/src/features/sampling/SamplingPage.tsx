@@ -1,4 +1,6 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState, useRef } from "react";
+import { AuditTimeline } from "../../components/AuditTimeline";
+import { ESignatureDialog } from "../../components/ESignatureDialog";
 import { useAppShellStore } from "../../stores/appShellStore";
 import {
   completeSamplingInvestigationQaReview,
@@ -230,7 +232,8 @@ export function SamplingPage() {
   const [statusFilter, setStatusFilter]       = useState<(typeof requestStatuses)[number]>("ALL");
   const [planForm, setPlanForm]               = useState<SamplingPlanRequest>(() => createInitialPlanForm(currentUserName));
   const [qcRemarks, setQcRemarks]             = useState("");
-  const [qcDecisionSignoff, setQcDecisionSignoff] = useState({ confirmedBy: "", confirmationText: "" });
+  const [showQcESignDialog, setShowQcESignDialog] = useState(false);
+  const pendingQcApprovedRef = useRef<boolean>(true);
   const [qcReceiptForm, setQcReceiptForm]     = useState<QcReceiptRequest>({ receivedBy: currentUserName, receiptCondition: "", sampleStorageLocation: "", retainedFlag: false });
   const [qcReviewForm, setQcReviewForm]       = useState<StartQcReviewRequest>({ analystCode: "" });
   const [worksheet, setWorksheet]             = useState<QcWorksheetRow[]>([]);
@@ -255,10 +258,6 @@ export function SamplingPage() {
     if (!authenticatedUsername) {
       return;
     }
-    setQcDecisionSignoff((current) => current.confirmedBy === authenticatedUsername ? current : {
-      ...current,
-      confirmedBy: authenticatedUsername
-    });
   }, [authenticatedUsername]);
 
   useEffect(() => {
@@ -354,7 +353,6 @@ export function SamplingPage() {
       analystCode: selectedRequest.plan?.analystEmployeeCode ?? "",
       remarks: ""
     });
-    setQcDecisionSignoff({ confirmedBy: authenticatedUsername, confirmationText: "" });
     setResampleForm({ reason: selectedRequest.resampleReason ?? "" });
     setDestroyRetainedForm({ remarks: "" });
     if (selectedRequest.plan) {
@@ -749,24 +747,18 @@ export function SamplingPage() {
   async function handleQcDecision(approved: boolean) {
     if (!selectedRequest) return;
     if (!qcRemarks.trim()) { setPlanError("QC remarks are required."); return; }
-    if (!qcDecisionSignoff.confirmedBy.trim()) { setPlanError("Final QC sign-off username is required."); return; }
-    const requiredConfirmation = approved ? qcDecisionApprovalConfirmation : qcDecisionRejectionConfirmation;
-    if (qcDecisionSignoff.confirmationText.trim() !== requiredConfirmation) {
-      setPlanError(`Type "${requiredConfirmation}" to confirm this QC decision.`);
-      return;
-    }
     setIsSubmitting(true); setPlanError(null);
     try {
       const payload: QcDecisionRequest = {
         approved,
         remarks:   qcRemarks.trim(),
         updatedBy: planForm.updatedBy ?? currentUserName,
-        confirmedBy: qcDecisionSignoff.confirmedBy.trim(),
-        confirmationText: qcDecisionSignoff.confirmationText.trim()
+        confirmedBy: currentUserName,
+        confirmationText: approved ? qcDecisionApprovalConfirmation : qcDecisionRejectionConfirmation,
       };
       const updatedRequest = await recordQcDecision(selectedRequest.id, payload);
       setRequests((c) => c.map((r) => (r.id === updatedRequest.id ? updatedRequest : r)));
-      setQcDecisionSignoff({ confirmedBy: authenticatedUsername, confirmationText: "" });
+      setShowQcESignDialog(false);
       setSuccessMessage(approved ? "QC approved. Inventory moved to RELEASED." : "QC rejected. Inventory moved to REJECTED.");
     } catch (err) {
       setPlanError(err instanceof Error ? err.message : "Unknown error while recording QC decision");
@@ -2359,32 +2351,9 @@ export function SamplingPage() {
                     />
                   </div>
                   {canRecordFinalQcDecision ? (
-                    <>
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <label className="block">
-                          <span className={labelCls}>Final QC sign-off username</span>
-                          <input
-                            value={qcDecisionSignoff.confirmedBy}
-                            readOnly
-                            className={readonlyCls}
-                            disabled
-                          />
-                        </label>
-                        <label className="block">
-                          <span className={labelCls}>Typed confirmation</span>
-                          <input
-                            value={qcDecisionSignoff.confirmationText}
-                            onChange={(e) => setQcDecisionSignoff((current) => ({ ...current, confirmationText: e.target.value }))}
-                            className={fieldCls}
-                            disabled={isSubmitting}
-                            placeholder={qcDecisionApprovalConfirmation}
-                          />
-                        </label>
-                      </div>
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-700">
-                        Final QC sign-off username is taken from the logged-in account. Type "{qcDecisionApprovalConfirmation}" to confirm approval or "{qcDecisionRejectionConfirmation}" to confirm rejection.
-                      </div>
-                    </>
+                    <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs text-blue-700">
+                      Electronic signature required. Click Approve or Reject to open the sign-off dialog.
+                    </div>
                   ) : null}
                   {selectedRequest.qcDecisionConfirmationAt ? (
                     <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
@@ -2395,7 +2364,7 @@ export function SamplingPage() {
                     <button
                       type="button"
                       disabled={isSubmitting || !canRecordFinalQcDecision || !canApproveQcDecision}
-                      onClick={() => void handleQcDecision(true)}
+                      onClick={() => { pendingQcApprovedRef.current = true; setShowQcESignDialog(true); }}
                       className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-green-600 py-3 text-sm font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-green-200"
                     >
                       <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2417,7 +2386,7 @@ export function SamplingPage() {
                     <button
                       type="button"
                       disabled={isSubmitting || !canRecordFinalQcDecision || !canRejectQcDecision}
-                      onClick={() => void handleQcDecision(false)}
+                      onClick={() => { pendingQcApprovedRef.current = false; setShowQcESignDialog(true); }}
                       className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 py-3 text-sm font-semibold text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-200"
                     >
                       <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2428,10 +2397,29 @@ export function SamplingPage() {
                   </div>
                 </div>
               </div>
+
+              {selectedRequest && (
+                <div className="mt-6 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+                  <div className="mb-3 text-xs font-bold uppercase tracking-widest text-slate-400">Audit Trail</div>
+                  <AuditTimeline entityType="SAMPLING_REQUEST" entityId={selectedRequest.id} />
+                </div>
+              )}
             </>
           )}
         </div>
       </div>
+
+      {selectedRequest && (
+        <ESignatureDialog
+          entityType="SAMPLING_REQUEST"
+          entityId={selectedRequest.id}
+          action={pendingQcApprovedRef.current ? "QC_FINAL_APPROVAL" : "QC_FINAL_REJECTION"}
+          defaultMeaning={pendingQcApprovedRef.current ? "I approve this final QC disposition" : "I reject this final QC disposition"}
+          visible={showQcESignDialog}
+          onClose={() => setShowQcESignDialog(false)}
+          onSigned={() => { void handleQcDecision(pendingQcApprovedRef.current); }}
+        />
+      )}
     </div>
   );
 }

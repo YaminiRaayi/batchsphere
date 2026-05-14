@@ -45,4 +45,5 @@ export type InventoryTransaction = {
 
 export type InventorySummary = {
   countsByStatus: Record<InventoryStatus, number>;
+  expiringIn30Days: number;
 };

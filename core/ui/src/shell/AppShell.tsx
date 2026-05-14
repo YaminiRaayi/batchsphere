@@ -103,6 +103,22 @@ const NAV_GROUPS: NavGroup[] = [
         dimBorder: "#FDE68A"
       },
       {
+        to: "/qms/analytics",
+        label: "QMS Analytics",
+        abbr: "AN",
+        color: "#7C3AED",
+        lightBg: "#F5F3FF",
+        dimBorder: "#DDD6FE"
+      },
+      {
+        to: "/qms/change-controls",
+        label: "Change Control",
+        abbr: "CC",
+        color: "#0369A1",
+        lightBg: "#F0F9FF",
+        dimBorder: "#BAE6FD"
+      },
+      {
         to: "/documents",
         label: "Documents",
         abbr: "DC",

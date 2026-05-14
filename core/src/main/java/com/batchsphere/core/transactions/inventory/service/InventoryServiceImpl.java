@@ -114,8 +114,12 @@ public class InventoryServiceImpl implements InventoryService {
             counts.put(status, count);
         }
 
+        java.time.LocalDate today = java.time.LocalDate.now();
+        Long expiringIn30Days = inventoryRepository.countExpiringBetween(today, today.plusDays(30));
+
         return InventorySummaryResponse.builder()
                 .countsByStatus(counts)
+                .expiringIn30Days(expiringIn30Days)
                 .build();
     }
 

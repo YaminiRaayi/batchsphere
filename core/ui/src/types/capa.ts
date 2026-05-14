@@ -3,6 +3,10 @@ import type { PageResponse } from "./grn";
 
 export type CapaStatus = "OPEN" | "IN_PROGRESS" | "COMPLETED" | "EFFECTIVENESS_CHECK" | "CLOSED" | "CANCELLED";
 
+export type CapaApprovalStatus = "NONE" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+
+export type CapaEffectivenessOutcome = "PENDING" | "PASSED" | "FAILED";
+
 export type Capa = {
   id: string;
   capaNumber: string;
@@ -12,11 +16,25 @@ export type Capa = {
   description: string | null;
   severity: DeviationSeverity;
   status: CapaStatus;
+  approvalStatus: CapaApprovalStatus;
+  submittedForApprovalBy: string | null;
+  submittedForApprovalAt: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  approvalComments: string | null;
+  approvalESignatureId: string | null;
   owner: string;
   dueDate: string;
   correctiveAction: string;
   preventiveAction: string | null;
   effectivenessCheck: string | null;
+  effectivenessReviewDate: string | null;
+  effectivenessReviewer: string | null;
+  effectivenessOutcome: CapaEffectivenessOutcome;
+  effectivenessOutcomeComments: string | null;
+  effectivenessReviewAt: string | null;
+  effectivenessReviewBy: string | null;
+  effectivenessESignatureId: string | null;
   completionSummary: string | null;
   closedBy: string | null;
   closedAt: string | null;
@@ -67,3 +85,54 @@ export type CapaSummary = {
 };
 
 export type CapaPage = PageResponse<Capa>;
+
+export type CapaReassignment = {
+  id: string;
+  previousOwner: string;
+  newOwner: string;
+  reason: string;
+  assignedBy: string;
+  assignedAt: string;
+};
+
+export type ReassignCapaRequest = {
+  newOwner: string;
+  reason: string;
+};
+
+export type CapaAttachmentStage = "INVESTIGATION" | "CORRECTIVE_ACTION" | "PREVENTIVE_ACTION" | "EFFECTIVENESS_CHECK" | "GENERAL";
+
+export type CapaAttachment = {
+  id: string;
+  capaId: string;
+  stage: CapaAttachmentStage;
+  fileName: string;
+  fileSize: number | null;
+  mimeType: string | null;
+  uploadedBy: string;
+  uploadedAt: string;
+};
+
+export type CapaApproveRequest = {
+  username: string;
+  password: string;
+  meaning?: string;
+  comments?: string;
+};
+
+export type CapaRejectRequest = {
+  reason: string;
+};
+
+export type ScheduleEffectivenessReviewRequest = {
+  effectivenessReviewDate: string;
+  effectivenessReviewer: string;
+};
+
+export type CapaEffectivenessReviewRequest = {
+  outcome: "PASSED" | "FAILED";
+  comments?: string;
+  username: string;
+  password: string;
+  meaning?: string;
+};

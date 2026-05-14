@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BatchSphere — Complaint Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .screen-label { background: #1e293b; color: #94a3b8; font-family: monospace; font-size: 11px; padding: 6px 16px; letter-spacing: .05em; }
+  </style>
+</head>
+<body class="bg-slate-200">
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 1 — /qms/complaints — Complaint List                        -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="screen-label">SCREEN 1/2 — /qms/complaints — Complaint List</div>
+<div class="flex h-screen bg-slate-50 overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="w-64 shrink-0 flex flex-col bg-blue-900 border-r border-blue-800 overflow-y-auto">
+    <div class="flex h-16 shrink-0 items-center border-b border-blue-800 px-4 gap-3">
+      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">BS</div>
+      <div><p class="text-[10px] font-bold uppercase tracking-widest text-blue-200">BatchSphere</p><p class="text-sm font-semibold text-white leading-none">Core ERP</p></div>
+    </div>
+    <div class="border-b border-blue-800 p-3">
+      <div class="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">YR</div>
+        <div class="min-w-0"><div class="truncate text-xs font-semibold text-white">Yamini Raayi</div><div class="text-[10px] text-blue-200">QC_MANAGER</div></div>
+        <div class="ml-auto h-2 w-2 rounded-full bg-green-400 shrink-0"></div>
+      </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto p-3 space-y-3">
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Main</p>
+        <a href="01-dashboard.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⊞ Command Center</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Master Data</p>
+        <a href="07-vms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏢 Partners</a>
+        <a href="08-materials.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Materials</a>
+        <a href="11-spec-moa.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📋 QC Refs</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Operations</p>
+        <a href="02-grn.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📦 Inbound GRN</a>
+        <a href="09-inventory.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 Inventory</a>
+        <a href="06-sampling.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚗ QC Sampling</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Quality</p>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚠ Deviations</a>
+        <a href="03-qms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✔ CAPAs</a>
+        <a href="05-documents.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📄 Documents</a>
+        <a href="12-complaint-management.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-white/10 font-semibold text-white">🔔 Complaints</a>
+        <a href="13-risk-assessment.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚡ Risk Register</a>
+        <a href="18-lot-traceability.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🔗 Traceability</a>
+        <a href="16-apqr.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 APQR</a>
+        <a href="17-qp-batch-release.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✅ QP Release</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Laboratory</p>
+        <a href="14-retention-samples.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Retention Samples</a>
+        <a href="15-equipment-qualification.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚙ Equipment Qual</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">HR</p>
+        <a href="06-hrms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">👤 Employees</a>
+        <a href="06-hrms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🎓 Training</a></div>
+    </nav>
+    <div class="border-t border-blue-800 p-3 text-center text-[10px] text-blue-400">BatchSphere © 2026</div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="h-14 bg-white border-b border-blue-100 flex items-center px-6 flex-shrink-0 shadow-sm">
+      <div class="text-xs text-slate-400">Quality / <span class="text-blue-700 font-semibold">Complaints</span></div>
+    </header>
+
+    <div class="flex-1 overflow-y-auto p-5 space-y-4">
+
+      <!-- KPI Strip -->
+      <div class="grid grid-cols-4 gap-4">
+        <div class="bg-white border border-blue-100 rounded-xl p-4 border-l-4 border-l-orange-400">
+          <div class="text-2xl font-bold text-slate-800">12</div>
+          <div class="text-xs text-slate-500 mt-0.5">Open Complaints</div>
+        </div>
+        <div class="bg-white border border-blue-100 rounded-xl p-4 border-l-4 border-l-blue-500">
+          <div class="text-2xl font-bold text-slate-800">7</div>
+          <div class="text-xs text-slate-500 mt-0.5">Under Investigation</div>
+        </div>
+        <div class="bg-white border border-blue-100 rounded-xl p-4 border-l-4 border-l-red-500">
+          <div class="text-2xl font-bold text-slate-800">2</div>
+          <div class="text-xs text-slate-500 mt-0.5">Regulatory Reportable</div>
+        </div>
+        <div class="bg-white border border-blue-100 rounded-xl p-4 border-l-4 border-l-green-500">
+          <div class="text-2xl font-bold text-slate-800">18</div>
+          <div class="text-xs text-slate-500 mt-0.5">Closed This Month</div>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="bg-white border border-blue-100 rounded-xl p-3 flex items-center gap-2 flex-wrap">
+        <div class="flex gap-1">
+          <button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-700 text-white">ALL</button>
+          <button class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:bg-blue-50">RECEIVED</button>
+          <button class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:bg-blue-50">UNDER_INVESTIGATION</button>
+          <button class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:bg-blue-50">PENDING_CLOSURE</button>
+          <button class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:bg-blue-50">CLOSED</button>
+        </div>
+        <div class="w-px h-6 bg-slate-200"></div>
+        <select class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600 bg-slate-50 focus:outline-none focus:border-blue-400">
+          <option>Severity: ALL</option>
+          <option>CRITICAL</option>
+          <option>MAJOR</option>
+          <option>MINOR</option>
+        </select>
+        <select class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600 bg-slate-50 focus:outline-none focus:border-blue-400">
+          <option>Source: ALL</option>
+          <option>CUSTOMER</option>
+          <option>MARKET</option>
+          <option>INTERNAL</option>
+          <option>REGULATORY_AUTHORITY</option>
+          <option>DISTRIBUTOR</option>
+        </select>
+        <input type="text" placeholder="Date range: YYYY-MM-DD – YYYY-MM-DD" class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600 bg-slate-50 focus:outline-none focus:border-blue-400 w-56" />
+        <div class="ml-auto">
+          <button class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-blue-700 text-white hover:bg-blue-800">+ New Complaint</button>
+        </div>
+      </div>
+
+      <!-- Complaints Table -->
+      <div class="bg-white border border-blue-100 rounded-xl overflow-hidden">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="bg-blue-50 border-b border-blue-100">
+              <th class="text-left px-4 py-3 font-semibold text-slate-600">Complaint No.</th>
+              <th class="text-left px-4 py-3 font-semibold text-slate-600">Received</th>
+              <th class="text-left px-4 py-3 font-semibold text-slate-600">Source</th>
+              <th class="text-left px-4 py-3 font-semibold text-slate-600">Category</th>
+              <th class="text-left px-4 py-3 font-semibold text-slate-600">Severity</th>
+              <th class="text-left px-4 py-3 font-semibold text-slate-600">Status</th>
+              <th class="text-left px-4 py-3 font-semibold text-slate-600">Product / Lot</th>
+              <th class="text-left px-4 py-3 font-semibold text-slate-600">Linked Deviation</th>
+              <th class="text-left px-4 py-3 font-semibold text-slate-600">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-50">
+            <!-- Row 1 -->
+            <tr class="hover:bg-blue-50 transition-colors">
+              <td class="px-4 py-3 font-semibold text-blue-700">COMP-2026-001</td>
+              <td class="px-4 py-3 text-slate-600">2026-05-01</td>
+              <td class="px-4 py-3 text-slate-600">CUSTOMER</td>
+              <td class="px-4 py-3 text-slate-600">PRODUCT_QUALITY</td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>CRITICAL
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>UNDER_INVESTIGATION
+                </span>
+              </td>
+              <td class="px-4 py-3 text-slate-600">Paracetamol 500mg / <span class="font-mono text-slate-500">LOT-2025-0421</span></td>
+              <td class="px-4 py-3 text-blue-600 font-semibold">DEV-2026-018</td>
+              <td class="px-4 py-3"><a href="12-complaint-management.html#detail" class="text-blue-600 font-semibold hover:underline">View</a></td>
+            </tr>
+            <!-- Row 2 -->
+            <tr class="hover:bg-blue-50 transition-colors">
+              <td class="px-4 py-3 font-semibold text-blue-700">COMP-2026-002</td>
+              <td class="px-4 py-3 text-slate-600">2026-05-02</td>
+              <td class="px-4 py-3 text-slate-600">MARKET</td>
+              <td class="px-4 py-3 text-slate-600">PACKAGING_DEFECT</td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>MAJOR
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+                  <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>RECEIVED
+                </span>
+              </td>
+              <td class="px-4 py-3 text-slate-600">Ibuprofen 400mg / <span class="font-mono text-slate-500">LOT-2025-0388</span></td>
+              <td class="px-4 py-3 text-slate-400">—</td>
+              <td class="px-4 py-3"><a href="#" class="text-blue-600 font-semibold hover:underline">View</a></td>
+            </tr>
+            <!-- Row 3 -->
+            <tr class="hover:bg-blue-50 transition-colors">
+              <td class="px-4 py-3 font-semibold text-blue-700">COMP-2026-003</td>
+              <td class="px-4 py-3 text-slate-600">2026-05-03</td>
+              <td class="px-4 py-3 text-slate-600">INTERNAL</td>
+              <td class="px-4 py-3 text-slate-600">LABELING_ERROR</td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>MINOR
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>PENDING_CLOSURE
+                </span>
+              </td>
+              <td class="px-4 py-3 text-slate-600">Amoxicillin 250mg / <span class="font-mono text-slate-500">LOT-2025-0412</span></td>
+              <td class="px-4 py-3 text-blue-600 font-semibold">DEV-2026-015</td>
+              <td class="px-4 py-3"><a href="#" class="text-blue-600 font-semibold hover:underline">View</a></td>
+            </tr>
+            <!-- Row 4 -->
+            <tr class="hover:bg-blue-50 transition-colors">
+              <td class="px-4 py-3 font-semibold text-blue-700">COMP-2026-004</td>
+              <td class="px-4 py-3 text-slate-600">2026-05-04</td>
+              <td class="px-4 py-3 text-slate-600">REGULATORY_AUTHORITY</td>
+              <td class="px-4 py-3 text-slate-600">CONTAMINATION</td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>CRITICAL
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>UNDER_INVESTIGATION
+                </span>
+              </td>
+              <td class="px-4 py-3 text-slate-600">Metformin 500mg / <span class="font-mono text-slate-500">LOT-2025-0399</span></td>
+              <td class="px-4 py-3 text-blue-600 font-semibold">DEV-2026-019</td>
+              <td class="px-4 py-3"><a href="#" class="text-blue-600 font-semibold hover:underline">View</a></td>
+            </tr>
+            <!-- Row 5 -->
+            <tr class="hover:bg-blue-50 transition-colors">
+              <td class="px-4 py-3 font-semibold text-blue-700">COMP-2026-005</td>
+              <td class="px-4 py-3 text-slate-600">2026-05-05</td>
+              <td class="px-4 py-3 text-slate-600">CUSTOMER</td>
+              <td class="px-4 py-3 text-slate-600">EFFICACY</td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>MAJOR
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>CLOSED
+                </span>
+              </td>
+              <td class="px-4 py-3 text-slate-600">Atorvastatin 20mg / <span class="font-mono text-slate-500">LOT-2025-0376</span></td>
+              <td class="px-4 py-3 text-blue-600 font-semibold">DEV-2026-012</td>
+              <td class="px-4 py-3"><a href="#" class="text-blue-600 font-semibold hover:underline">View</a></td>
+            </tr>
+            <!-- Row 6 -->
+            <tr class="hover:bg-blue-50 transition-colors">
+              <td class="px-4 py-3 font-semibold text-blue-700">COMP-2026-006</td>
+              <td class="px-4 py-3 text-slate-600">2026-05-07</td>
+              <td class="px-4 py-3 text-slate-600">DISTRIBUTOR</td>
+              <td class="px-4 py-3 text-slate-600">PRODUCT_QUALITY</td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>MAJOR
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+                  <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>RECEIVED
+                </span>
+              </td>
+              <td class="px-4 py-3 text-slate-600">Paracetamol 500mg / <span class="font-mono text-slate-500">LOT-2025-0433</span></td>
+              <td class="px-4 py-3 text-slate-400">—</td>
+              <td class="px-4 py-3"><a href="#" class="text-blue-600 font-semibold hover:underline">View</a></td>
+            </tr>
+            <!-- Row 7 -->
+            <tr class="hover:bg-blue-50 transition-colors">
+              <td class="px-4 py-3 font-semibold text-blue-700">COMP-2026-007</td>
+              <td class="px-4 py-3 text-slate-600">2026-05-08</td>
+              <td class="px-4 py-3 text-slate-600">MARKET</td>
+              <td class="px-4 py-3 text-slate-600">PACKAGING_DEFECT</td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-yellow-500"></span>MINOR
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>CLOSED
+                </span>
+              </td>
+              <td class="px-4 py-3 text-slate-600">Ibuprofen 200mg / <span class="font-mono text-slate-500">LOT-2025-0355</span></td>
+              <td class="px-4 py-3 text-slate-400">—</td>
+              <td class="px-4 py-3"><a href="#" class="text-blue-600 font-semibold hover:underline">View</a></td>
+            </tr>
+            <!-- Row 8 -->
+            <tr class="hover:bg-blue-50 transition-colors">
+              <td class="px-4 py-3 font-semibold text-blue-700">COMP-2026-008</td>
+              <td class="px-4 py-3 text-slate-600">2026-05-10</td>
+              <td class="px-4 py-3 text-slate-600">CUSTOMER</td>
+              <td class="px-4 py-3 text-slate-600">ADVERSE_EVENT</td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>CRITICAL
+                </span>
+              </td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>UNDER_INVESTIGATION
+                </span>
+              </td>
+              <td class="px-4 py-3 text-slate-600">Metformin 1000mg / <span class="font-mono text-slate-500">LOT-2025-0441</span></td>
+              <td class="px-4 py-3 text-blue-600 font-semibold">DEV-2026-021</td>
+              <td class="px-4 py-3"><a href="#" class="text-blue-600 font-semibold hover:underline">View</a></td>
+            </tr>
+          </tbody>
+        </table>
+        <!-- Table footer -->
+        <div class="border-t border-blue-50 px-4 py-2.5 flex items-center justify-between">
+          <span class="text-xs text-slate-400">Showing 8 of 30 complaints</span>
+          <div class="flex gap-1">
+            <button class="px-2.5 py-1 text-xs border border-slate-200 rounded-lg text-slate-500 hover:bg-blue-50">← Prev</button>
+            <button class="px-2.5 py-1 text-xs border border-blue-200 rounded-lg bg-blue-700 text-white font-semibold">1</button>
+            <button class="px-2.5 py-1 text-xs border border-slate-200 rounded-lg text-slate-500 hover:bg-blue-50">2</button>
+            <button class="px-2.5 py-1 text-xs border border-slate-200 rounded-lg text-slate-500 hover:bg-blue-50">3</button>
+            <button class="px-2.5 py-1 text-xs border border-slate-200 rounded-lg text-slate-500 hover:bg-blue-50">Next →</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 2 — /qms/complaints/COMP-2026-001 — Complaint Detail        -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="screen-label">SCREEN 2/2 — /qms/complaints/COMP-2026-001 — Complaint Detail</div>
+<div id="detail" class="flex h-screen bg-slate-50 overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="w-64 shrink-0 flex flex-col bg-blue-900 border-r border-blue-800 overflow-y-auto">
+    <div class="flex h-16 shrink-0 items-center border-b border-blue-800 px-4 gap-3">
+      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">BS</div>
+      <div><p class="text-[10px] font-bold uppercase tracking-widest text-blue-200">BatchSphere</p><p class="text-sm font-semibold text-white leading-none">Core ERP</p></div>
+    </div>
+    <div class="border-b border-blue-800 p-3">
+      <div class="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">YR</div>
+        <div class="min-w-0"><div class="truncate text-xs font-semibold text-white">Yamini Raayi</div><div class="text-[10px] text-blue-200">QC_MANAGER</div></div>
+        <div class="ml-auto h-2 w-2 rounded-full bg-green-400 shrink-0"></div>
+      </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto p-3 space-y-3">
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Main</p>
+        <a href="01-dashboard.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⊞ Command Center</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Master Data</p>
+        <a href="07-vms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏢 Partners</a>
+        <a href="08-materials.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Materials</a>
+        <a href="11-spec-moa.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📋 QC Refs</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Operations</p>
+        <a href="02-grn.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📦 Inbound GRN</a>
+        <a href="09-inventory.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 Inventory</a>
+        <a href="06-sampling.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚗ QC Sampling</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Quality</p>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚠ Deviations</a>
+        <a href="03-qms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✔ CAPAs</a>
+        <a href="05-documents.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📄 Documents</a>
+        <a href="12-complaint-management.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-white/10 font-semibold text-white">🔔 Complaints</a>
+        <a href="13-risk-assessment.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚡ Risk Register</a>
+        <a href="18-lot-traceability.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🔗 Traceability</a>
+        <a href="16-apqr.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 APQR</a>
+        <a href="17-qp-batch-release.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✅ QP Release</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Laboratory</p>
+        <a href="14-retention-samples.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Retention Samples</a>
+        <a href="15-equipment-qualification.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚙ Equipment Qual</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">HR</p>
+        <a href="06-hrms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">👤 Employees</a>
+        <a href="06-hrms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🎓 Training</a></div>
+    </nav>
+    <div class="border-t border-blue-800 p-3 text-center text-[10px] text-blue-400">BatchSphere © 2026</div>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="h-14 bg-white border-b border-blue-100 flex items-center px-6 flex-shrink-0 shadow-sm">
+      <div class="text-xs text-slate-400">Quality / <a href="12-complaint-management.html" class="text-blue-600 hover:underline">Complaints</a> / <span class="text-blue-700 font-semibold">COMP-2026-001</span></div>
+    </header>
+
+    <div class="flex-1 overflow-y-auto p-5">
+      <div class="flex gap-5 h-full">
+
+        <!-- LEFT: Detail (60%) -->
+        <div class="flex-1 min-w-0 space-y-4">
+
+          <!-- Complaint Detail Card -->
+          <div class="bg-white border border-blue-100 rounded-xl overflow-hidden">
+            <!-- Card Header -->
+            <div class="border-b border-blue-50 px-5 py-3.5 flex items-center gap-3 flex-wrap">
+              <span class="font-mono text-sm font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg">COMP-2026-001</span>
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>CRITICAL
+              </span>
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>UNDER_INVESTIGATION
+              </span>
+              <div class="ml-auto flex gap-2">
+                <button class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 text-slate-400 cursor-not-allowed bg-slate-50" disabled>Close Complaint</button>
+                <button class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-blue-200 text-blue-700 hover:bg-blue-50">Export PDF</button>
+              </div>
+            </div>
+
+            <!-- Metadata Grid -->
+            <div class="grid grid-cols-2 gap-0 px-5 py-4 border-b border-blue-50">
+              <div class="py-1.5 pr-4 border-r border-blue-50">
+                <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-0.5">Received</div>
+                <div class="text-xs font-semibold text-slate-700">2026-05-01</div>
+              </div>
+              <div class="py-1.5 pl-4">
+                <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-0.5">Source</div>
+                <div class="text-xs font-semibold text-slate-700">CUSTOMER</div>
+              </div>
+              <div class="py-1.5 pr-4 border-r border-blue-50 mt-2">
+                <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-0.5">Category</div>
+                <div class="text-xs font-semibold text-slate-700">PRODUCT_QUALITY</div>
+              </div>
+              <div class="py-1.5 pl-4 mt-2">
+                <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-0.5">Product</div>
+                <div class="text-xs font-semibold text-slate-700">Paracetamol 500mg</div>
+              </div>
+              <div class="py-1.5 pr-4 border-r border-blue-50 mt-2">
+                <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-0.5">Lot Number</div>
+                <div class="text-xs font-mono font-semibold text-slate-700">LOT-2025-0421</div>
+              </div>
+              <div class="py-1.5 pl-4 mt-2">
+                <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-0.5">Batch</div>
+                <div class="text-xs font-mono font-semibold text-slate-700">BATCH-2025-R041</div>
+              </div>
+              <div class="py-1.5 pr-4 col-span-2 mt-2">
+                <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-0.5">Reported By</div>
+                <div class="text-xs font-semibold text-slate-700">Mr. Rajesh Kumar, City Pharma Distributors</div>
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div class="px-5 py-4 border-b border-blue-50">
+              <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">Complaint Description</div>
+              <div class="text-xs text-slate-600 leading-relaxed bg-slate-50 rounded-lg p-3 border border-slate-100">
+                Customer reports that tablets in the blister pack appear discoloured (yellowish tint) compared to previous batches. Complaint received via email on 2026-05-01. Photos attached by customer.
+              </div>
+            </div>
+
+            <!-- Investigation Section -->
+            <div class="px-5 py-4 border-b border-blue-50">
+              <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-3">Investigation Details</div>
+              <div class="space-y-3">
+                <div class="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                  <div class="text-[10px] font-bold uppercase tracking-wide text-blue-500 mb-1">Initial Assessment</div>
+                  <div class="text-xs text-slate-600 leading-relaxed">Discolouration noted in 3 blister packs from same lot. Sample retrieved from retention storage for investigation.</div>
+                </div>
+                <div class="bg-amber-50 rounded-lg p-3 border border-amber-100">
+                  <div class="text-[10px] font-bold uppercase tracking-wide text-amber-600 mb-1">Root Cause</div>
+                  <div class="text-xs text-slate-600 leading-relaxed">Elevated storage temperature during transport (25°C excursion). Accelerated oxidation caused yellow tint.</div>
+                </div>
+                <div class="bg-orange-50 rounded-lg p-3 border border-orange-100">
+                  <div class="text-[10px] font-bold uppercase tracking-wide text-orange-600 mb-1">Impact Assessment</div>
+                  <div class="text-xs text-slate-600 leading-relaxed">Affected approximately 300 units from LOT-2025-0421. No other lots affected. No safety concern identified.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Regulatory Reportability -->
+            <div class="px-5 py-4 border-b border-blue-50">
+              <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-3">Regulatory Reportability</div>
+              <div class="flex items-center gap-3 mb-2">
+                <span class="text-xs text-slate-600">Reportable to Regulatory Authority</span>
+                <div class="relative inline-flex h-5 w-9 items-center rounded-full bg-slate-200 cursor-pointer">
+                  <span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow translate-x-0.5 transition"></span>
+                </div>
+                <span class="text-xs font-semibold text-slate-400">NO</span>
+              </div>
+              <div class="text-xs text-slate-500 bg-slate-50 rounded-lg p-2.5 border border-slate-100">
+                CDSCO reporting not required — cosmetic defect, no safety impact.
+              </div>
+            </div>
+
+            <!-- Recall Assessment -->
+            <div class="px-5 py-4 border-b border-blue-50">
+              <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-3">Recall Assessment</div>
+              <div class="flex items-center gap-3 mb-2">
+                <span class="text-xs text-slate-600">Recall Required</span>
+                <div class="relative inline-flex h-5 w-9 items-center rounded-full bg-slate-200 cursor-pointer">
+                  <span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow translate-x-0.5 transition"></span>
+                </div>
+                <span class="text-xs font-semibold text-slate-400">NO</span>
+              </div>
+              <div class="text-xs text-slate-500 bg-slate-50 rounded-lg p-2.5 border border-slate-100">
+                Justification: Product is within specification for all critical parameters. Cosmetic defect only.
+              </div>
+            </div>
+
+            <!-- Closure Section (grayed) -->
+            <div class="px-5 py-4 opacity-50">
+              <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-3">Closure <span class="normal-case font-normal text-slate-400">(available after investigation complete)</span></div>
+              <textarea
+                class="w-full text-xs border border-slate-200 rounded-lg p-3 text-slate-400 bg-slate-50 resize-none focus:outline-none"
+                rows="3"
+                placeholder="Summary of investigation and actions taken..."
+                disabled
+              ></textarea>
+              <div class="mt-2">
+                <button class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-slate-200 text-slate-400 cursor-not-allowed" disabled>Close with E-Signature</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT: Linked Records + Audit (~40%) -->
+        <div class="w-80 shrink-0 space-y-4">
+
+          <!-- Linked Records Card -->
+          <div class="bg-white border border-blue-100 rounded-xl overflow-hidden">
+            <div class="border-b border-blue-50 px-4 py-3">
+              <div class="text-xs font-bold text-slate-700">Linked Records</div>
+            </div>
+            <div class="px-4 py-3 space-y-2.5">
+              <!-- Linked Deviation -->
+              <div class="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">Linked Deviation</div>
+                <div class="flex items-start justify-between gap-2">
+                  <div>
+                    <div class="text-xs font-semibold text-blue-700">DEV-2026-018</div>
+                    <div class="text-[11px] text-slate-500 mt-0.5">GRN Rejection: LOT-2025-0421</div>
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 mt-1">
+                      <span class="w-1 h-1 rounded-full bg-orange-500"></span>OPEN
+                    </span>
+                  </div>
+                  <a href="#" class="text-[11px] text-blue-600 font-semibold hover:underline whitespace-nowrap">View →</a>
+                </div>
+              </div>
+              <!-- Linked CAPA -->
+              <div class="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">Linked CAPA</div>
+                <div class="flex items-start justify-between gap-2">
+                  <div>
+                    <div class="text-xs font-semibold text-blue-700">CAPA-2026-024</div>
+                    <div class="text-[11px] text-slate-500 mt-0.5">Temperature Excursion Investigation</div>
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 mt-1">
+                      <span class="w-1 h-1 rounded-full bg-blue-500"></span>IN_PROGRESS
+                    </span>
+                  </div>
+                  <a href="#" class="text-[11px] text-blue-600 font-semibold hover:underline whitespace-nowrap">View →</a>
+                </div>
+              </div>
+              <!-- Link buttons -->
+              <div class="flex gap-2 pt-1">
+                <button class="flex-1 px-3 py-1.5 text-[11px] font-semibold rounded-lg border border-blue-200 text-blue-700 hover:bg-blue-50">+ Link Deviation</button>
+                <button class="flex-1 px-3 py-1.5 text-[11px] font-semibold rounded-lg border border-blue-200 text-blue-700 hover:bg-blue-50">+ Link CAPA</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Audit Timeline Card -->
+          <div class="bg-white border border-blue-100 rounded-xl overflow-hidden">
+            <div class="border-b border-blue-50 px-4 py-3">
+              <div class="text-xs font-bold text-slate-700">Audit Timeline</div>
+            </div>
+            <div class="px-4 py-3 space-y-0">
+
+              <!-- Event 1 -->
+              <div class="flex gap-3 pb-4 relative">
+                <div class="flex flex-col items-center">
+                  <div class="w-6 h-6 rounded-full bg-green-100 border-2 border-green-400 flex items-center justify-center text-[9px] font-bold text-green-600 shrink-0">✓</div>
+                  <div class="w-px flex-1 bg-slate-100 mt-1"></div>
+                </div>
+                <div class="flex-1 min-w-0 pt-0.5">
+                  <div class="text-[10px] font-bold text-green-700 uppercase tracking-wide">CREATED</div>
+                  <div class="text-[11px] text-slate-600 mt-0.5">Complaint received</div>
+                  <div class="text-[10px] text-slate-400 mt-0.5">2026-05-01 09:14 · yamini.raayi</div>
+                </div>
+              </div>
+
+              <!-- Event 2 -->
+              <div class="flex gap-3 pb-4 relative">
+                <div class="flex flex-col items-center">
+                  <div class="w-6 h-6 rounded-full bg-blue-100 border-2 border-blue-400 flex items-center justify-center text-[9px] font-bold text-blue-600 shrink-0">⇄</div>
+                  <div class="w-px flex-1 bg-slate-100 mt-1"></div>
+                </div>
+                <div class="flex-1 min-w-0 pt-0.5">
+                  <div class="text-[10px] font-bold text-blue-700 uppercase tracking-wide">STATUS_CHANGE</div>
+                  <div class="text-[11px] text-slate-600 mt-0.5">RECEIVED → UNDER_INVESTIGATION</div>
+                  <div class="text-[10px] text-slate-400 mt-0.5">2026-05-02 10:30 · yamini.raayi</div>
+                </div>
+              </div>
+
+              <!-- Event 3 -->
+              <div class="flex gap-3 pb-4 relative">
+                <div class="flex flex-col items-center">
+                  <div class="w-6 h-6 rounded-full bg-purple-100 border-2 border-purple-400 flex items-center justify-center text-[9px] font-bold text-purple-600 shrink-0">🔗</div>
+                  <div class="w-px flex-1 bg-slate-100 mt-1"></div>
+                </div>
+                <div class="flex-1 min-w-0 pt-0.5">
+                  <div class="text-[10px] font-bold text-purple-700 uppercase tracking-wide">WORKFLOW_ACTION</div>
+                  <div class="text-[11px] text-slate-600 mt-0.5">Linked to Deviation DEV-2026-018</div>
+                  <div class="text-[10px] text-slate-400 mt-0.5">2026-05-02 11:45 · yamini.raayi</div>
+                </div>
+              </div>
+
+              <!-- Event 4 -->
+              <div class="flex gap-3 pb-4 relative">
+                <div class="flex flex-col items-center">
+                  <div class="w-6 h-6 rounded-full bg-amber-100 border-2 border-amber-400 flex items-center justify-center text-[9px] font-bold text-amber-600 shrink-0">✎</div>
+                  <div class="w-px flex-1 bg-slate-100 mt-1"></div>
+                </div>
+                <div class="flex-1 min-w-0 pt-0.5">
+                  <div class="text-[10px] font-bold text-amber-700 uppercase tracking-wide">UPDATE</div>
+                  <div class="text-[11px] text-slate-600 mt-0.5">Root cause entered</div>
+                  <div class="text-[10px] text-slate-400 mt-0.5">2026-05-08 14:22 · yamini.raayi</div>
+                </div>
+              </div>
+
+              <!-- Event 5 -->
+              <div class="flex gap-3">
+                <div class="flex flex-col items-center">
+                  <div class="w-6 h-6 rounded-full bg-blue-100 border-2 border-blue-400 flex items-center justify-center text-[9px] font-bold text-blue-600 shrink-0">✎</div>
+                </div>
+                <div class="flex-1 min-w-0 pt-0.5">
+                  <div class="text-[10px] font-bold text-blue-700 uppercase tracking-wide">UPDATE</div>
+                  <div class="text-[11px] text-slate-600 mt-0.5">Regulatory reportability set to NOT_REPORTABLE</div>
+                  <div class="text-[10px] text-slate-400 mt-0.5">2026-05-10 09:55 · yamini.raayi</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

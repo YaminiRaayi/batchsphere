@@ -32,6 +32,12 @@ const DeviationDetailPage = lazy(() =>
 const CapaBoardPage = lazy(() =>
   import("./features/qms/CapaBoardPage").then((module) => ({ default: module.CapaBoardPage }))
 );
+const QmsAnalyticsPage = lazy(() =>
+  import("./features/qms/QmsAnalyticsPage").then((module) => ({ default: module.QmsAnalyticsPage }))
+);
+const ChangeControlPage = lazy(() =>
+  import("./features/qms/ChangeControlPage").then((module) => ({ default: module.ChangeControlPage }))
+);
 const DocumentsPage = lazy(() =>
   import("./features/documents/DocumentsPage").then((module) => ({ default: module.DocumentsPage }))
 );
@@ -156,6 +162,8 @@ export const router = createBrowserRouter([
               { path: "qms/deviations", element: renderLazyRoute(<DeviationListPage />), handle: { breadcrumb: "Deviations" } },
               { path: "qms/deviations/:deviationId", element: renderLazyRoute(<DeviationDetailPage />), handle: { breadcrumb: "Deviation Detail" } },
               { path: "qms/capas", element: renderLazyRoute(<CapaBoardPage />), handle: { breadcrumb: "CAPAs" } },
+              { path: "qms/analytics", element: renderLazyRoute(<QmsAnalyticsPage />), handle: { breadcrumb: "QMS Analytics" } },
+              { path: "qms/change-controls", element: renderLazyRoute(<ChangeControlPage />), handle: { breadcrumb: "Change Controls" } },
               { path: "documents", element: renderLazyRoute(<DocumentsPage />), handle: { breadcrumb: "Documents" } }
             ]
           },

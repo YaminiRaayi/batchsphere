@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>BatchSphere — QP Batch Release</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .screen-label { background: #1e293b; color: #94a3b8; font-family: monospace; font-size: 11px; padding: 6px 16px; letter-spacing: .05em; }
+  </style>
+</head>
+<body class="bg-slate-200">
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 1/2 — /qms/batch-release — QP Release Queue            -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="screen-label">SCREEN 1/2 — /qms/batch-release — QP Release Queue</div>
+<div class="flex h-screen bg-slate-50 overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="w-64 shrink-0 flex flex-col bg-blue-900 border-r border-blue-800 overflow-y-auto">
+    <div class="flex h-16 shrink-0 items-center border-b border-blue-800 px-4 gap-3">
+      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">BS</div>
+      <div><p class="text-[10px] font-bold uppercase tracking-widest text-blue-200">BatchSphere</p><p class="text-sm font-semibold text-white leading-none">Core ERP</p></div>
+    </div>
+    <div class="border-b border-blue-800 p-3">
+      <div class="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">YR</div>
+        <div class="min-w-0"><div class="truncate text-xs font-semibold text-white">Yamini Raayi</div><div class="text-[10px] text-blue-200">QC_MANAGER</div></div>
+        <div class="ml-auto h-2 w-2 rounded-full bg-green-400 shrink-0"></div>
+      </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto p-3 space-y-3">
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Main</p>
+        <a href="01-dashboard.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⊞ Command Center</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Master Data</p>
+        <a href="07-vms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏢 Partners</a>
+        <a href="08-materials.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Materials</a>
+        <a href="11-spec-moa.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📋 QC Refs</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Operations</p>
+        <a href="02-grn.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📦 Inbound GRN</a>
+        <a href="09-inventory.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 Inventory</a>
+        <a href="06-sampling.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚗ QC Sampling</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Quality</p>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚠ Deviations</a>
+        <a href="03-qms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✔ CAPAs</a>
+        <a href="05-documents.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📄 Documents</a>
+        <a href="12-complaint-management.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🔔 Complaints</a>
+        <a href="13-risk-assessment.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚡ Risk Register</a>
+        <a href="18-lot-traceability.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🔗 Traceability</a>
+        <a href="16-apqr.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 APQR</a>
+        <a href="17-qp-batch-release.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-white/10 font-semibold text-white">✅ QP Release</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Laboratory</p>
+        <a href="14-retention-samples.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Retention Samples</a>
+        <a href="15-equipment-qualification.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚙ Equipment Qual</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">HR</p>
+        <a href="06-hrms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">👤 Employees</a>
+        <a href="06-hrms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🎓 Training</a></div>
+    </nav>
+    <div class="border-t border-blue-800 p-3 text-center text-[10px] text-blue-400">BatchSphere © 2026</div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <!-- Top bar -->
+    <header class="h-14 shrink-0 flex items-center justify-between border-b border-slate-200 bg-white px-6">
+      <nav class="flex items-center gap-2 text-xs text-slate-500">
+        <span>Quality</span><span class="text-slate-300">/</span>
+        <span class="font-semibold text-slate-700">QP Batch Release</span>
+      </nav>
+      <div class="flex items-center gap-3">
+        <span class="text-xs text-slate-400">2026-05-14</span>
+        <div class="h-8 w-8 rounded-full bg-rose-500 flex items-center justify-center text-xs font-bold text-white">YR</div>
+      </div>
+    </header>
+
+    <div class="flex-1 overflow-y-auto p-6 space-y-4">
+
+      <!-- Regulatory banner -->
+      <div class="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+        <span class="text-blue-500 text-lg">⚖</span>
+        <p class="text-xs text-blue-800 font-medium"><strong>EU GMP Annex 16</strong> — Each batch must be certified by a Qualified Person before release for sale or supply.</p>
+      </div>
+
+      <!-- KPI Strip -->
+      <div class="grid grid-cols-4 gap-4">
+        <div class="bg-white border border-orange-100 rounded-xl p-4">
+          <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Pending QP Review</p>
+          <p class="text-2xl font-bold text-orange-500">5</p>
+          <p class="text-[10px] text-orange-400 mt-1">Awaiting Qualified Person action</p>
+        </div>
+        <div class="bg-white border border-green-100 rounded-xl p-4">
+          <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Certified This Month</p>
+          <p class="text-2xl font-bold text-green-600">12</p>
+          <p class="text-[10px] text-green-400 mt-1">Released for sale / supply</p>
+        </div>
+        <div class="bg-white border border-red-100 rounded-xl p-4">
+          <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Rejected</p>
+          <p class="text-2xl font-bold text-red-600">1</p>
+          <p class="text-[10px] text-red-400 mt-1">QP rejected — investigation open</p>
+        </div>
+        <div class="bg-white border border-amber-100 rounded-xl p-4">
+          <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">On Hold</p>
+          <p class="text-2xl font-bold text-amber-600">2</p>
+          <p class="text-[10px] text-amber-400 mt-1">Pending documentation / investigation</p>
+        </div>
+      </div>
+
+      <!-- Status filter tabs + actions -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <button class="h-7 px-3 rounded-full bg-blue-600 text-white text-[10px] font-semibold">ALL</button>
+        <button class="h-7 px-3 rounded-full bg-white border border-slate-200 text-slate-600 text-[10px] font-medium hover:bg-slate-50">PENDING_QP_REVIEW</button>
+        <button class="h-7 px-3 rounded-full bg-white border border-slate-200 text-slate-600 text-[10px] font-medium hover:bg-slate-50">UNDER_REVIEW</button>
+        <button class="h-7 px-3 rounded-full bg-white border border-slate-200 text-slate-600 text-[10px] font-medium hover:bg-slate-50">CERTIFIED</button>
+        <button class="h-7 px-3 rounded-full bg-white border border-slate-200 text-slate-600 text-[10px] font-medium hover:bg-slate-50">REJECTED</button>
+        <button class="h-7 px-3 rounded-full bg-white border border-slate-200 text-slate-600 text-[10px] font-medium hover:bg-slate-50">ON_HOLD</button>
+        <div class="ml-2 flex items-center gap-1.5">
+          <select class="h-7 rounded-lg border border-slate-200 bg-white px-2 text-[10px] text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-300">
+            <option>All Products</option>
+            <option>Paracetamol 500mg</option><option>Metformin 500mg</option>
+            <option>Ibuprofen 400mg</option><option>Amoxicillin 250mg</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <input type="date" value="2026-01-01" class="h-7 rounded-lg border border-slate-200 bg-white px-2 text-[10px] text-slate-600 focus:outline-none" />
+          <span class="text-[10px] text-slate-400">–</span>
+          <input type="date" value="2026-05-14" class="h-7 rounded-lg border border-slate-200 bg-white px-2 text-[10px] text-slate-600 focus:outline-none" />
+        </div>
+        <div class="ml-auto">
+          <button class="h-8 px-4 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700">+ New Batch Release</button>
+        </div>
+      </div>
+
+      <!-- Batch release table -->
+      <div class="bg-white border border-blue-100 rounded-xl overflow-hidden">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="bg-slate-50 border-b border-slate-100">
+              <th class="px-4 py-2.5 text-left font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Release No.</th>
+              <th class="px-4 py-2.5 text-left font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Lot No.</th>
+              <th class="px-4 py-2.5 text-left font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Product</th>
+              <th class="px-3 py-2.5 text-right font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Batch Size</th>
+              <th class="px-3 py-2.5 text-left font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Mfg Date</th>
+              <th class="px-3 py-2.5 text-left font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Expiry Date</th>
+              <th class="px-4 py-2.5 text-left font-semibold text-slate-500 uppercase tracking-wider text-[10px]">QC Disposition</th>
+              <th class="px-4 py-2.5 text-left font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Status</th>
+              <th class="px-4 py-2.5 text-left font-semibold text-slate-500 uppercase tracking-wider text-[10px]">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-50">
+            <!-- CERTIFIED rows -->
+            <tr class="hover:bg-blue-50 transition-colors">
+              <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">BR-2026-001</td>
+              <td class="px-4 py-2.5 font-mono text-slate-600 text-[10px]">LOT-2026-0001</td>
+              <td class="px-4 py-2.5 font-medium text-slate-800">Paracetamol 500mg</td>
+              <td class="px-3 py-2.5 text-right text-slate-600">800 kg</td>
+              <td class="px-3 py-2.5 text-slate-500">2026-01-15</td>
+              <td class="px-3 py-2.5 text-slate-500">2028-01-15</td>
+              <td class="px-4 py-2.5"><span class="text-green-600 font-semibold text-[10px]">✓ RELEASED</span></td>
+              <td class="px-4 py-2.5"><span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-800"><span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>CERTIFIED</span></td>
+              <td class="px-4 py-2.5"><button class="px-2.5 py-1 rounded-lg border border-blue-200 text-blue-600 text-[10px] font-semibold hover:bg-blue-50">View</button></td>
+            </tr>
+            <tr class="hover:bg-blue-50 transition-colors">
+              <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">BR-2026-002</td>
+              <td class="px-4 py-2.5 font-mono text-slate-600 text-[10px]">LOT-2026-0002</td>
+              <td class="px-4 py-2.5 font-medium text-slate-800">Metformin 500mg</td>
+              <td class="px-3 py-2.5 text-right text-slate-600">600 kg</td>
+              <td class="px-3 py-2.5 text-slate-500">2026-02-10</td>
+              <td class="px-3 py-2.5 text-slate-500">2028-02-10</td>
+              <td class="px-4 py-2.5"><span class="text-green-600 font-semibold text-[10px]">✓ RELEASED</span></td>
+              <td class="px-4 py-2.5"><span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-800"><span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>CERTIFIED</span></td>
+              <td class="px-4 py-2.5"><button class="px-2.5 py-1 rounded-lg border border-blue-200 text-blue-600 text-[10px] font-semibold hover:bg-blue-50">View</button></td>
+            </tr>
+            <!-- PENDING_QP_REVIEW rows -->
+            <tr class="hover:bg-blue-50 transition-colors bg-orange-50/30">
+              <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">BR-2026-003</td>
+              <td class="px-4 py-2.5 font-mono text-slate-600 text-[10px]">LOT-2026-0003</td>
+              <td class="px-4 py-2.5 font-medium text-slate-800">Ibuprofen 400mg</td>
+              <td class="px-3 py-2.5 text-right text-slate-600">500 kg</td>
+              <td class="px-3 py-2.5 text-slate-500">2026-03-05</td>
+              <td class="px-3 py-2.5 text-slate-500">2028-03-05</td>
+              <td class="px-4 py-2.5"><span class="text-green-600 font-semibold text-[10px]">✓ RELEASED</span></td>
+              <td class="px-4 py-2.5"><span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-800"><span class="h-1.5 w-1.5 rounded-full bg-orange-500"></span>PENDING_QP_REVIEW</span></td>
+              <td class="px-4 py-2.5"><button class="px-2.5 py-1 rounded-lg border border-blue-200 text-blue-600 text-[10px] font-semibold hover:bg-blue-50">View</button></td>
+            </tr>
+            <tr class="hover:bg-blue-50 transition-colors bg-orange-50/30">
+              <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">BR-2026-004</td>
+              <td class="px-4 py-2.5 font-mono text-slate-600 text-[10px]">LOT-2026-0004</td>
+              <td class="px-4 py-2.5 font-medium text-slate-800">Atorvastatin 20mg</td>
+              <td class="px-3 py-2.5 text-right text-slate-600">400 kg</td>
+              <td class="px-3 py-2.5 text-slate-500">2026-03-20</td>
+              <td class="px-3 py-2.5 text-slate-500">2028-03-20</td>
+              <td class="px-4 py-2.5"><span class="text-green-600 font-semibold text-[10px]">✓ RELEASED</span></td>
+              <td class="px-4 py-2.5"><span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-800"><span class="h-1.5 w-1.5 rounded-full bg-orange-500"></span>PENDING_QP_REVIEW</span></td>
+              <td class="px-4 py-2.5"><button class="px-2.5 py-1 rounded-lg border border-blue-200 text-blue-600 text-[10px] font-semibold hover:bg-blue-50">View</button></td>
+            </tr>
+            <!-- UNDER_REVIEW row -->
+            <tr class="hover:bg-blue-50 transition-colors bg-blue-50/40">
+              <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">BR-2026-005</td>
+              <td class="px-4 py-2.5 font-mono text-slate-600 text-[10px]">LOT-2026-0005</td>
+              <td class="px-4 py-2.5 font-medium text-slate-800">Amoxicillin 250mg</td>
+              <td class="px-3 py-2.5 text-right text-slate-600">700 kg</td>
+              <td class="px-3 py-2.5 text-slate-500">2026-04-01</td>
+              <td class="px-3 py-2.5 text-slate-500">2027-04-01</td>
+              <td class="px-4 py-2.5"><span class="text-green-600 font-semibold text-[10px]">✓ RELEASED</span></td>
+              <td class="px-4 py-2.5"><span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-800"><span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>UNDER_REVIEW</span></td>
+              <td class="px-4 py-2.5"><button class="px-2.5 py-1 rounded-lg border border-blue-200 text-blue-600 text-[10px] font-semibold hover:bg-blue-50">View</button></td>
+            </tr>
+            <!-- ON_HOLD row -->
+            <tr class="hover:bg-blue-50 transition-colors bg-amber-50/40">
+              <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">BR-2026-006</td>
+              <td class="px-4 py-2.5 font-mono text-slate-600 text-[10px]">LOT-2026-0006</td>
+              <td class="px-4 py-2.5 font-medium text-slate-800">Metformin 1000mg</td>
+              <td class="px-3 py-2.5 text-right text-slate-600">550 kg</td>
+              <td class="px-3 py-2.5 text-slate-500">2026-04-15</td>
+              <td class="px-3 py-2.5 text-slate-500">2028-04-15</td>
+              <td class="px-4 py-2.5"><span class="text-red-600 font-semibold text-[10px]">✗ QUARANTINE</span></td>
+              <td class="px-4 py-2.5"><span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800"><span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>ON_HOLD</span></td>
+              <td class="px-4 py-2.5"><button class="px-2.5 py-1 rounded-lg border border-blue-200 text-blue-600 text-[10px] font-semibold hover:bg-blue-50">View</button></td>
+            </tr>
+            <!-- PENDING row -->
+            <tr class="hover:bg-blue-50 transition-colors bg-orange-50/30">
+              <td class="px-4 py-2.5 font-mono font-semibold text-blue-700">BR-2026-007</td>
+              <td class="px-4 py-2.5 font-mono text-slate-600 text-[10px]">LOT-2026-0007</td>
+              <td class="px-4 py-2.5 font-medium text-slate-800">Paracetamol 500mg</td>
+              <td class="px-3 py-2.5 text-right text-slate-600">900 kg</td>
+              <td class="px-3 py-2.5 text-slate-500">2026-05-01</td>
+              <td class="px-3 py-2.5 text-slate-500">2028-05-01</td>
+              <td class="px-4 py-2.5"><span class="text-green-600 font-semibold text-[10px]">✓ RELEASED</span></td>
+              <td class="px-4 py-2.5"><span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-800"><span class="h-1.5 w-1.5 rounded-full bg-orange-500"></span>PENDING_QP_REVIEW</span></td>
+              <td class="px-4 py-2.5"><button class="px-2.5 py-1 rounded-lg border border-blue-200 text-blue-600 text-[10px] font-semibold hover:bg-blue-50">View</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div><!-- end scroll -->
+  </div><!-- end main -->
+</div><!-- end screen 1 -->
+
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 2/2 — /qms/batch-release/BR-2026-005 — QP Review       -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="screen-label">SCREEN 2/2 — /qms/batch-release/BR-2026-005 — QP Review (Amoxicillin 250mg)</div>
+<div class="flex h-screen bg-slate-50 overflow-hidden">
+
+  <!-- Sidebar (same, same active) -->
+  <aside class="w-64 shrink-0 flex flex-col bg-blue-900 border-r border-blue-800 overflow-y-auto">
+    <div class="flex h-16 shrink-0 items-center border-b border-blue-800 px-4 gap-3">
+      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">BS</div>
+      <div><p class="text-[10px] font-bold uppercase tracking-widest text-blue-200">BatchSphere</p><p class="text-sm font-semibold text-white leading-none">Core ERP</p></div>
+    </div>
+    <div class="border-b border-blue-800 p-3">
+      <div class="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">YR</div>
+        <div class="min-w-0"><div class="truncate text-xs font-semibold text-white">Yamini Raayi</div><div class="text-[10px] text-blue-200">QC_MANAGER</div></div>
+        <div class="ml-auto h-2 w-2 rounded-full bg-green-400 shrink-0"></div>
+      </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto p-3 space-y-3">
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Main</p>
+        <a href="01-dashboard.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⊞ Command Center</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Master Data</p>
+        <a href="07-vms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏢 Partners</a>
+        <a href="08-materials.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Materials</a>
+        <a href="11-spec-moa.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📋 QC Refs</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Operations</p>
+        <a href="02-grn.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📦 Inbound GRN</a>
+        <a href="09-inventory.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 Inventory</a>
+        <a href="06-sampling.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚗ QC Sampling</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Quality</p>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚠ Deviations</a>
+        <a href="03-qms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✔ CAPAs</a>
+        <a href="05-documents.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📄 Documents</a>
+        <a href="12-complaint-management.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🔔 Complaints</a>
+        <a href="13-risk-assessment.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚡ Risk Register</a>
+        <a href="18-lot-traceability.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🔗 Traceability</a>
+        <a href="16-apqr.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 APQR</a>
+        <a href="17-qp-batch-release.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-white/10 font-semibold text-white">✅ QP Release</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Laboratory</p>
+        <a href="14-retention-samples.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Retention Samples</a>
+        <a href="15-equipment-qualification.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚙ Equipment Qual</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">HR</p>
+        <a href="06-hrms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">👤 Employees</a>
+        <a href="06-hrms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🎓 Training</a></div>
+    </nav>
+    <div class="border-t border-blue-800 p-3 text-center text-[10px] text-blue-400">BatchSphere © 2026</div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <!-- Top bar -->
+    <header class="h-14 shrink-0 flex items-center justify-between border-b border-slate-200 bg-white px-6">
+      <nav class="flex items-center gap-2 text-xs text-slate-500">
+        <span>Quality</span><span class="text-slate-300">/</span>
+        <a href="17-qp-batch-release.html" class="hover:text-blue-600">QP Batch Release</a><span class="text-slate-300">/</span>
+        <span class="font-semibold text-slate-700">BR-2026-005</span>
+      </nav>
+      <div class="flex items-center gap-3">
+        <span class="text-xs text-slate-400">2026-05-14</span>
+        <div class="h-8 w-8 rounded-full bg-rose-500 flex items-center justify-center text-xs font-bold text-white">YR</div>
+      </div>
+    </header>
+
+    <div class="flex-1 overflow-y-auto p-6 space-y-4">
+
+      <!-- Page header -->
+      <div class="flex items-center gap-4">
+        <div class="flex-1">
+          <div class="flex items-center gap-3 flex-wrap">
+            <h1 class="text-base font-bold text-slate-800">BR-2026-005 — Amoxicillin 250mg — LOT-2026-0005</h1>
+            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800"><span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>UNDER_REVIEW</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">Mfg: 2026-04-01 &nbsp;·&nbsp; Expiry: 2027-04-01 &nbsp;·&nbsp; QP: Yamini Raayi</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="h-8 px-4 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-700 opacity-50 cursor-not-allowed" title="Complete all checklist items first">Certify Batch</button>
+          <button class="h-8 px-4 rounded-lg bg-red-50 border border-red-200 text-red-600 text-xs font-semibold hover:bg-red-100">Reject</button>
+          <button class="h-8 px-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold hover:bg-amber-100">On Hold</button>
+        </div>
+      </div>
+
+      <!-- Split layout: 60% left, 40% right -->
+      <div class="flex gap-4">
+
+        <!-- LEFT 60% -->
+        <div class="flex-[3] space-y-4">
+
+          <!-- QP Pre-Release Checklist -->
+          <div class="bg-white border border-blue-100 rounded-xl overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-100 bg-slate-50">
+              <h3 class="text-xs font-bold text-slate-800">QP Pre-Release Checklist</h3>
+              <p class="text-[10px] text-slate-500 mt-0.5">(All items must pass before certification)</p>
+            </div>
+            <div class="divide-y divide-slate-50">
+              <!-- Item 1: PASS -->
+              <div class="flex items-start gap-3 px-4 py-3 bg-green-50/50">
+                <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-100 mt-0.5">
+                  <svg class="h-3 w-3 text-green-600" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 6l3 3 5-5"/></svg>
+                </div>
+                <div class="flex-1">
+                  <p class="text-xs font-semibold text-green-800">QC Disposition: RELEASED</p>
+                  <p class="text-[10px] text-green-600 mt-0.5">Sampling SR-2026-0055 completed, all parameters passed</p>
+                </div>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">PASS</span>
+              </div>
+              <!-- Item 2: PASS -->
+              <div class="flex items-start gap-3 px-4 py-3 bg-green-50/50">
+                <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-100 mt-0.5">
+                  <svg class="h-3 w-3 text-green-600" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 6l3 3 5-5"/></svg>
+                </div>
+                <div class="flex-1">
+                  <p class="text-xs font-semibold text-green-800">OOS Investigations: All Closed</p>
+                  <p class="text-[10px] text-green-600 mt-0.5">No open OOS investigations for this lot</p>
+                </div>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">PASS</span>
+              </div>
+              <!-- Item 3: PASS -->
+              <div class="flex items-start gap-3 px-4 py-3 bg-green-50/50">
+                <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-100 mt-0.5">
+                  <svg class="h-3 w-3 text-green-600" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M2 6l3 3 5-5"/></svg>
+                </div>
+                <div class="flex-1">
+                  <p class="text-xs font-semibold text-green-800">Critical Deviations: None Open</p>
+                  <p class="text-[10px] text-green-600 mt-0.5">No open CRITICAL deviations linked to GRN-2026-0032</p>
+                </div>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-700">PASS</span>
+              </div>
+              <!-- Item 4: PENDING (amber) -->
+              <div class="flex items-start gap-3 px-4 py-3 bg-amber-50/60">
+                <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100 mt-0.5">
+                  <svg class="h-3 w-3 text-amber-600" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 3v4M6 9v.5"/></svg>
+                </div>
+                <div class="flex-1">
+                  <p class="text-xs font-semibold text-amber-800">Documentation Complete: Pending</p>
+                  <p class="text-[10px] text-amber-600 mt-0.5">CoA not yet uploaded to document control</p>
+                </div>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">PENDING</span>
+              </div>
+            </div>
+            <!-- Progress footer -->
+            <div class="px-4 py-3 border-t border-slate-100 bg-amber-50/40">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[10px] font-semibold text-slate-600">Progress: 3 / 4 items passed</span>
+                <span class="text-[10px] text-amber-700 font-semibold">75%</span>
+              </div>
+              <div class="h-1.5 rounded-full bg-slate-100">
+                <div class="h-1.5 rounded-full bg-amber-400" style="width:75%"></div>
+              </div>
+              <p class="text-[10px] text-amber-700 mt-2 font-medium">⚠ Complete documentation before certifying.</p>
+            </div>
+          </div>
+
+          <!-- Batch Information -->
+          <div class="bg-white border border-blue-100 rounded-xl p-4">
+            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wide mb-3">Batch Information</h3>
+            <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
+              <div class="flex items-center justify-between border-b border-slate-50 pb-1.5">
+                <span class="text-slate-400">Release No.</span>
+                <span class="font-mono font-semibold text-blue-700">BR-2026-005</span>
+              </div>
+              <div class="flex items-center justify-between border-b border-slate-50 pb-1.5">
+                <span class="text-slate-400">Product</span>
+                <span class="font-semibold text-slate-700">Amoxicillin 250mg</span>
+              </div>
+              <div class="flex items-center justify-between border-b border-slate-50 pb-1.5">
+                <span class="text-slate-400">Lot No.</span>
+                <span class="font-mono text-slate-700">LOT-2026-0005</span>
+              </div>
+              <div class="flex items-center justify-between border-b border-slate-50 pb-1.5">
+                <span class="text-slate-400">Batch Size</span>
+                <span class="font-semibold text-slate-700">700 kg</span>
+              </div>
+              <div class="flex items-center justify-between border-b border-slate-50 pb-1.5">
+                <span class="text-slate-400">Manufacture Date</span>
+                <span class="text-slate-700">2026-04-01</span>
+              </div>
+              <div class="flex items-center justify-between border-b border-slate-50 pb-1.5">
+                <span class="text-slate-400">Expiry Date</span>
+                <span class="text-slate-700">2027-04-01</span>
+              </div>
+              <div class="flex items-center justify-between border-b border-slate-50 pb-1.5">
+                <span class="text-slate-400">GRN Reference</span>
+                <a href="#" class="font-mono text-blue-600 hover:underline text-[10px]">GRN-2026-0032</a>
+              </div>
+              <div class="flex items-center justify-between border-b border-slate-50 pb-1.5">
+                <span class="text-slate-400">Material</span>
+                <span class="text-slate-700">Amoxicillin Trihydrate API</span>
+              </div>
+              <div class="flex items-center justify-between border-b border-slate-50 pb-1.5">
+                <span class="text-slate-400">Sampling Request</span>
+                <a href="#" class="font-mono text-blue-600 hover:underline text-[10px]">SR-2026-0055</a>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-400">QC Disposition</span>
+                <span class="text-green-700 font-semibold">RELEASED — 2026-04-28</span>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- end LEFT -->
+
+        <!-- RIGHT 40% -->
+        <div class="flex-[2] space-y-4">
+
+          <!-- QP Certification form -->
+          <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-100 bg-slate-100">
+              <h3 class="text-xs font-bold text-slate-700">QP Certification</h3>
+              <p class="text-[10px] text-slate-400 mt-0.5">Available after all checklist items pass</p>
+            </div>
+            <div class="p-4 space-y-3 opacity-60 pointer-events-none">
+              <!-- Qualified Person -->
+              <div>
+                <label class="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">Qualified Person</label>
+                <div class="flex items-center gap-2 h-8 px-3 rounded-lg border border-slate-200 bg-slate-50">
+                  <div class="h-5 w-5 rounded-full bg-rose-400 flex items-center justify-center text-[8px] font-bold text-white">YR</div>
+                  <span class="text-xs text-slate-600">Yamini Raayi, QC Manager</span>
+                </div>
+              </div>
+              <!-- Certification statement -->
+              <div>
+                <label class="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">Certification Statement</label>
+                <textarea rows="6" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[10px] text-slate-600 focus:outline-none resize-none leading-relaxed">I, Yamini Raayi, acting as the Qualified Person for BatchSphere Core ERP, hereby certify that this batch LOT-2026-0005 of Amoxicillin 250mg has been manufactured and controlled in accordance with the requirements of Good Manufacturing Practice and in conformance with the requirements of the Marketing Authorization. I am satisfied that the batch meets all the required specifications.</textarea>
+              </div>
+              <!-- Username -->
+              <div>
+                <label class="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">Username</label>
+                <input type="text" placeholder="yamini.raayi" class="w-full h-8 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-600 focus:outline-none" />
+              </div>
+              <!-- Password -->
+              <div>
+                <label class="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">Password</label>
+                <input type="password" placeholder="••••••••" class="w-full h-8 px-3 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-600 focus:outline-none" />
+              </div>
+              <!-- E-signature meaning -->
+              <div>
+                <label class="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">E-Signature Meaning</label>
+                <div class="h-8 px-3 flex items-center rounded-lg border border-slate-200 bg-slate-100 text-xs text-slate-500">Qualified Person Batch Certification</div>
+              </div>
+              <!-- Certify button (disabled) -->
+              <button class="w-full h-9 rounded-lg bg-green-200 text-green-700 text-xs font-bold cursor-not-allowed" title="Complete all checklist items first">
+                Certify Batch (E-Sign)
+              </button>
+              <p class="text-[10px] text-amber-600 text-center">Complete all checklist items first</p>
+            </div>
+          </div>
+
+          <!-- Audit timeline -->
+          <div class="bg-white border border-blue-100 rounded-xl p-4">
+            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wide mb-3">Audit Timeline</h3>
+            <div class="space-y-3">
+              <!-- Event 1 -->
+              <div class="flex items-start gap-3">
+                <div class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-100">
+                  <div class="h-2 w-2 rounded-full bg-green-500"></div>
+                </div>
+                <div class="flex-1">
+                  <div class="flex items-center justify-between">
+                    <p class="text-[10px] font-bold text-slate-700 uppercase tracking-wide">CREATED</p>
+                    <span class="text-[10px] text-slate-400">2026-04-29</span>
+                  </div>
+                  <p class="text-[10px] text-slate-500 mt-0.5">BR created from LOT-2026-0005</p>
+                  <p class="text-[10px] text-slate-400 font-mono">yamini.raayi</p>
+                </div>
+              </div>
+              <!-- Event 2 -->
+              <div class="flex items-start gap-3">
+                <div class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100">
+                  <div class="h-2 w-2 rounded-full bg-blue-500"></div>
+                </div>
+                <div class="flex-1">
+                  <div class="flex items-center justify-between">
+                    <p class="text-[10px] font-bold text-slate-700 uppercase tracking-wide">STATUS_CHANGE</p>
+                    <span class="text-[10px] text-slate-400">2026-04-30</span>
+                  </div>
+                  <p class="text-[10px] text-slate-500 mt-0.5">PENDING_QP_REVIEW → UNDER_REVIEW</p>
+                  <p class="text-[10px] text-slate-400 font-mono">yamini.raayi</p>
+                </div>
+              </div>
+              <!-- Event 3 -->
+              <div class="flex items-start gap-3">
+                <div class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-100">
+                  <div class="h-2 w-2 rounded-full bg-amber-400"></div>
+                </div>
+                <div class="flex-1">
+                  <div class="flex items-center justify-between">
+                    <p class="text-[10px] font-bold text-slate-700 uppercase tracking-wide">UPDATE</p>
+                    <span class="text-[10px] text-slate-400">2026-04-30</span>
+                  </div>
+                  <p class="text-[10px] text-slate-500 mt-0.5">Checklist auto-populated from QC disposition</p>
+                  <p class="text-[10px] text-slate-400 font-mono">System</p>
+                </div>
+              </div>
+              <!-- Event 4 -->
+              <div class="flex items-start gap-3">
+                <div class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-orange-100">
+                  <div class="h-2 w-2 rounded-full bg-orange-400"></div>
+                </div>
+                <div class="flex-1">
+                  <div class="flex items-center justify-between">
+                    <p class="text-[10px] font-bold text-amber-700 uppercase tracking-wide">UPDATE ⚠</p>
+                    <span class="text-[10px] text-slate-400">2026-05-12</span>
+                  </div>
+                  <p class="text-[10px] text-amber-600 mt-0.5">Documentation incomplete flag raised</p>
+                  <p class="text-[10px] text-slate-400 font-mono">System</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- end RIGHT -->
+      </div><!-- end split -->
+
+    </div><!-- end scroll -->
+  </div><!-- end main -->
+</div><!-- end screen 2 -->
+
+</body>
+</html>

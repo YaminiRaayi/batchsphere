@@ -50,6 +50,28 @@ public class Capa {
     @Column(nullable = false, length = 40)
     private CapaStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "approval_status", nullable = false, length = 30)
+    private CapaApprovalStatus approvalStatus;
+
+    @Column(name = "submitted_for_approval_by", length = 100)
+    private String submittedForApprovalBy;
+
+    @Column(name = "submitted_for_approval_at")
+    private LocalDateTime submittedForApprovalAt;
+
+    @Column(name = "approved_by", length = 100)
+    private String approvedBy;
+
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    @Column(name = "approval_comments", columnDefinition = "TEXT")
+    private String approvalComments;
+
+    @Column(name = "approval_esignature_id")
+    private UUID approvalESignatureId;
+
     @Column(nullable = false, length = 100)
     private String owner;
 
@@ -64,6 +86,28 @@ public class Capa {
 
     @Column(name = "effectiveness_check", columnDefinition = "TEXT")
     private String effectivenessCheck;
+
+    @Column(name = "effectiveness_review_date")
+    private LocalDate effectivenessReviewDate;
+
+    @Column(name = "effectiveness_reviewer", length = 100)
+    private String effectivenessReviewer;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "effectiveness_outcome", nullable = false, length = 20)
+    private CapaEffectivenessOutcome effectivenessOutcome;
+
+    @Column(name = "effectiveness_outcome_comments", columnDefinition = "TEXT")
+    private String effectivenessOutcomeComments;
+
+    @Column(name = "effectiveness_review_at")
+    private LocalDateTime effectivenessReviewAt;
+
+    @Column(name = "effectiveness_review_by", length = 100)
+    private String effectivenessReviewBy;
+
+    @Column(name = "effectiveness_esignature_id")
+    private UUID effectivenessESignatureId;
 
     @Column(name = "completion_summary", columnDefinition = "TEXT")
     private String completionSummary;

@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BatchSphere — Risk Assessment (ICH Q9 FMEA)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .screen-label { background: #1e293b; color: #94a3b8; font-family: monospace; font-size: 11px; padding: 6px 16px; letter-spacing: .05em; }
+    .tab-active { background: #1d4ed8; color: #fff; }
+    .tab-inactive { background: #eff6ff; color: #1d4ed8; }
+    .tab-inactive:hover { background: #dbeafe; }
+    /* Risk matrix cell colours */
+    .rpn-red    { background: #fee2e2; color: #991b1b; }
+    .rpn-orange { background: #ffedd5; color: #9a3412; }
+    .rpn-yellow { background: #fef9c3; color: #854d0e; }
+    .rpn-green  { background: #dcfce7; color: #166534; }
+    .matrix-green  { background: #bbf7d0; }
+    .matrix-yellow { background: #fef08a; }
+    .matrix-orange { background: #fed7aa; }
+    .matrix-red    { background: #fecaca; }
+  </style>
+</head>
+<body class="bg-slate-200">
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 1 — /qms/risk-register — Risk Register                      -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="screen-label">SCREEN 1/2 — /qms/risk-register — Risk Register</div>
+<div class="flex h-screen bg-slate-50 overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="w-64 shrink-0 flex flex-col bg-blue-900 border-r border-blue-800 overflow-y-auto">
+    <div class="flex h-16 shrink-0 items-center border-b border-blue-800 px-4 gap-3">
+      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">BS</div>
+      <div><p class="text-[10px] font-bold uppercase tracking-widest text-blue-200">BatchSphere</p><p class="text-sm font-semibold text-white leading-none">Core ERP</p></div>
+    </div>
+    <div class="border-b border-blue-800 p-3">
+      <div class="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">YR</div>
+        <div class="min-w-0"><div class="truncate text-xs font-semibold text-white">Yamini Raayi</div><div class="text-[10px] text-blue-200">QC_MANAGER</div></div>
+        <div class="ml-auto h-2 w-2 rounded-full bg-green-400 shrink-0"></div>
+      </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto p-3 space-y-3">
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Main</p>
+        <a href="01-dashboard.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⊞ Command Center</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Master Data</p>
+        <a href="07-vms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏢 Partners</a>
+        <a href="08-materials.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Materials</a>
+        <a href="11-spec-moa.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📋 QC Refs</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Operations</p>
+        <a href="02-grn.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📦 Inbound GRN</a>
+        <a href="09-inventory.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 Inventory</a>
+        <a href="06-sampling.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚗ QC Sampling</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Quality</p>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚠ Deviations</a>
+        <a href="03-qms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✔ CAPAs</a>
+        <a href="05-documents.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📄 Documents</a>
+        <a href="12-complaint-management.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🔔 Complaints</a>
+        <a href="13-risk-assessment.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-white/10 font-semibold text-white">⚡ Risk Register</a>
+        <a href="18-lot-traceability.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🔗 Traceability</a>
+        <a href="16-apqr.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 APQR</a>
+        <a href="17-qp-batch-release.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✅ QP Release</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Laboratory</p>
+        <a href="14-retention-samples.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Retention Samples</a>
+        <a href="15-equipment-qualification.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚙ Equipment Qual</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">HR</p>
+        <a href="06-hrms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">👤 Employees</a>
+        <a href="06-hrms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🎓 Training</a></div>
+    </nav>
+    <div class="border-t border-blue-800 p-3 text-center text-[10px] text-blue-400">BatchSphere © 2026</div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 flex flex-col overflow-hidden">
+
+    <header class="h-14 bg-white border-b border-blue-100 flex items-center px-6 flex-shrink-0 shadow-sm">
+      <div class="text-xs text-slate-400">Quality / <span class="text-blue-700 font-semibold">Risk Register</span></div>
+    </header>
+
+    <div class="flex-1 overflow-y-auto p-5 space-y-4">
+
+      <!-- KPI Strip -->
+      <div class="grid grid-cols-4 gap-4">
+        <div class="bg-white border border-blue-100 rounded-xl p-4 border-l-4 border-l-blue-500">
+          <div class="text-2xl font-bold text-slate-800">8</div>
+          <div class="text-xs text-slate-500 mt-0.5">Total Assessments</div>
+        </div>
+        <div class="bg-white border border-blue-100 rounded-xl p-4 border-l-4 border-l-red-500">
+          <div class="text-2xl font-bold text-slate-800">14</div>
+          <div class="text-xs text-slate-500 mt-0.5">High RPN Items (≥50)</div>
+        </div>
+        <div class="bg-white border border-blue-100 rounded-xl p-4 border-l-4 border-l-orange-400">
+          <div class="text-2xl font-bold text-slate-800">6</div>
+          <div class="text-xs text-slate-500 mt-0.5">Critical Severity Items</div>
+        </div>
+        <div class="bg-white border border-blue-100 rounded-xl p-4 border-l-4 border-l-amber-400">
+          <div class="text-2xl font-bold text-slate-800">3</div>
+          <div class="text-xs text-slate-500 mt-0.5">Pending Acceptance</div>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="bg-white border border-blue-100 rounded-xl p-3 flex items-center gap-2 flex-wrap">
+        <div class="flex gap-1">
+          <button class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-700 text-white">ALL</button>
+          <button class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:bg-blue-50">DRAFT</button>
+          <button class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:bg-blue-50">UNDER_REVIEW</button>
+          <button class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:bg-blue-50">ACCEPTED</button>
+          <button class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-600 hover:bg-blue-50">CLOSED</button>
+        </div>
+        <div class="w-px h-6 bg-slate-200"></div>
+        <select class="text-xs border border-slate-200 rounded-lg px-2 py-1.5 text-slate-600 bg-slate-50 focus:outline-none focus:border-blue-400">
+          <option>Scope: ALL</option>
+          <option>PROCESS</option>
+          <option>SUPPLIER</option>
+          <option>EQUIPMENT</option>
+          <option>MATERIAL</option>
+          <option>CHANGE_CONTROL</option>
+        </select>
+        <div class="ml-auto">
+          <button class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-blue-700 text-white hover:bg-blue-800">+ New Assessment</button>
+        </div>
+      </div>
+
+      <!-- Risk Assessments Table -->
+      <div class="bg-white border border-blue-100 rounded-xl overflow-hidden">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="bg-blue-50 border-b border-blue-100">
+              <th class="text-left px-4 py-3 font-semibold text-slate-600">RA Number</th>
+              <th class="text-left px-4 py-3 font-semibold text-slate-600">Title</th>
+              <th class="text-left px-4 py-3 font-semibold text-slate-600">Scope</th>
+              <th class="text-left px-4 py-3 font-semibold text-slate-600">Status</th>
+              <th class="text-left px-4 py-3 font-semibold text-slate-600">Highest RPN</th>
+              <th class="text-left px-4 py-3 font-semibold text-slate-600">Items</th>
+              <th class="text-left px-4 py-3 font-semibold text-slate-600">Prepared By</th>
+              <th class="text-left px-4 py-3 font-semibold text-slate-600">Next Review</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-50">
+            <tr class="hover:bg-blue-50 transition-colors">
+              <td class="px-4 py-3 font-semibold text-blue-700">RA-2026-001</td>
+              <td class="px-4 py-3 text-slate-700">Paracetamol 500mg Manufacturing Risk Assessment</td>
+              <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">PROCESS</span></td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>ACCEPTED
+                </span>
+              </td>
+              <td class="px-4 py-3"><span class="rpn-yellow inline-flex px-2 py-0.5 rounded font-bold text-xs">RPN: 75</span></td>
+              <td class="px-4 py-3 text-slate-600">12 items</td>
+              <td class="px-4 py-3 font-mono text-slate-500 text-[11px]">yamini.raayi</td>
+              <td class="px-4 py-3 text-slate-600">2027-05-01</td>
+            </tr>
+            <tr class="hover:bg-blue-50 transition-colors bg-blue-50/40">
+              <td class="px-4 py-3 font-semibold text-blue-700"><a href="13-risk-assessment.html#detail" class="hover:underline">RA-2026-002</a></td>
+              <td class="px-4 py-3 text-slate-700">GRN Receiving Process — Supplier Risk</td>
+              <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-100">SUPPLIER</span></td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>UNDER_REVIEW
+                </span>
+              </td>
+              <td class="px-4 py-3"><span class="rpn-orange inline-flex px-2 py-0.5 rounded font-bold text-xs">RPN: 100</span></td>
+              <td class="px-4 py-3 text-slate-600">8 items</td>
+              <td class="px-4 py-3 font-mono text-slate-500 text-[11px]">qc.analyst</td>
+              <td class="px-4 py-3 text-slate-400">—</td>
+            </tr>
+            <tr class="hover:bg-blue-50 transition-colors">
+              <td class="px-4 py-3 font-semibold text-blue-700">RA-2026-003</td>
+              <td class="px-4 py-3 text-slate-700">HPLC System Failure Risk</td>
+              <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100">EQUIPMENT</span></td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>ACCEPTED
+                </span>
+              </td>
+              <td class="px-4 py-3"><span class="rpn-orange inline-flex px-2 py-0.5 rounded font-bold text-xs">RPN: 60</span></td>
+              <td class="px-4 py-3 text-slate-600">5 items</td>
+              <td class="px-4 py-3 font-mono text-slate-500 text-[11px]">yamini.raayi</td>
+              <td class="px-4 py-3 text-slate-600">2027-01-15</td>
+            </tr>
+            <tr class="hover:bg-blue-50 transition-colors">
+              <td class="px-4 py-3 font-semibold text-blue-700">RA-2026-004</td>
+              <td class="px-4 py-3 text-slate-700">Raw Material Storage Temperature Excursion</td>
+              <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-green-50 text-green-700 border border-green-100">MATERIAL</span></td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+                  <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>DRAFT
+                </span>
+              </td>
+              <td class="px-4 py-3"><span class="rpn-red inline-flex px-2 py-0.5 rounded font-bold text-xs">RPN: 125</span></td>
+              <td class="px-4 py-3 text-slate-600">7 items</td>
+              <td class="px-4 py-3 font-mono text-slate-500 text-[11px]">qc.analyst</td>
+              <td class="px-4 py-3 text-slate-400">—</td>
+            </tr>
+            <tr class="hover:bg-blue-50 transition-colors">
+              <td class="px-4 py-3 font-semibold text-blue-700">RA-2026-005</td>
+              <td class="px-4 py-3 text-slate-700">Change Control CC-2026-003 Risk Assessment</td>
+              <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-100">CHANGE_CONTROL</span></td>
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                  <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>ACCEPTED
+                </span>
+              </td>
+              <td class="px-4 py-3"><span class="rpn-yellow inline-flex px-2 py-0.5 rounded font-bold text-xs">RPN: 50</span></td>
+              <td class="px-4 py-3 text-slate-600">4 items</td>
+              <td class="px-4 py-3 font-mono text-slate-500 text-[11px]">yamini.raayi</td>
+              <td class="px-4 py-3 text-slate-600">2026-11-01</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="border-t border-blue-50 px-4 py-2.5 flex items-center justify-between">
+          <span class="text-xs text-slate-400">Showing 5 of 8 assessments</span>
+          <div class="flex gap-1">
+            <button class="px-2.5 py-1 text-xs border border-slate-200 rounded-lg text-slate-500 hover:bg-blue-50">← Prev</button>
+            <button class="px-2.5 py-1 text-xs border border-blue-200 rounded-lg bg-blue-700 text-white font-semibold">1</button>
+            <button class="px-2.5 py-1 text-xs border border-slate-200 rounded-lg text-slate-500 hover:bg-blue-50">2</button>
+            <button class="px-2.5 py-1 text-xs border border-slate-200 rounded-lg text-slate-500 hover:bg-blue-50">Next →</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 2 — /qms/risk-register/RA-2026-002 — FMEA Detail            -->
+<!-- ═══════════════════════════════════════════════════════════════════ -->
+<div class="screen-label">SCREEN 2/2 — /qms/risk-register/RA-2026-002 — FMEA Detail</div>
+<div id="detail" class="flex h-screen bg-slate-50 overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="w-64 shrink-0 flex flex-col bg-blue-900 border-r border-blue-800 overflow-y-auto">
+    <div class="flex h-16 shrink-0 items-center border-b border-blue-800 px-4 gap-3">
+      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-xs font-bold text-white">BS</div>
+      <div><p class="text-[10px] font-bold uppercase tracking-widest text-blue-200">BatchSphere</p><p class="text-sm font-semibold text-white leading-none">Core ERP</p></div>
+    </div>
+    <div class="border-b border-blue-800 p-3">
+      <div class="flex items-center gap-2 rounded-xl bg-white/10 p-2.5">
+        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">YR</div>
+        <div class="min-w-0"><div class="truncate text-xs font-semibold text-white">Yamini Raayi</div><div class="text-[10px] text-blue-200">QC_MANAGER</div></div>
+        <div class="ml-auto h-2 w-2 rounded-full bg-green-400 shrink-0"></div>
+      </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto p-3 space-y-3">
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Main</p>
+        <a href="01-dashboard.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⊞ Command Center</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Master Data</p>
+        <a href="07-vms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🏢 Partners</a>
+        <a href="08-materials.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Materials</a>
+        <a href="11-spec-moa.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📋 QC Refs</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Operations</p>
+        <a href="02-grn.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📦 Inbound GRN</a>
+        <a href="09-inventory.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 Inventory</a>
+        <a href="06-sampling.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚗ QC Sampling</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Quality</p>
+        <a href="01-qms-mockup.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚠ Deviations</a>
+        <a href="03-qms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✔ CAPAs</a>
+        <a href="05-documents.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📄 Documents</a>
+        <a href="12-complaint-management.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🔔 Complaints</a>
+        <a href="13-risk-assessment.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm bg-white/10 font-semibold text-white">⚡ Risk Register</a>
+        <a href="18-lot-traceability.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🔗 Traceability</a>
+        <a href="16-apqr.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">📊 APQR</a>
+        <a href="17-qp-batch-release.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">✅ QP Release</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">Laboratory</p>
+        <a href="14-retention-samples.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🧪 Retention Samples</a>
+        <a href="15-equipment-qualification.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">⚙ Equipment Qual</a></div>
+      <div><p class="mb-1 px-2 text-[10px] font-bold uppercase tracking-[0.3em] text-blue-300">HR</p>
+        <a href="06-hrms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">👤 Employees</a>
+        <a href="06-hrms.html" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-blue-200 hover:bg-white/10">🎓 Training</a></div>
+    </nav>
+    <div class="border-t border-blue-800 p-3 text-center text-[10px] text-blue-400">BatchSphere © 2026</div>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 flex flex-col overflow-hidden">
+
+    <header class="h-14 bg-white border-b border-blue-100 flex items-center px-6 flex-shrink-0 shadow-sm">
+      <div class="text-xs text-slate-400">Quality / <a href="13-risk-assessment.html" class="text-blue-600 hover:underline">Risk Register</a> / <span class="text-blue-700 font-semibold">RA-2026-002</span></div>
+    </header>
+
+    <div class="flex-1 overflow-y-auto p-5 space-y-4">
+
+      <!-- Detail Header -->
+      <div class="bg-white border border-blue-100 rounded-xl px-5 py-3.5 flex items-center gap-3 flex-wrap">
+        <span class="font-mono text-sm font-bold text-slate-800 bg-slate-100 px-2.5 py-1 rounded-lg">RA-2026-002</span>
+        <span class="text-sm font-semibold text-slate-700">GRN Receiving Process — Supplier Risk</span>
+        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+          <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>UNDER_REVIEW
+        </span>
+        <div class="flex gap-3 text-xs text-slate-500">
+          <span class="bg-slate-100 rounded px-2 py-0.5 font-semibold">Methodology: FMEA</span>
+          <span class="bg-purple-50 text-purple-700 rounded px-2 py-0.5 font-semibold border border-purple-100">Scope: SUPPLIER</span>
+        </div>
+        <div class="ml-auto">
+          <button class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-blue-700 text-white hover:bg-blue-800">Accept Assessment (E-Signature Required)</button>
+        </div>
+      </div>
+
+      <!-- Tab Bar -->
+      <div class="flex gap-1">
+        <button class="tab-active px-4 py-2 text-xs font-semibold rounded-lg">Risk Items</button>
+        <button class="tab-inactive px-4 py-2 text-xs font-semibold rounded-lg">Risk Matrix</button>
+        <button class="tab-inactive px-4 py-2 text-xs font-semibold rounded-lg">Summary</button>
+      </div>
+
+      <!-- Risk Items Tab (active) -->
+      <div class="bg-white border border-blue-100 rounded-xl overflow-hidden">
+
+        <!-- Column legend -->
+        <div class="px-4 py-2 bg-blue-50 border-b border-blue-100 flex items-center gap-2 flex-wrap">
+          <span class="text-[10px] text-slate-500 font-semibold">P = Probability &nbsp;|&nbsp; S = Severity &nbsp;|&nbsp; D = Detectability &nbsp;|&nbsp; RPN = P × S × D</span>
+          <div class="ml-auto flex gap-2 text-[10px] font-bold">
+            <span class="rpn-red px-2 py-0.5 rounded">≥75 Critical</span>
+            <span class="rpn-orange px-2 py-0.5 rounded">50–74 High</span>
+            <span class="rpn-yellow px-2 py-0.5 rounded">25–49 Medium</span>
+            <span class="rpn-green px-2 py-0.5 rounded">&lt;25 Low</span>
+          </div>
+        </div>
+
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="bg-slate-50 border-b border-slate-100">
+              <th class="text-left px-3 py-2.5 font-semibold text-slate-500 w-6">#</th>
+              <th class="text-left px-3 py-2.5 font-semibold text-slate-500">Process Step</th>
+              <th class="text-left px-3 py-2.5 font-semibold text-slate-500">Failure Mode</th>
+              <th class="text-left px-3 py-2.5 font-semibold text-slate-500">Effect</th>
+              <th class="text-left px-3 py-2.5 font-semibold text-slate-500">Cause</th>
+              <th class="text-center px-2 py-2.5 font-semibold text-slate-500">P</th>
+              <th class="text-center px-2 py-2.5 font-semibold text-slate-500">S</th>
+              <th class="text-center px-2 py-2.5 font-semibold text-slate-500">D</th>
+              <th class="text-center px-2 py-2.5 font-semibold text-slate-500">RPN</th>
+              <th class="text-left px-3 py-2.5 font-semibold text-slate-500">Control Measure</th>
+              <th class="text-center px-2 py-2.5 font-semibold text-slate-500">Res. RPN</th>
+              <th class="text-left px-3 py-2.5 font-semibold text-slate-500">Owner</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-50">
+
+            <!-- Row 1 -->
+            <tr class="hover:bg-blue-50 transition-colors">
+              <td class="px-3 py-2.5 text-slate-400 font-bold">1</td>
+              <td class="px-3 py-2.5 font-semibold text-slate-700">Receiving Check</td>
+              <td class="px-3 py-2.5 text-slate-600">Supplier provides wrong CoA</td>
+              <td class="px-3 py-2.5 text-slate-600">Wrong material released to production</td>
+              <td class="px-3 py-2.5 text-slate-500">Document forgery / human error</td>
+              <td class="px-2 py-2.5 text-center font-bold text-slate-700">2</td>
+              <td class="px-2 py-2.5 text-center font-bold text-red-600">5</td>
+              <td class="px-2 py-2.5 text-center font-bold text-slate-700">3</td>
+              <td class="px-2 py-2.5 text-center"><span class="rpn-yellow inline-flex px-2 py-0.5 rounded font-bold">30</span></td>
+              <td class="px-3 py-2.5 text-slate-500">Verify CoA against approved spec parameters</td>
+              <td class="px-2 py-2.5 text-center"><span class="rpn-green inline-flex px-2 py-0.5 rounded font-bold">15</span></td>
+              <td class="px-3 py-2.5 font-mono text-slate-500 text-[11px]">qc.manager</td>
+            </tr>
+
+            <!-- Row 2 -->
+            <tr class="hover:bg-blue-50 transition-colors bg-slate-50/30">
+              <td class="px-3 py-2.5 text-slate-400 font-bold">2</td>
+              <td class="px-3 py-2.5 font-semibold text-slate-700">Supplier Qualification</td>
+              <td class="px-3 py-2.5 text-slate-600">Unqualified supplier used</td>
+              <td class="px-3 py-2.5 text-slate-600">Non-GMP material enters warehouse</td>
+              <td class="px-3 py-2.5 text-slate-500">AVL check bypassed</td>
+              <td class="px-2 py-2.5 text-center font-bold text-slate-700">2</td>
+              <td class="px-2 py-2.5 text-center font-bold text-red-600">5</td>
+              <td class="px-2 py-2.5 text-center font-bold text-slate-700">2</td>
+              <td class="px-2 py-2.5 text-center"><span class="rpn-yellow inline-flex px-2 py-0.5 rounded font-bold">20</span></td>
+              <td class="px-3 py-2.5 text-slate-500">GRN guards enforce AVL check (system lock)</td>
+              <td class="px-2 py-2.5 text-center"><span class="rpn-green inline-flex px-2 py-0.5 rounded font-bold">8</span></td>
+              <td class="px-3 py-2.5 text-slate-400">—</td>
+            </tr>
+
+            <!-- Row 3 — Highest RPN -->
+            <tr class="hover:bg-blue-50 transition-colors border-l-2 border-l-orange-400">
+              <td class="px-3 py-2.5 text-slate-400 font-bold">3</td>
+              <td class="px-3 py-2.5 font-semibold text-slate-700">Temperature Monitoring</td>
+              <td class="px-3 py-2.5 text-slate-600">Cold-chain break during transit</td>
+              <td class="px-3 py-2.5 text-slate-600">Degraded API in finished product</td>
+              <td class="px-3 py-2.5 text-slate-500">No active temp. monitoring in transit</td>
+              <td class="px-2 py-2.5 text-center font-bold text-orange-600">3</td>
+              <td class="px-2 py-2.5 text-center font-bold text-red-600">5</td>
+              <td class="px-2 py-2.5 text-center font-bold text-orange-600">4</td>
+              <td class="px-2 py-2.5 text-center"><span class="rpn-orange inline-flex px-2 py-0.5 rounded font-bold">60</span></td>
+              <td class="px-3 py-2.5 text-slate-500">Add real-time IoT temperature logger per shipment</td>
+              <td class="px-2 py-2.5 text-center"><span class="rpn-yellow inline-flex px-2 py-0.5 rounded font-bold">24</span></td>
+              <td class="px-3 py-2.5 font-mono text-slate-500 text-[11px]">qc.analyst</td>
+            </tr>
+
+            <!-- Row 4 -->
+            <tr class="hover:bg-blue-50 transition-colors bg-slate-50/30">
+              <td class="px-3 py-2.5 text-slate-400 font-bold">4</td>
+              <td class="px-3 py-2.5 font-semibold text-slate-700">Container Condition</td>
+              <td class="px-3 py-2.5 text-slate-600">Damaged packaging on receipt</td>
+              <td class="px-3 py-2.5 text-slate-600">Contamination / moisture ingress</td>
+              <td class="px-3 py-2.5 text-slate-500">Rough handling in transit</td>
+              <td class="px-2 py-2.5 text-center font-bold text-slate-700">2</td>
+              <td class="px-2 py-2.5 text-center font-bold text-orange-600">4</td>
+              <td class="px-2 py-2.5 text-center font-bold text-slate-700">3</td>
+              <td class="px-2 py-2.5 text-center"><span class="rpn-yellow inline-flex px-2 py-0.5 rounded font-bold">24</span></td>
+              <td class="px-3 py-2.5 text-slate-500">Visual inspection checklist on receipt</td>
+              <td class="px-2 py-2.5 text-center text-slate-400">—</td>
+              <td class="px-3 py-2.5 text-slate-400">—</td>
+            </tr>
+
+            <!-- Row 5 -->
+            <tr class="hover:bg-blue-50 transition-colors">
+              <td class="px-3 py-2.5 text-slate-400 font-bold">5</td>
+              <td class="px-3 py-2.5 font-semibold text-slate-700">GRN Review</td>
+              <td class="px-3 py-2.5 text-slate-600">Quantity discrepancy not flagged</td>
+              <td class="px-3 py-2.5 text-slate-600">Inventory overstock / understock</td>
+              <td class="px-3 py-2.5 text-slate-500">Manual count error</td>
+              <td class="px-2 py-2.5 text-center font-bold text-orange-600">3</td>
+              <td class="px-2 py-2.5 text-center font-bold text-slate-700">3</td>
+              <td class="px-2 py-2.5 text-center font-bold text-slate-700">2</td>
+              <td class="px-2 py-2.5 text-center"><span class="rpn-green inline-flex px-2 py-0.5 rounded font-bold">18</span></td>
+              <td class="px-3 py-2.5 text-slate-500">System auto-flags ±2% quantity deviation</td>
+              <td class="px-2 py-2.5 text-center text-slate-400">—</td>
+              <td class="px-3 py-2.5 text-slate-400">—</td>
+            </tr>
+
+            <!-- Row 6 -->
+            <tr class="hover:bg-blue-50 transition-colors bg-slate-50/30">
+              <td class="px-3 py-2.5 text-slate-400 font-bold">6</td>
+              <td class="px-3 py-2.5 font-semibold text-slate-700">Microbiological</td>
+              <td class="px-3 py-2.5 text-slate-600">Microbial contamination in raw material</td>
+              <td class="px-3 py-2.5 text-slate-600">Patient safety risk</td>
+              <td class="px-3 py-2.5 text-slate-500">Inadequate supplier microbiological testing</td>
+              <td class="px-2 py-2.5 text-center font-bold text-slate-700">1</td>
+              <td class="px-2 py-2.5 text-center font-bold text-red-600">5</td>
+              <td class="px-2 py-2.5 text-center font-bold text-slate-700">3</td>
+              <td class="px-2 py-2.5 text-center"><span class="rpn-green inline-flex px-2 py-0.5 rounded font-bold">15</span></td>
+              <td class="px-3 py-2.5 text-slate-500">Vendor CoA + in-house micro testing on receipt</td>
+              <td class="px-2 py-2.5 text-center text-slate-400">—</td>
+              <td class="px-3 py-2.5 text-slate-400">—</td>
+            </tr>
+
+            <!-- Add Row inline form -->
+            <tr class="bg-blue-50/60 border-t border-dashed border-blue-200">
+              <td class="px-3 py-2.5 text-slate-400 font-bold">+</td>
+              <td class="px-3 py-2">
+                <input type="text" placeholder="Process Step" class="w-full text-xs border border-blue-200 rounded px-2 py-1 bg-white focus:outline-none focus:border-blue-400" />
+              </td>
+              <td class="px-3 py-2">
+                <input type="text" placeholder="Failure Mode" class="w-full text-xs border border-blue-200 rounded px-2 py-1 bg-white focus:outline-none focus:border-blue-400" />
+              </td>
+              <td class="px-3 py-2 text-slate-400 text-[10px] italic">auto-filled</td>
+              <td class="px-3 py-2 text-slate-400 text-[10px] italic">auto-filled</td>
+              <td class="px-2 py-2 text-center">
+                <select class="text-xs border border-blue-200 rounded px-1 py-1 bg-white w-10 focus:outline-none">
+                  <option>—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                </select>
+              </td>
+              <td class="px-2 py-2 text-center">
+                <select class="text-xs border border-blue-200 rounded px-1 py-1 bg-white w-10 focus:outline-none">
+                  <option>—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                </select>
+              </td>
+              <td class="px-2 py-2 text-center">
+                <select class="text-xs border border-blue-200 rounded px-1 py-1 bg-white w-10 focus:outline-none">
+                  <option>—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                </select>
+              </td>
+              <td class="px-2 py-2 text-center">
+                <span class="text-xs font-bold text-slate-400 bg-white border border-slate-200 rounded px-2 py-0.5">RPN: —</span>
+              </td>
+              <td class="px-3 py-2">
+                <input type="text" placeholder="Control measure..." class="w-full text-xs border border-blue-200 rounded px-2 py-1 bg-white focus:outline-none focus:border-blue-400" />
+              </td>
+              <td class="px-2 py-2 text-center text-slate-400 text-[10px]">—</td>
+              <td class="px-3 py-2">
+                <button class="px-3 py-1 text-xs font-semibold rounded-lg bg-blue-700 text-white hover:bg-blue-800">Add</button>
+              </td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Risk Matrix Tab (shown as "inactive but visible for mockup purposes") -->
+      <div class="bg-white border border-blue-100 rounded-xl overflow-hidden">
+        <div class="border-b border-blue-50 px-5 py-3 flex items-center gap-2">
+          <div class="text-xs font-bold text-slate-700">Risk Matrix (5×5 — ICH Q9)</div>
+          <span class="text-[10px] text-slate-400 font-semibold ml-2">P × S heat map for RA-2026-002</span>
+        </div>
+        <div class="p-5">
+          <div class="flex gap-6 items-start">
+            <!-- Matrix -->
+            <div>
+              <!-- Y-axis label -->
+              <div class="flex items-end gap-1 mb-1">
+                <div class="w-20 text-right text-[10px] text-slate-400 font-bold pr-1">Severity ↑</div>
+                <div class="flex gap-1 text-[10px] text-slate-400 text-center">
+                  <span class="w-12">P=1</span>
+                  <span class="w-12">P=2</span>
+                  <span class="w-12">P=3</span>
+                  <span class="w-12">P=4</span>
+                  <span class="w-12">P=5</span>
+                </div>
+              </div>
+              <!-- Row S=5 -->
+              <div class="flex items-center gap-1 mb-1">
+                <div class="w-20 text-right text-[10px] font-bold text-slate-600 pr-2">S=5 (Critical)</div>
+                <div class="matrix-orange w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-orange-800 border border-orange-200">—</div>
+                <div class="matrix-orange w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-orange-800 border border-orange-200">2</div>
+                <div class="matrix-red w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-red-800 border border-red-200">1</div>
+                <div class="matrix-red w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-red-800 border border-red-200">—</div>
+                <div class="matrix-red w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-red-800 border border-red-200">—</div>
+              </div>
+              <!-- Row S=4 -->
+              <div class="flex items-center gap-1 mb-1">
+                <div class="w-20 text-right text-[10px] font-bold text-slate-600 pr-2">S=4 (Major)</div>
+                <div class="matrix-yellow w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-yellow-800 border border-yellow-200">—</div>
+                <div class="matrix-orange w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-orange-800 border border-orange-200">1</div>
+                <div class="matrix-orange w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-orange-800 border border-orange-200">—</div>
+                <div class="matrix-red w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-red-800 border border-red-200">—</div>
+                <div class="matrix-red w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-red-800 border border-red-200">—</div>
+              </div>
+              <!-- Row S=3 -->
+              <div class="flex items-center gap-1 mb-1">
+                <div class="w-20 text-right text-[10px] font-bold text-slate-600 pr-2">S=3 (Moderate)</div>
+                <div class="matrix-green w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-green-800 border border-green-200">—</div>
+                <div class="matrix-yellow w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-yellow-800 border border-yellow-200">—</div>
+                <div class="matrix-orange w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-orange-800 border border-orange-200">1</div>
+                <div class="matrix-orange w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-orange-800 border border-orange-200">—</div>
+                <div class="matrix-red w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-red-800 border border-red-200">—</div>
+              </div>
+              <!-- Row S=2 -->
+              <div class="flex items-center gap-1 mb-1">
+                <div class="w-20 text-right text-[10px] font-bold text-slate-600 pr-2">S=2 (Minor)</div>
+                <div class="matrix-green w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-green-800 border border-green-200">—</div>
+                <div class="matrix-green w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-green-800 border border-green-200">—</div>
+                <div class="matrix-yellow w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-yellow-800 border border-yellow-200">—</div>
+                <div class="matrix-yellow w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-yellow-800 border border-yellow-200">—</div>
+                <div class="matrix-orange w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-orange-800 border border-orange-200">—</div>
+              </div>
+              <!-- Row S=1 -->
+              <div class="flex items-center gap-1">
+                <div class="w-20 text-right text-[10px] font-bold text-slate-600 pr-2">S=1 (Negligible)</div>
+                <div class="matrix-green w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-green-800 border border-green-200">—</div>
+                <div class="matrix-green w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-green-800 border border-green-200">—</div>
+                <div class="matrix-green w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-green-800 border border-green-200">—</div>
+                <div class="matrix-yellow w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-yellow-800 border border-yellow-200">—</div>
+                <div class="matrix-yellow w-12 h-10 rounded flex items-center justify-center text-xs font-bold text-yellow-800 border border-yellow-200">—</div>
+              </div>
+              <!-- X-axis label -->
+              <div class="flex items-start gap-1 mt-1 ml-20 text-[10px] text-slate-400 text-center">
+                <span class="w-12">P=1<br/>Rare</span>
+                <span class="w-12">P=2<br/>Unlikely</span>
+                <span class="w-12">P=3<br/>Possible</span>
+                <span class="w-12">P=4<br/>Likely</span>
+                <span class="w-12">P=5<br/>Certain</span>
+              </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="space-y-2 shrink-0 mt-2">
+              <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2">Legend</div>
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-5 matrix-green rounded border border-green-200"></div>
+                <span class="text-xs text-slate-600">P×S ≤ 4 — Low Risk</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-5 matrix-yellow rounded border border-yellow-200"></div>
+                <span class="text-xs text-slate-600">P×S 5–10 — Medium Risk</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-5 matrix-orange rounded border border-orange-200"></div>
+                <span class="text-xs text-slate-600">P×S 11–20 — High Risk</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-5 matrix-red rounded border border-red-200"></div>
+                <span class="text-xs text-slate-600">P×S &gt; 20 — Critical Risk</span>
+              </div>
+              <div class="mt-3 text-[10px] text-slate-400 leading-relaxed border-t border-slate-100 pt-2">
+                Numbers in cells = count<br/>of risk items at that<br/>P×S intersection
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Acceptance Section (shown because status = UNDER_REVIEW) -->
+      <div class="bg-white border border-amber-200 rounded-xl overflow-hidden">
+        <div class="border-b border-amber-100 px-5 py-3 bg-amber-50 flex items-center gap-2">
+          <span class="text-xs font-bold text-amber-800">Assessment Acceptance</span>
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 ml-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>UNDER_REVIEW — Acceptance Required
+          </span>
+        </div>
+        <div class="p-5 space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">Overall Risk Conclusion</div>
+              <textarea
+                class="w-full text-xs border border-slate-200 rounded-lg p-3 text-slate-600 bg-slate-50 resize-none focus:outline-none focus:border-blue-400"
+                rows="3"
+                placeholder="Describe the overall risk level and rationale for acceptance/rejection of this risk assessment..."
+              >GRN receiving supplier risk assessed against current controls. Cold-chain monitoring gap (Row 3, RPN 60) identified as highest residual risk. Mitigation via IoT logger implementation (CAPA-2026-025) in progress. Remaining risks within acceptable threshold pending CAPA closure.</textarea>
+            </div>
+            <div class="space-y-3">
+              <div>
+                <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">Residual Risk Acceptable</div>
+                <div class="flex items-center gap-3">
+                  <div class="relative inline-flex h-6 w-11 items-center rounded-full bg-blue-600 cursor-pointer">
+                    <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow translate-x-6 transition"></span>
+                  </div>
+                  <span class="text-xs font-bold text-blue-700">YES</span>
+                  <span class="text-xs text-slate-400">(pending CAPA-2026-025 closure)</span>
+                </div>
+              </div>
+              <div>
+                <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">Next Review Date</div>
+                <input type="date" value="2027-06-01" class="text-xs border border-slate-200 rounded-lg px-3 py-1.5 text-slate-700 bg-slate-50 focus:outline-none focus:border-blue-400" />
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-3 pt-2 border-t border-slate-100">
+            <button class="px-5 py-2 text-xs font-semibold rounded-lg bg-blue-700 text-white hover:bg-blue-800">
+              Accept Assessment (E-Signature Required)
+            </button>
+            <button class="px-4 py-2 text-xs font-semibold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
+              Send for Revision
+            </button>
+            <span class="text-[10px] text-slate-400 ml-2">E-signature will be captured on submission. All acceptances are audit-logged.</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

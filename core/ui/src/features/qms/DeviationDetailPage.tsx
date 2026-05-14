@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   createCapa,
-  fetchAuditEvents,
   fetchCapas,
   fetchDeviation,
   fetchESignatures,
@@ -15,6 +14,8 @@ import {
 import type { CapaStatus, CreateCapaRequest } from "../../types/capa";
 import type { DeviationSeverity, DeviationStatus, DeviationType, UpdateDeviationRequest } from "../../types/deviation";
 import { formatDateTime, formatLabel, severityClass, statusClass } from "./deviationUi";
+import { AuditTimeline } from "../../components/AuditTimeline";
+import { ESignatureDialog } from "../../components/ESignatureDialog";
 
 const deviationTypes: DeviationType[] = ["MATERIAL", "PROCESS", "DOCUMENTATION", "EQUIPMENT", "FACILITY", "SAFETY", "OTHER"];
 const severities: DeviationSeverity[] = ["CRITICAL", "MAJOR", "MINOR"];
@@ -29,8 +30,7 @@ export function DeviationDetailPage() {
   const [selectedStatus, setSelectedStatus] = useState<DeviationStatus>("UNDER_INVESTIGATION");
   const [statusReason, setStatusReason] = useState("");
   const [closureSummary, setClosureSummary] = useState("");
-  const [signatureUsername, setSignatureUsername] = useState("admin");
-  const [signaturePassword, setSignaturePassword] = useState("");
+  const [showClosureESignDialog, setShowClosureESignDialog] = useState(false);
   const [capaForm, setCapaForm] = useState<Omit<CreateCapaRequest, "deviationId">>({
     title: "",
     description: "",
@@ -47,12 +47,6 @@ export function DeviationDetailPage() {
   const { data: deviation, isLoading, error } = useQuery({
     queryKey: ["deviation", deviationId],
     queryFn: () => fetchDeviation(deviationId as string),
-    enabled: Boolean(deviationId)
-  });
-
-  const { data: auditEvents } = useQuery({
-    queryKey: ["audit-events", "QMS_DEVIATION", deviationId],
-    queryFn: () => fetchAuditEvents("QMS_DEVIATION", deviationId as string),
     enabled: Boolean(deviationId)
   });
 
@@ -101,13 +95,10 @@ export function DeviationDetailPage() {
         status: selectedStatus,
         reason: statusReason.trim() || undefined,
         closureSummary: selectedStatus === "CLOSED" ? closureSummary.trim() : undefined,
-        username: selectedStatus === "CLOSED" ? signatureUsername.trim() : undefined,
-        password: selectedStatus === "CLOSED" ? signaturePassword : undefined,
-        meaning: selectedStatus === "CLOSED" ? "I approve this deviation closure" : undefined
       }),
     onSuccess: async () => {
       setActionError(null);
-      setSignaturePassword("");
+      setShowClosureESignDialog(false);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["deviation", deviationId] }),
         queryClient.invalidateQueries({ queryKey: ["audit-events", "QMS_DEVIATION", deviationId] }),
@@ -153,7 +144,6 @@ export function DeviationDetailPage() {
       status,
       reason: statusReason.trim() || undefined,
       completionSummary: closureSummary.trim() || undefined,
-      username: status === "CLOSED" ? signatureUsername.trim() : undefined,
       password: status === "CLOSED" ? capaClosurePassword : undefined,
       meaning: status === "CLOSED" ? "I approve CAPA closure" : undefined
     }),
@@ -308,14 +298,15 @@ export function DeviationDetailPage() {
               <Field label="Next status"><select disabled={isClosed} value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value as DeviationStatus)} className={fieldClass()}>{statusFlow.map((status) => <option key={status} value={status}>{formatLabel(status)}</option>)}</select></Field>
               <Field label="Reason"><textarea disabled={isClosed} value={statusReason} onChange={(event) => setStatusReason(event.target.value)} className={fieldClass("min-h-20")} /></Field>
               {selectedStatus === "CLOSED" ? (
-                <>
-                  <Field label="Closure summary"><textarea disabled={isClosed} value={closureSummary} onChange={(event) => setClosureSummary(event.target.value)} className={fieldClass("min-h-20")} /></Field>
-                  <Field label="E-sign username"><input disabled={isClosed} value={signatureUsername} onChange={(event) => setSignatureUsername(event.target.value)} className={fieldClass()} /></Field>
-                  <Field label="E-sign password"><input disabled={isClosed} type="password" value={signaturePassword} onChange={(event) => setSignaturePassword(event.target.value)} className={fieldClass()} /></Field>
-                </>
+                <Field label="Closure summary"><textarea disabled={isClosed} value={closureSummary} onChange={(event) => setClosureSummary(event.target.value)} className={fieldClass("min-h-20")} /></Field>
               ) : null}
-              <button type="button" disabled={isClosed || statusMutation.isPending} onClick={() => statusMutation.mutate()} className="w-full rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50">
-                {statusMutation.isPending ? "Updating..." : "Apply Status"}
+              <button
+                type="button"
+                disabled={isClosed || statusMutation.isPending}
+                onClick={() => selectedStatus === "CLOSED" ? setShowClosureESignDialog(true) : statusMutation.mutate()}
+                className="w-full rounded-xl bg-slate-800 px-4 py-2.5 text-xs font-semibold text-white disabled:opacity-50"
+              >
+                {statusMutation.isPending ? "Updating..." : selectedStatus === "CLOSED" ? "Sign & Close Deviation" : "Apply Status"}
               </button>
             </div>
           </div>
@@ -333,15 +324,8 @@ export function DeviationDetailPage() {
 
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-sm font-bold text-slate-800">Audit Timeline</h2>
-            <div className="mt-4 space-y-3">
-              {(auditEvents ?? []).length === 0 ? <div className="text-xs text-slate-400">No audit events yet.</div> : null}
-              {(auditEvents ?? []).map((event) => (
-                <div key={event.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-xs">
-                  <div className="font-semibold text-slate-700">{formatLabel(event.eventType)} · {event.fieldName ?? "record"}</div>
-                  <div className="mt-1 text-slate-500">{event.oldValue ?? "-"} to {event.newValue ?? "-"}</div>
-                  <div className="mt-1 text-[11px] text-slate-400">{event.actor} · {formatDateTime(event.eventAt)}</div>
-                </div>
-              ))}
+            <div className="mt-4">
+              <AuditTimeline entityType="QMS_DEVIATION" entityId={deviationId as string} />
             </div>
           </div>
 
@@ -360,6 +344,17 @@ export function DeviationDetailPage() {
           </div>
         </aside>
       </div>
+
+      <ESignatureDialog
+        entityType="QMS_DEVIATION"
+        entityId={deviationId as string}
+        action="CLOSE_DEVIATION"
+        defaultMeaning="I approve closure of this quality deviation"
+        reason={statusReason}
+        visible={showClosureESignDialog}
+        onClose={() => setShowClosureESignDialog(false)}
+        onSigned={() => statusMutation.mutate()}
+      />
     </div>
   );
 }

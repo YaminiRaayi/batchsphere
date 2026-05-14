@@ -1,5 +1,7 @@
 package com.batchsphere.core.qms.capa.dto;
 
+import com.batchsphere.core.qms.capa.entity.CapaApprovalStatus;
+import com.batchsphere.core.qms.capa.entity.CapaEffectivenessOutcome;
 import com.batchsphere.core.qms.capa.entity.CapaStatus;
 import com.batchsphere.core.qms.deviation.entity.DeviationSeverity;
 import lombok.Builder;
@@ -20,11 +22,25 @@ public class CapaResponse {
     String description;
     DeviationSeverity severity;
     CapaStatus status;
+    CapaApprovalStatus approvalStatus;
+    String submittedForApprovalBy;
+    LocalDateTime submittedForApprovalAt;
+    String approvedBy;
+    LocalDateTime approvedAt;
+    String approvalComments;
+    UUID approvalESignatureId;
     String owner;
     LocalDate dueDate;
     String correctiveAction;
     String preventiveAction;
     String effectivenessCheck;
+    LocalDate effectivenessReviewDate;
+    String effectivenessReviewer;
+    CapaEffectivenessOutcome effectivenessOutcome;
+    String effectivenessOutcomeComments;
+    LocalDateTime effectivenessReviewAt;
+    String effectivenessReviewBy;
+    UUID effectivenessESignatureId;
     String completionSummary;
     String closedBy;
     LocalDateTime closedAt;

@@ -7,6 +7,7 @@ import java.util.Map;
 
 @Builder
 public record InventorySummaryResponse(
-        Map<InventoryStatus, Long> countsByStatus
+        Map<InventoryStatus, Long> countsByStatus,
+        Long expiringIn30Days
 ) {
 }

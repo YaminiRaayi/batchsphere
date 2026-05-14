@@ -2,23 +2,27 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   fetchBatches,
+  fetchDeviationSummary,
   fetchGrns,
   fetchGrnSummary,
   fetchInventorySummary,
   fetchMaterials,
   fetchSamplingSummary,
   fetchSuppliers,
+  fetchVendorBusinessUnits,
   fetchWmsSummary
 } from "../../lib/api";
 import { useAuthStore } from "../../stores/authStore";
 import { useAppShellStore } from "../../stores/appShellStore";
 import type { Batch } from "../../types/batch";
+import type { DeviationSummary } from "../../types/deviation";
 import type { Grn, GrnSummary } from "../../types/grn";
 import type { InventorySummary } from "../../types/inventory";
 import type { WmsSummary } from "../../types/location";
 import type { Material } from "../../types/material";
 import type { SamplingSummary } from "../../types/sampling";
 import type { Supplier } from "../../types/supplier";
+import type { VendorBusinessUnit } from "../../types/vendor-business-unit";
 
 function formatDisplayDate(value: string) {
   const target = new Date(value);
@@ -86,11 +90,13 @@ export function DashboardPage() {
   const [grnSummary, setGrnSummary] = useState<GrnSummary | null>(null);
   const [inventorySummary, setInventorySummary] = useState<InventorySummary | null>(null);
   const [samplingSummary, setSamplingSummary] = useState<SamplingSummary | null>(null);
+  const [deviationSummary, setDeviationSummary] = useState<DeviationSummary | null>(null);
   const [wmsSummary, setWmsSummary] = useState<WmsSummary | null>(null);
   const [recentGrns, setRecentGrns] = useState<Grn[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [vbus, setVbus] = useState<VendorBusinessUnit[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -137,6 +143,20 @@ export function DashboardPage() {
           loaders.push({
             label: "Sampling summary",
             run: async () => setSamplingSummary(await fetchSamplingSummary())
+          });
+        }
+
+        if (canViewQc || authUser?.role === "SUPER_ADMIN") {
+          loaders.push({
+            label: "Deviation summary",
+            run: async () => setDeviationSummary(await fetchDeviationSummary())
+          });
+        }
+
+        if (canViewProcurement || authUser?.role === "SUPER_ADMIN") {
+          loaders.push({
+            label: "Vendor business units",
+            run: async () => setVbus((await fetchVendorBusinessUnits(0, 200)).content)
           });
         }
 
@@ -202,6 +222,20 @@ export function DashboardPage() {
   const inventoryLots = inventorySummary
     ? Object.values(inventorySummary.countsByStatus).reduce((total, count) => total + count, 0)
     : 0;
+
+  const quarantineLots = inventorySummary?.countsByStatus?.QUARANTINE ?? 0;
+  const expiringInventory = inventorySummary?.expiringIn30Days ?? 0;
+
+  const openDeviations = deviationSummary
+    ? (deviationSummary.countsByStatus.OPEN ?? 0)
+      + (deviationSummary.countsByStatus.UNDER_INVESTIGATION ?? 0)
+      + (deviationSummary.countsByStatus.CAPA_IN_PROGRESS ?? 0)
+    : null;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const auditOverdueCount = vbus.filter(
+    (vbu) => vbu.nextRequalificationDue && vbu.nextRequalificationDue <= today
+  ).length;
 
   const todayGrns = grnSummary ? grnSummary.countsByStatus.DRAFT + grnSummary.countsByStatus.RECEIVED : 0;
   const warehouseCount = wmsSummary?.warehouses.length ?? 0;
@@ -384,47 +418,59 @@ export function DashboardPage() {
       <section className="grid gap-4 lg:grid-cols-5">
         {[
           {
-            label: "GRNs Today",
-            value: canViewWarehouse ? todayGrns || "--" : "—",
-            note: `↑ ${grnSummary?.countsByStatus.RECEIVED ?? 0} vs yesterday`,
+            label: "Quarantine Lots",
+            value: canViewWarehouse ? (quarantineLots || "0") : "—",
+            note: canViewWarehouse ? "Awaiting QC release" : "Warehouse role only",
+            border: "border-l-amber-500",
+            noteClass: quarantineLots > 0 ? "text-amber-600" : "text-slate-500",
+            href: canViewWarehouse ? "/inventory" : undefined
+          },
+          {
+            label: "Pending Sampling",
+            value: canViewQc ? (pendingSampling || "0") : "—",
+            note: canViewQc ? "Awaiting QC decision" : "QC role only",
             border: "border-l-blue-500",
-            noteClass: "text-green-600"
+            noteClass: pendingSampling > 0 ? "text-blue-600" : "text-slate-500",
+            href: canViewQc ? "/qc/sampling" : undefined
           },
           {
-            label: "Pending QC",
-            value: canViewQc ? pendingSampling || "--" : "—",
-            note: "Awaiting decision",
-            border: "border-l-amber-400",
-            noteClass: "text-slate-500"
+            label: "Open Deviations",
+            value: openDeviations !== null ? (openDeviations || "0") : "—",
+            note: openDeviations !== null ? "Active quality events" : "QC role only",
+            border: "border-l-red-500",
+            noteClass: (openDeviations ?? 0) > 0 ? "text-red-600" : "text-slate-500",
+            href: openDeviations !== null ? "/qms/deviations" : undefined
           },
           {
-            label: "Open CAPAs",
-            value: "Soon",
-            note: "Coming soon",
-            border: "border-l-red-400",
-            noteClass: "text-red-500"
-          },
-          {
-            label: "Inventory Lots",
-            value: canViewWarehouse ? inventoryLots || "--" : "—",
-            note: canViewWarehouse ? "Active operational lots" : "Warehouse role only",
-            border: "border-l-indigo-400",
-            noteClass: "text-slate-500"
-          },
-          {
-            label: "Docs Expiring",
-            value: expiringBatches.length > 0 ? expiringBatches.length : "--",
-            note: expiringBatches.length > 0 ? "Next 30 days" : "No current alerts",
+            label: "Expiring ≤30d",
+            value: canViewWarehouse ? (expiringInventory || "0") : "—",
+            note: canViewWarehouse ? "Inventory expiry alerts" : "Warehouse role only",
             border: "border-l-orange-400",
-            noteClass: "text-orange-500"
+            noteClass: expiringInventory > 0 ? "text-orange-500" : "text-slate-500",
+            href: canViewWarehouse ? "/inventory" : undefined
+          },
+          {
+            label: "Overdue Audits",
+            value: canViewProcurement || authUser?.role === "SUPER_ADMIN" ? (auditOverdueCount || "0") : "—",
+            note: canViewProcurement || authUser?.role === "SUPER_ADMIN" ? "Vendor BU audits past due" : "Procurement role only",
+            border: "border-l-purple-400",
+            noteClass: auditOverdueCount > 0 ? "text-purple-600" : "text-slate-500",
+            href: canViewProcurement || authUser?.role === "SUPER_ADMIN" ? "/master-data/partners/vendors" : undefined
           }
-        ].map((kpi) => (
-          <article key={kpi.label} className={`rounded-xl border border-blue-100 border-l-4 bg-white p-5 shadow-sm ${kpi.border}`}>
-            <div className="text-xs text-slate-500">{kpi.label}</div>
-            <div className="mt-2 text-4xl font-bold leading-none text-slate-800">{isLoading ? "--" : kpi.value}</div>
-            <div className={`mt-3 text-xs font-medium ${kpi.noteClass}`}>{kpi.note}</div>
-          </article>
-        ))}
+        ].map((kpi) => {
+          const card = (
+            <article key={kpi.label} className={`rounded-xl border border-blue-100 border-l-4 bg-white p-5 shadow-sm ${kpi.border} ${kpi.href ? "cursor-pointer transition hover:-translate-y-0.5" : ""}`}>
+              <div className="text-xs text-slate-500">{kpi.label}</div>
+              <div className="mt-2 text-4xl font-bold leading-none text-slate-800">{isLoading ? "--" : kpi.value}</div>
+              <div className={`mt-3 text-xs font-medium ${kpi.noteClass}`}>{kpi.note}</div>
+            </article>
+          );
+          return kpi.href ? (
+            <Link key={kpi.label} to={kpi.href}>{card}</Link>
+          ) : (
+            <div key={kpi.label}>{card}</div>
+          );
+        })}
       </section>
 
       <section className="space-y-5">
