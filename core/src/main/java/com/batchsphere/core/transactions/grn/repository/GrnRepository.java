@@ -13,10 +13,15 @@ public interface GrnRepository extends JpaRepository<Grn, UUID> {
 
     boolean existsByGrnNumber(String grnNumber);
 
+    java.util.Optional<Grn> findByGrnNumber(String grnNumber);
+
     Page<Grn> findByIsActiveTrue(Pageable pageable);
 
     Page<Grn> findByVendorIdAndIsActiveTrue(UUID vendorId, Pageable pageable);
 
     @Query("select g.status, count(g) from Grn g where g.isActive = true group by g.status")
     List<Object[]> countActiveByStatus();
+
+    long countByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
+    long countByStatusAndCreatedAtBetween(String status, java.time.LocalDateTime start, java.time.LocalDateTime end);
 }

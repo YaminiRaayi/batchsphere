@@ -118,6 +118,7 @@ public class GrnServiceImpl implements GrnService {
     private final LocalStorageService localStorageService;
     private final AuthenticatedActorService authenticatedActorService;
     private final AuditEventService auditEventService;
+    private final com.batchsphere.core.qms.deviation.service.DeviationService deviationService;
 
     @Override
     @Transactional
@@ -183,6 +184,19 @@ public class GrnServiceImpl implements GrnService {
                 actor,
                 "GRN_COA_REVIEW"
         );
+
+        if (nextStatus == CoaReviewStatus.REJECTED && savedGrn.getLinkedDeviationId() == null) {
+            var deviation = deviationService.createAutoDeviation(
+                    savedGrn.getId(),
+                    savedGrn.getGrnNumber(),
+                    "GRN CoA Rejection: " + savedGrn.getGrnNumber(),
+                    actor
+            );
+            savedGrn.setLinkedDeviationId(deviation.getId());
+            savedGrn.setLinkedDeviationNumber(deviation.getDeviationNumber());
+            savedGrn = grnRepository.save(savedGrn);
+        }
+
         return toResponse(savedGrn, grnItemRepository.findByGrnIdAndIsActiveTrueOrderByLineNumber(id));
     }
 
@@ -834,6 +848,8 @@ public class GrnServiceImpl implements GrnService {
                 .labelVerificationStatus(grn.getLabelVerificationStatus())
                 .quantityVarianceReason(grn.getQuantityVarianceReason())
                 .status(grn.getStatus())
+                .linkedDeviationId(grn.getLinkedDeviationId())
+                .linkedDeviationNumber(grn.getLinkedDeviationNumber())
                 .isActive(grn.getIsActive())
                 .createdBy(grn.getCreatedBy())
                 .createdAt(grn.getCreatedAt())

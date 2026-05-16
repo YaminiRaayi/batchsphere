@@ -5,10 +5,12 @@ import com.batchsphere.core.masterdata.moa.entity.MoaStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface MoaRepository extends JpaRepository<Moa, UUID> {
     boolean existsByMoaCode(String moaCode);
+    Optional<Moa> findByMoaCode(String moaCode);
     List<Moa> findByIsActiveTrueOrderByMoaCodeAsc();
     List<Moa> findByIsActiveTrueAndStatusOrderByMoaCodeAsc(MoaStatus status);
 }

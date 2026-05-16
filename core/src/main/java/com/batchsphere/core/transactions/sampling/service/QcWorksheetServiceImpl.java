@@ -205,6 +205,8 @@ public class QcWorksheetServiceImpl implements QcWorksheetService {
                 .sequence(parameter.getSequence())
                 .enteredAt(row.getEnteredAt())
                 .remarks(row.getRemarks())
+                .equipmentId(row.getEquipmentId())
+                .instrumentRef(row.getInstrumentRef())
                 .build();
     }
 

@@ -4,6 +4,7 @@ import com.batchsphere.core.qms.deviation.entity.DeviationSeverity;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -33,6 +34,7 @@ public class CreateCapaRequest {
     private LocalDate dueDate;
 
     @NotBlank
+    @Size(min = 30, message = "Corrective action must be at least 30 characters (ALCOA+ requirement)")
     private String correctiveAction;
 
     private String preventiveAction;

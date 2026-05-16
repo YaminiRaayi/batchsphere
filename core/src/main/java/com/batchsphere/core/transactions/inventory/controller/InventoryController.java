@@ -1,5 +1,6 @@
 package com.batchsphere.core.transactions.inventory.controller;
 
+import com.batchsphere.core.report.CsvExportService;
 import com.batchsphere.core.transactions.inventory.dto.InventoryAdjustmentRequest;
 import com.batchsphere.core.transactions.inventory.dto.InventoryIssueRequest;
 import com.batchsphere.core.transactions.inventory.dto.InventoryResponse;
@@ -17,7 +18,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
@@ -29,10 +32,17 @@ import java.util.UUID;
 public class InventoryController {
 
     private final InventoryService inventoryService;
+    private final CsvExportService csvExportService;
 
     @GetMapping
-    public ResponseEntity<Page<InventoryResponse>> getAllInventory(Pageable pageable) {
-        return ResponseEntity.ok(inventoryService.getAllInventory(pageable));
+    public ResponseEntity<?> getAllInventory(Pageable pageable,
+                                             @RequestParam(required = false) String format,
+                                             @RequestHeader(value = "Accept", required = false) String accept) {
+        Page<InventoryResponse> page = inventoryService.getAllInventory(pageable);
+        if (csvExportService.requested(format, accept)) {
+            return csvExportService.response("inventory.csv", page.getContent());
+        }
+        return ResponseEntity.ok(page);
     }
 
     @GetMapping("/{id}")

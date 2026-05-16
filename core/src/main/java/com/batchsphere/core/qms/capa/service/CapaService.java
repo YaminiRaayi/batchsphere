@@ -1,6 +1,7 @@
 package com.batchsphere.core.qms.capa.service;
 
 import com.batchsphere.core.qms.capa.dto.CapaApproveRequest;
+import com.batchsphere.core.qms.capa.dto.CapaAlertResponse;
 import com.batchsphere.core.qms.capa.dto.CapaEffectivenessReviewRequest;
 import com.batchsphere.core.qms.capa.dto.CapaReassignmentResponse;
 import com.batchsphere.core.qms.capa.dto.CapaRejectRequest;
@@ -43,4 +44,6 @@ public interface CapaService {
     List<CapaReassignmentResponse> getReassignmentHistory(UUID id);
 
     CapaSummaryResponse getSummary();
+
+    List<CapaAlertResponse> getAlerts();
 }

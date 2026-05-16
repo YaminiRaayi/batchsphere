@@ -37,4 +37,6 @@ public class SpecParameterRequest {
     private Integer sequence;
 
     private String notes;
+
+    private Boolean requiresInstrument;
 }

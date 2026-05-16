@@ -2,6 +2,7 @@ import type { PageResponse } from "./grn";
 
 export type ControlledDocumentType = "SPECIFICATION" | "MOA" | "SOP" | "POLICY" | "VALIDATION_REPORT";
 export type ControlledDocumentStatus = "DRAFT" | "IN_REVIEW" | "EFFECTIVE" | "SUPERSEDED" | "OBSOLETE";
+export type DocumentReviewStatus = "CURRENT" | "DUE_SOON" | "OVERDUE";
 export type DocumentRevisionStatus = "DRAFT" | "IN_REVIEW" | "APPROVED" | "SUPERSEDED" | "OBSOLETE";
 export type DocumentApprovalStep = "TECHNICAL_REVIEW" | "QA_APPROVAL";
 export type DocumentApprovalStatus = "PENDING" | "APPROVED" | "REJECTED";
@@ -51,6 +52,7 @@ export type ControlledDocument = {
   linkedMoaCode: string | null;
   reviewCycleMonths: number;
   nextReviewDate: string | null;
+  reviewStatus: DocumentReviewStatus | null;
   effectiveDate: string | null;
   isActive: boolean;
   createdBy: string;

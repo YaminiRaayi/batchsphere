@@ -14,4 +14,6 @@ export type LoginResponse = {
   expiresInSeconds: number;
   refreshExpiresInSeconds: number;
   user: AuthUser;
+  mfaRequired?: boolean;
+  mfaChallengeToken?: string | null;
 };

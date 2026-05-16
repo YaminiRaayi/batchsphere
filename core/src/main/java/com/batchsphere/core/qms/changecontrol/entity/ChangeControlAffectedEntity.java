@@ -40,6 +40,12 @@ public class ChangeControlAffectedEntity {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @Column(name = "entity_display_name", length = 255)
+    private String entityDisplayName;
+
+    @Column(name = "entity_number", length = 100)
+    private String entityNumber;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 }

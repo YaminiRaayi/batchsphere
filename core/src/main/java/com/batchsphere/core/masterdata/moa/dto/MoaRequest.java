@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Data
 public class MoaRequest {
@@ -33,6 +34,7 @@ public class MoaRequest {
     private String sampleSolutionStabilityCondition;
     private MoaValidationStatus validationStatus;
     private ReviewRoute reviewRoute;
+    private UUID sopDocumentId;
     @NotBlank
     private String createdBy;
 }

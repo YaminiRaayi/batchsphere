@@ -118,6 +118,15 @@ public class Moa {
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 
+    @Column(name = "sop_document_id")
+    private UUID sopDocumentId;
+
+    @Column(name = "sop_revision_id")
+    private UUID sopRevisionId;
+
+    @Column(name = "sop_document_number", length = 100)
+    private String sopDocumentNumber;
+
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 

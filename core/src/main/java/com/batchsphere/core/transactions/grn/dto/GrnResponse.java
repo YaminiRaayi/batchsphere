@@ -32,6 +32,8 @@ public class GrnResponse {
     String labelVerificationStatus;
     String quantityVarianceReason;
     GrnStatus status;
+    UUID linkedDeviationId;
+    String linkedDeviationNumber;
     Boolean isActive;
     String createdBy;
     LocalDateTime createdAt;

@@ -136,6 +136,31 @@ public class QcInvestigation {
     @Column(name = "returned_to_qc_remarks", length = 2000)
     private String returnedToQcRemarks;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "phase1_outcome", length = 30)
+    private QcPhase1Outcome phase1Outcome;
+
+    @Column(name = "phase1_root_cause", columnDefinition = "TEXT")
+    private String phase1RootCause;
+
+    @Column(name = "phase1_completed_by", length = 100)
+    private String phase1CompletedBy;
+
+    @Column(name = "phase1_completed_at")
+    private LocalDateTime phase1CompletedAt;
+
+    @Column(name = "phase2_required", nullable = false)
+    private Boolean phase2Required;
+
+    @Column(name = "oot_flag", nullable = false)
+    private Boolean ootFlag;
+
+    @Column(name = "retest_authorized", nullable = false)
+    private Boolean retestAuthorized;
+
+    @Column(name = "retest_sample_count")
+    private Integer retestSampleCount;
+
     @Column(name = "qa_review_confirmed_by", length = 100)
     private String qaReviewConfirmedBy;
 

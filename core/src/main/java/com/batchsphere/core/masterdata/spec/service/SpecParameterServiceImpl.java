@@ -51,6 +51,7 @@ public class SpecParameterServiceImpl implements SpecParameterService {
                 .isMandatory(request.getIsMandatory())
                 .sequence(request.getSequence())
                 .notes(trimToNull(request.getNotes()))
+                .requiresInstrument(Boolean.TRUE.equals(request.getRequiresInstrument()))
                 .isActive(true)
                 .createdBy(actor)
                 .createdAt(LocalDateTime.now())
@@ -86,6 +87,7 @@ public class SpecParameterServiceImpl implements SpecParameterService {
         parameter.setIsMandatory(request.getIsMandatory());
         parameter.setSequence(request.getSequence());
         parameter.setNotes(trimToNull(request.getNotes()));
+        parameter.setRequiresInstrument(Boolean.TRUE.equals(request.getRequiresInstrument()));
         parameter.setUpdatedBy(actor);
         parameter.setUpdatedAt(LocalDateTime.now());
         return specParameterRepository.save(parameter);

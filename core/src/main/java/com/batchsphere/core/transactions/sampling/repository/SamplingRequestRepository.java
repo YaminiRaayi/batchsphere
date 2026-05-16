@@ -28,4 +28,6 @@ public interface SamplingRequestRepository extends JpaRepository<SamplingRequest
 
     @Query("select coalesce(max(s.cycleNumber), 0) from SamplingRequest s where s.rootSamplingRequestId = :rootSamplingRequestId")
     Integer findMaxCycleNumberByRootSamplingRequestId(@Param("rootSamplingRequestId") UUID rootSamplingRequestId);
+
+    long countByMaterialIdAndCreatedAtBetween(UUID materialId, java.time.LocalDateTime start, java.time.LocalDateTime end);
 }

@@ -80,8 +80,18 @@ public class QcTestResult {
     @Column(name = "reviewed_at")
     private LocalDateTime reviewedAt;
 
+    @Column(name = "equipment_id")
+    private UUID equipmentId;
+
+    @Column(name = "instrument_ref", length = 50)
+    private String instrumentRef;
+
     @Column(name = "remarks", length = 500)
     private String remarks;
+
+    @Builder.Default
+    @Column(name = "is_locked", nullable = false)
+    private Boolean isLocked = false;
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;

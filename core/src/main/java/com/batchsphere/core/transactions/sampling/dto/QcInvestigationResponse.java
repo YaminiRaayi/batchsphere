@@ -6,6 +6,7 @@ import com.batchsphere.core.transactions.sampling.entity.QcInvestigationQaReview
 import com.batchsphere.core.transactions.sampling.entity.QcInvestigationClosureCategory;
 import com.batchsphere.core.transactions.sampling.entity.QcInvestigationStatus;
 import com.batchsphere.core.transactions.sampling.entity.QcInvestigationType;
+import com.batchsphere.core.transactions.sampling.entity.QcPhase1Outcome;
 import lombok.Builder;
 import lombok.Value;
 
@@ -53,6 +54,14 @@ public class QcInvestigationResponse {
     String qaReviewConfirmedBy;
     String qaReviewConfirmationText;
     LocalDateTime qaReviewConfirmationAt;
+    QcPhase1Outcome phase1Outcome;
+    String phase1RootCause;
+    String phase1CompletedBy;
+    LocalDateTime phase1CompletedAt;
+    Boolean phase2Required;
+    Boolean ootFlag;
+    Boolean retestAuthorized;
+    Integer retestSampleCount;
     Boolean isActive;
     String createdBy;
     LocalDateTime createdAt;

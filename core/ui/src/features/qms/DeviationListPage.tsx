@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { createDeviation, fetchDeviationSummary, fetchDeviations } from "../../lib/api";
+import { createDeviation, downloadCsvExport, fetchDeviationSummary, fetchDeviations } from "../../lib/api";
 import type {
   CreateDeviationRequest,
   DeviationSeverity,
@@ -104,13 +104,22 @@ export function DeviationListPage() {
           <h1 className="text-xl font-bold text-slate-800">Deviations</h1>
           <p className="mt-0.5 text-sm text-slate-500">Quality deviation register and GxP incident tracking</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsCreateOpen(true)}
-          className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-700"
-        >
-          New Deviation
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => void downloadCsvExport("/api/deviations?size=10000", "deviations.csv")}
+            className="rounded-xl border border-rose-200 bg-white px-4 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+          >
+            Export CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsCreateOpen(true)}
+            className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-700"
+          >
+            New Deviation
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">

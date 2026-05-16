@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Breadcrumbs } from "../components/Breadcrumbs";
+import { SessionTimeoutModal } from "../components/SessionTimeoutModal";
 import { canAccessNavPath } from "../lib/authz";
-import { logout, setAccessToken } from "../lib/api";
+import { confirmTotpSetup, logout, notifySessionTimeout, setAccessToken, setupTotp } from "../lib/api";
 import { useAuthStore } from "../stores/authStore";
 import { useAppShellStore } from "../stores/appShellStore";
 
@@ -73,6 +74,14 @@ const NAV_GROUPS: NavGroup[] = [
         lightBg: "#FFF7ED",
         dimBorder: "#FED7AA",
       },
+      {
+        to: "/supplier-quality-agreements",
+        label: "Quality Agreements",
+        abbr: "QA",
+        color: "#C2410C",
+        lightBg: "#FFF7ED",
+        dimBorder: "#FED7AA",
+      },
     ],
   },
   {
@@ -119,6 +128,46 @@ const NAV_GROUPS: NavGroup[] = [
         dimBorder: "#BAE6FD"
       },
       {
+        to: "/qms/complaints",
+        label: "Complaints",
+        abbr: "CM",
+        color: "#DC2626",
+        lightBg: "#FEF2F2",
+        dimBorder: "#FECACA"
+      },
+      {
+        to: "/qms/risk-register",
+        label: "Risk Register",
+        abbr: "RA",
+        color: "#9333EA",
+        lightBg: "#FAF5FF",
+        dimBorder: "#E9D5FF"
+      },
+      {
+        to: "/qms/apqr",
+        label: "APQR",
+        abbr: "AP",
+        color: "#2563EB",
+        lightBg: "#EFF6FF",
+        dimBorder: "#BFDBFE"
+      },
+      {
+        to: "/qms/batch-release",
+        label: "QP Batch Release",
+        abbr: "BR",
+        color: "#0F766E",
+        lightBg: "#F0FDFA",
+        dimBorder: "#99F6E4"
+      },
+      {
+        to: "/qms/traceability",
+        label: "Lot Traceability",
+        abbr: "TR",
+        color: "#6D28D9",
+        lightBg: "#F5F3FF",
+        dimBorder: "#DDD6FE"
+      },
+      {
         to: "/documents",
         label: "Documents",
         abbr: "DC",
@@ -127,13 +176,20 @@ const NAV_GROUPS: NavGroup[] = [
         dimBorder: "#DDD6FE"
       },
       {
-        to: "/lims",
-        label: "LIMS",
-        abbr: "LI",
-        color: "#7C3AED",
-        lightBg: "#F5F3FF",
-        dimBorder: "#DDD6FE",
-        soon: true,
+        to: "/lims/equipment",
+        label: "Equipment",
+        abbr: "EQ",
+        color: "#0891B2",
+        lightBg: "#ECFEFF",
+        dimBorder: "#A5F3FC"
+      },
+      {
+        to: "/lims/retention-samples",
+        label: "Retention Samples",
+        abbr: "RS",
+        color: "#0F766E",
+        lightBg: "#F0FDFA",
+        dimBorder: "#99F6E4"
       },
     ],
   },
@@ -171,6 +227,14 @@ const NAV_GROUPS: NavGroup[] = [
         color: "#0F766E",
         lightBg: "#F0FDFA",
         dimBorder: "#99F6E4",
+      },
+      {
+        to: "/admin/security-audit",
+        label: "Security Audit",
+        abbr: "SA",
+        color: "#B45309",
+        lightBg: "#FFFBEB",
+        dimBorder: "#FDE68A",
       },
     ],
   },
@@ -283,6 +347,13 @@ export function AppShell() {
   const clearSession = useAuthStore((state) => state.clearSession);
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showTotpModal, setShowTotpModal] = useState(false);
+  const [totpSetupData, setTotpSetupData] = useState<{ secret: string; qrCodeDataUrl: string } | null>(null);
+  const [totpCode, setTotpCode] = useState("");
+  const [totpError, setTotpError] = useState<string | null>(null);
+  const [totpSuccess, setTotpSuccess] = useState(false);
+  const [totpBusy, setTotpBusy] = useState(false);
+  const totpCodeRef = useRef<HTMLInputElement>(null);
 
   // Close mobile nav on route change
   useEffect(() => {
@@ -305,6 +376,52 @@ export function AppShell() {
       clearSession();
       resetCurrentUser();
       navigate("/login", { replace: true });
+    }
+  }
+
+  async function handleOpenTotpSetup() {
+    setTotpError(null);
+    setTotpSuccess(false);
+    setTotpCode("");
+    setTotpSetupData(null);
+    setShowTotpModal(true);
+    try {
+      const data = await setupTotp();
+      setTotpSetupData({ secret: data.secret, qrCodeDataUrl: data.qrCodeDataUrl });
+      setTimeout(() => totpCodeRef.current?.focus(), 100);
+    } catch (err) {
+      setTotpError(err instanceof Error ? err.message : "Setup failed");
+    }
+  }
+
+  async function handleConfirmTotpSetup() {
+    if (totpCode.length !== 6) {
+      setTotpError("Enter the 6-digit code from your authenticator app.");
+      return;
+    }
+    setTotpBusy(true);
+    setTotpError(null);
+    try {
+      await confirmTotpSetup(totpCode);
+      setTotpSuccess(true);
+      setTotpCode("");
+    } catch (err) {
+      setTotpError(err instanceof Error ? err.message : "Verification failed");
+    } finally {
+      setTotpBusy(false);
+    }
+  }
+
+  async function handleSessionTimeout() {
+    try {
+      await notifySessionTimeout();
+    } catch {
+      // ignore — best-effort audit record
+    } finally {
+      setAccessToken(null);
+      clearSession();
+      resetCurrentUser();
+      navigate("/login?reason=timeout", { replace: true });
     }
   }
 
@@ -550,6 +667,17 @@ export function AppShell() {
           <div className="ml-auto flex items-center gap-3">
             <button
               type="button"
+              onClick={() => { void handleOpenTotpSetup(); }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-blue-100 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-blue-50 hover:text-blue-700"
+              title="Set up two-factor authentication"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              2FA
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 void handleSignOut();
               }}
@@ -592,6 +720,75 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+
+      <SessionTimeoutModal onTimeout={() => { void handleSessionTimeout(); }} />
+
+      {showTotpModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800">Set Up Two-Factor Authentication</h2>
+                <p className="mt-0.5 text-xs text-slate-500">Scan the QR code with an authenticator app (Google Authenticator, Authy, etc.), then enter the 6-digit code to confirm.</p>
+              </div>
+              <button type="button" onClick={() => setShowTotpModal(false)} className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-slate-50">✕</button>
+            </div>
+
+            {totpSuccess ? (
+              <div className="mt-5 rounded-xl bg-green-50 p-4 text-center">
+                <div className="text-2xl">✓</div>
+                <p className="mt-2 text-sm font-semibold text-green-700">Two-factor authentication is now enabled.</p>
+                <p className="mt-1 text-xs text-green-600">You will be prompted for a code on your next login.</p>
+                <button type="button" onClick={() => setShowTotpModal(false)} className="mt-4 rounded-xl bg-green-600 px-4 py-2 text-xs font-semibold text-white hover:bg-green-700">
+                  Done
+                </button>
+              </div>
+            ) : totpSetupData ? (
+              <div className="mt-5 space-y-4">
+                <div className="flex justify-center">
+                  <img src={totpSetupData.qrCodeDataUrl} alt="TOTP QR Code" className="h-48 w-48 rounded-xl border border-slate-200 p-1" />
+                </div>
+                <div className="rounded-xl bg-slate-50 p-3 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Manual entry key</p>
+                  <p className="mt-1 font-mono text-sm font-semibold text-slate-700 break-all">{totpSetupData.secret}</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600">Verification code
+                    <input
+                      ref={totpCodeRef}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={totpCode}
+                      onChange={(event) => setTotpCode(event.target.value.replace(/\D/g, ""))}
+                      onKeyDown={(event) => { if (event.key === "Enter") { void handleConfirmTotpSetup(); } }}
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-center font-mono text-xl font-semibold text-slate-800 outline-none focus:border-blue-500"
+                      placeholder="000000"
+                    />
+                  </label>
+                </div>
+                {totpError ? <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{totpError}</p> : null}
+                <button
+                  type="button"
+                  disabled={totpCode.length !== 6 || totpBusy}
+                  onClick={() => { void handleConfirmTotpSetup(); }}
+                  className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {totpBusy ? "Verifying..." : "Enable 2FA"}
+                </button>
+              </div>
+            ) : (
+              <div className="mt-5 flex items-center justify-center py-8">
+                {totpError ? (
+                  <p className="text-sm font-semibold text-red-600">{totpError}</p>
+                ) : (
+                  <p className="text-sm text-slate-400">Loading QR code...</p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

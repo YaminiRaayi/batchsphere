@@ -131,6 +131,12 @@ class ControlledDocumentControllerIntegrationTest {
         assertEquals(200, myAcknowledgements.getResponse().getStatus(), myAcknowledgements.getResponse().getContentAsString());
         assertTrue(myAcknowledgements.getResponse().getContentAsString().contains(documentNumber));
 
+        MvcResult listWithoutSearchResult = mockMvc.perform(get("/api/documents")
+                        .header("Authorization", "Bearer " + token))
+                .andReturn();
+        assertEquals(200, listWithoutSearchResult.getResponse().getStatus(), listWithoutSearchResult.getResponse().getContentAsString());
+        assertTrue(listWithoutSearchResult.getResponse().getContentAsString().contains(documentNumber));
+
         MvcResult listResult = mockMvc.perform(get("/api/documents")
                         .header("Authorization", "Bearer " + token)
                         .param("search", documentNumber))

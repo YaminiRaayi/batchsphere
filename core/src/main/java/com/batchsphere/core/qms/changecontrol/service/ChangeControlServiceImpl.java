@@ -8,6 +8,10 @@ import com.batchsphere.core.compliance.esign.dto.ESignatureRequest;
 import com.batchsphere.core.compliance.esign.service.ESignatureService;
 import com.batchsphere.core.exception.BusinessConflictException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
+import com.batchsphere.core.masterdata.material.repository.MaterialRepository;
+import com.batchsphere.core.masterdata.moa.repository.MoaRepository;
+import com.batchsphere.core.masterdata.spec.repository.SpecRepository;
+import com.batchsphere.core.masterdata.vendor.repository.VendorRepository;
 import com.batchsphere.core.qms.changecontrol.dto.*;
 import com.batchsphere.core.qms.changecontrol.entity.*;
 import com.batchsphere.core.qms.changecontrol.repository.ChangeControlAffectedEntityRepository;
@@ -39,6 +43,10 @@ public class ChangeControlServiceImpl implements ChangeControlService {
     private final AuthenticatedActorService authenticatedActorService;
     private final AuditEventService auditEventService;
     private final ESignatureService eSignatureService;
+    private final MaterialRepository materialRepository;
+    private final SpecRepository specRepository;
+    private final MoaRepository moaRepository;
+    private final VendorRepository vendorRepository;
 
     @Override
     @Transactional
@@ -269,7 +277,9 @@ public class ChangeControlServiceImpl implements ChangeControlService {
     @Override
     @Transactional
     public ChangeControlAffectedEntityResponse addAffectedEntity(UUID id, AddAffectedEntityRequest request) {
+        String actor = authenticatedActorService.currentActor();
         getActive(id);
+        String[] resolved = resolveEntityDisplay(request.getEntityType(), request.getEntityReference());
         ChangeControlAffectedEntity entity = ChangeControlAffectedEntity.builder()
                 .id(UUID.randomUUID())
                 .changeControlId(id)
@@ -277,24 +287,50 @@ public class ChangeControlServiceImpl implements ChangeControlService {
                 .entityReference(request.getEntityReference())
                 .entityId(request.getEntityId())
                 .notes(blankToNull(request.getNotes()))
+                .entityNumber(resolved[0])
+                .entityDisplayName(resolved[1])
                 .createdAt(LocalDateTime.now())
                 .build();
         ChangeControlAffectedEntity saved = affectedEntityRepository.save(entity);
+        auditEventService.record("QMS_CHANGE_CONTROL", id, AuditEventType.UPDATE, "affectedEntity",
+                null, saved.getEntityType().name(), saved.getEntityReference(), actor, "QMS_CHANGE_CONTROL");
         return toEntityResponse(saved);
+    }
+
+    private String[] resolveEntityDisplay(AffectedEntityType type, String reference) {
+        return switch (type) {
+            case MATERIAL -> materialRepository.findByMaterialCode(reference)
+                    .map(m -> new String[]{m.getMaterialCode(), m.getMaterialCode() + " — " + m.getMaterialName()})
+                    .orElse(new String[]{reference, reference});
+            case SPEC -> specRepository.findFirstBySpecCodeAndIsActiveTrue(reference)
+                    .map(s -> new String[]{s.getSpecCode(), s.getSpecCode() + " — " + s.getSpecName()})
+                    .orElse(new String[]{reference, reference});
+            case MOA -> moaRepository.findByMoaCode(reference)
+                    .map(m -> new String[]{m.getMoaCode(), m.getMoaCode() + " — " + m.getMoaName()})
+                    .orElse(new String[]{reference, reference});
+            case VENDOR -> vendorRepository.findByVendorCode(reference)
+                    .map(v -> new String[]{v.getVendorCode(), v.getVendorCode() + " — " + v.getVendorName()})
+                    .orElse(new String[]{reference, reference});
+            default -> new String[]{reference, reference};
+        };
     }
 
     @Override
     @Transactional
     public void removeAffectedEntity(UUID id, UUID entityId) {
+        String actor = authenticatedActorService.currentActor();
         getActive(id);
         ChangeControlAffectedEntity entity = affectedEntityRepository.findByIdAndChangeControlId(entityId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Affected entity not found"));
         affectedEntityRepository.delete(entity);
+        auditEventService.record("QMS_CHANGE_CONTROL", id, AuditEventType.UPDATE, "affectedEntity",
+                entity.getEntityType().name(), null, entity.getEntityReference(), actor, "QMS_CHANGE_CONTROL");
     }
 
     @Override
     @Transactional
     public ChangeControlTaskResponse addTask(UUID id, CreateTaskRequest request) {
+        String actor = authenticatedActorService.currentActor();
         getActive(id);
         ChangeControlTask task = ChangeControlTask.builder()
                 .id(UUID.randomUUID())
@@ -307,7 +343,10 @@ public class ChangeControlServiceImpl implements ChangeControlService {
                 .createdAt(LocalDateTime.now())
                 .isActive(true)
                 .build();
-        return toTaskResponse(taskRepository.save(task));
+        ChangeControlTask saved = taskRepository.save(task);
+        auditEventService.record("QMS_CHANGE_CONTROL", id, AuditEventType.WORKFLOW_ACTION, "task",
+                null, ChangeControlTaskStatus.PENDING.name(), saved.getTitle(), actor, "QMS_CHANGE_CONTROL");
+        return toTaskResponse(saved);
     }
 
     @Override
@@ -317,22 +356,29 @@ public class ChangeControlServiceImpl implements ChangeControlService {
         getActive(id);
         ChangeControlTask task = taskRepository.findByIdAndChangeControlIdAndIsActiveTrue(taskId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
+        ChangeControlTaskStatus previousStatus = task.getStatus();
         task.setStatus(request.getStatus());
         if (request.getStatus() == ChangeControlTaskStatus.COMPLETED) {
             task.setCompletedAt(LocalDateTime.now());
             task.setCompletedBy(actor);
         }
-        return toTaskResponse(taskRepository.save(task));
+        ChangeControlTask saved = taskRepository.save(task);
+        auditEventService.record("QMS_CHANGE_CONTROL", id, AuditEventType.STATUS_CHANGE, "taskStatus",
+                previousStatus.name(), saved.getStatus().name(), saved.getTitle(), actor, "QMS_CHANGE_CONTROL");
+        return toTaskResponse(saved);
     }
 
     @Override
     @Transactional
     public void removeTask(UUID id, UUID taskId) {
+        String actor = authenticatedActorService.currentActor();
         getActive(id);
         ChangeControlTask task = taskRepository.findByIdAndChangeControlIdAndIsActiveTrue(taskId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found"));
         task.setIsActive(false);
         taskRepository.save(task);
+        auditEventService.record("QMS_CHANGE_CONTROL", id, AuditEventType.WORKFLOW_ACTION, "task",
+                task.getStatus().name(), "REMOVED", task.getTitle(), actor, "QMS_CHANGE_CONTROL");
     }
 
     private ChangeControl getActive(UUID id) {
@@ -389,8 +435,23 @@ public class ChangeControlServiceImpl implements ChangeControlService {
                 .entityReference(e.getEntityReference())
                 .entityId(e.getEntityId())
                 .notes(e.getNotes())
+                .entityNumber(e.getEntityNumber())
+                .entityDisplayName(e.getEntityDisplayName())
+                .navigationPath(navigationPathFor(e.getEntityType()))
                 .createdAt(e.getCreatedAt())
                 .build();
+    }
+
+    private static String navigationPathFor(AffectedEntityType type) {
+        return switch (type) {
+            case MATERIAL -> "/master-data/materials/materials";
+            case SPEC -> "/master-data/qc-refs/specs";
+            case MOA -> "/master-data/qc-refs/moa";
+            case VENDOR -> "/master-data/partners/vendors";
+            case WAREHOUSE -> "/master-data/locations/warehouse";
+            case DOCUMENT -> "/documents";
+            default -> null;
+        };
     }
 
     private ChangeControlTaskResponse toTaskResponse(ChangeControlTask t) {

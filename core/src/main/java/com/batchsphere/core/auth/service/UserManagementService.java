@@ -1,12 +1,14 @@
 package com.batchsphere.core.auth.service;
 
 import com.batchsphere.core.auth.dto.CreateUserRequest;
+import com.batchsphere.core.auth.dto.TotpResetResponse;
 import com.batchsphere.core.auth.dto.UpdateUserRequest;
 import com.batchsphere.core.auth.dto.UserManagementResponse;
 import com.batchsphere.core.auth.entity.User;
 import com.batchsphere.core.auth.repository.UserRepository;
 import com.batchsphere.core.exception.DuplicateResourceException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,8 @@ public class UserManagementService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TotpService totpService;
+    private final PasswordPolicyService passwordPolicyService;
 
     @Transactional
     public UserManagementResponse createUser(CreateUserRequest request) {
@@ -38,7 +42,7 @@ public class UserManagementService {
                 .id(UUID.randomUUID())
                 .username(username)
                 .email(email)
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .passwordHash(passwordEncoder.encode(validatedPassword(request.getPassword(), username, email)))
                 .role(request.getRole())
                 .isActive(true)
                 .employeeId(request.getEmployeeId())
@@ -74,7 +78,7 @@ public class UserManagementService {
         user.setEmployeeId(request.getEmployeeId());
         user.setForcePasswordChange(Boolean.TRUE.equals(request.getForcePasswordChange()));
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
-            user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+            user.setPasswordHash(passwordEncoder.encode(validatedPassword(request.getPassword(), user.getUsername(), email)));
             user.setPasswordChangedAt(LocalDateTime.now());
             user.setFailedLoginAttempts(0);
             user.setLockedUntil(null);
@@ -101,9 +105,19 @@ public class UserManagementService {
         return toResponse(userRepository.save(user));
     }
 
+    @Transactional
+    public TotpResetResponse resetTotp(UUID id, HttpServletRequest httpRequest) {
+        return totpService.reset(id, httpRequest);
+    }
+
     private User getUser(UUID id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + id));
+    }
+
+    private String validatedPassword(String password, String username, String email) {
+        passwordPolicyService.validate(password, username, email);
+        return password;
     }
 
     private UserManagementResponse toResponse(User user) {
@@ -118,6 +132,7 @@ public class UserManagementService {
                 .lockedUntil(user.getLockedUntil())
                 .passwordChangedAt(user.getPasswordChangedAt())
                 .forcePasswordChange(user.getForcePasswordChange())
+                .totpEnabled(user.getTotpEnabled())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();

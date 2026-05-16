@@ -46,6 +46,9 @@ export type Moa = {
   reviewRoute: ReviewRoute;
   approvedBy: string | null;
   approvedAt: string | null;
+  sopDocumentId: string | null;
+  sopRevisionId: string | null;
+  sopDocumentNumber: string | null;
   isActive: boolean;
   createdBy: string;
   createdAt: string;
@@ -73,5 +76,6 @@ export type CreateMoaRequest = {
   sampleSolutionStabilityCondition?: string;
   validationStatus?: MoaValidationStatus;
   reviewRoute?: ReviewRoute;
+  sopDocumentId?: string;
   createdBy: string;
 };

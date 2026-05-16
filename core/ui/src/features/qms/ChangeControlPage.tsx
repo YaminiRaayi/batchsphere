@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   fetchChangeControls,
@@ -25,6 +26,7 @@ import type {
   ChangeControlTaskStatus,
 } from "../../types/change-control";
 import { useAuthStore } from "../../stores/authStore";
+import { AuditTimeline } from "../../components/AuditTimeline";
 
 const STATUS_LABEL: Record<ChangeControlStatus, string> = {
   DRAFT: "Draft",
@@ -564,15 +566,34 @@ export function ChangeControlPage() {
                 <div className="space-y-2 mb-3">
                   {selected.affectedEntities.map((ae) => (
                     <div key={ae.id} className="flex items-start justify-between rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-                      <div>
-                        <span className="text-xs font-semibold text-indigo-600">{ae.entityType.replace(/_/g, " ")}</span>
-                        <span className="mx-1 text-gray-400">·</span>
-                        <span className="text-xs text-gray-700">{ae.entityReference}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">
+                            {ae.entityType.replace(/_/g, " ")}
+                          </span>
+                          {ae.navigationPath ? (
+                            <Link
+                              to={ae.navigationPath}
+                              className="text-xs font-medium text-indigo-600 hover:underline"
+                            >
+                              {ae.entityDisplayName ?? ae.entityReference}
+                            </Link>
+                          ) : (
+                            <span className="text-xs text-gray-700">
+                              {ae.entityDisplayName ?? ae.entityReference}
+                            </span>
+                          )}
+                          {ae.entityNumber && ae.entityNumber !== ae.entityDisplayName && (
+                            <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-500">
+                              {ae.entityNumber}
+                            </span>
+                          )}
+                        </div>
                         {ae.notes && <div className="mt-0.5 text-[11px] text-gray-400">{ae.notes}</div>}
                       </div>
                       {!isTerminal(selected.status) && (
                         <button onClick={() => removeEntityMutation.mutate({ id: selected.id, entityId: ae.id })}
-                          className="text-[11px] text-red-400 hover:text-red-600">remove</button>
+                          className="ml-2 shrink-0 text-[11px] text-red-400 hover:text-red-600">remove</button>
                       )}
                     </div>
                   ))}
@@ -670,6 +691,14 @@ export function ChangeControlPage() {
                 {selected.closureSummary && <p className="mt-1 text-gray-600">{selected.closureSummary}</p>}
               </div>
             )}
+
+            {/* Audit Timeline */}
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="text-xs font-bold text-slate-700">Audit Timeline</div>
+              <div className="mt-3">
+                <AuditTimeline entityType="QMS_CHANGE_CONTROL" entityId={selected.id} />
+              </div>
+            </div>
           </div>
         )}
 

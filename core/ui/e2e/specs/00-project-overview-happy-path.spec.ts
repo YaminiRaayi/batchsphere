@@ -15,7 +15,6 @@ import {
   findVendorBusinessUnitByCode,
   findVendorByCode,
   findWarehouseByCode,
-  qualifyVendorBusinessUnitByCode,
   readRunId
 } from "../fixtures/api";
 import { DashboardPage } from "../pages/DashboardPage";
@@ -228,8 +227,8 @@ test.describe.serial("Project Overview Happy Path", () => {
       notes: `Initial qualification audit approved for ${siteCode}`
     });
     await vms.expectAuditVisible(`Initial qualification audit approved for ${siteCode}`);
-    const qualifiedSite = await qualifyVendorBusinessUnitByCode(siteCode, runId);
-    expect(qualifiedSite.qualificationStatus).toBe("QUALIFIED");
+    await vms.ensureSelectedSiteQualified();
+    await vms.expectSelectedSiteQualified();
 
     const wms = new WmsPage(page);
     await wms.goto();

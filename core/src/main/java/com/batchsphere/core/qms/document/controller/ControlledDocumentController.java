@@ -1,5 +1,6 @@
 package com.batchsphere.core.qms.document.controller;
 
+import com.batchsphere.core.auth.service.AuthenticatedActorService;
 import com.batchsphere.core.qms.document.dto.ControlledDocumentResponse;
 import com.batchsphere.core.qms.document.dto.CreateControlledDocumentRequest;
 import com.batchsphere.core.qms.document.dto.CreateDocumentDistributionRequest;
@@ -11,11 +12,14 @@ import com.batchsphere.core.qms.document.dto.DocumentRevisionResponse;
 import com.batchsphere.core.qms.document.entity.ControlledDocumentStatus;
 import com.batchsphere.core.qms.document.entity.ControlledDocumentType;
 import com.batchsphere.core.qms.document.service.ControlledDocumentService;
+import com.batchsphere.core.report.PdfReportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,6 +39,8 @@ import java.util.List;
 public class ControlledDocumentController {
 
     private final ControlledDocumentService documentService;
+    private final PdfReportService pdfReportService;
+    private final AuthenticatedActorService authenticatedActorService;
 
     @PostMapping
     public ResponseEntity<ControlledDocumentResponse> createDocument(@Valid @RequestBody CreateControlledDocumentRequest request) {
@@ -103,5 +109,24 @@ public class ControlledDocumentController {
     @GetMapping("/{id}/revisions/{revisionId}/file")
     public ResponseEntity<Resource> downloadRevisionFile(@PathVariable UUID id, @PathVariable UUID revisionId) {
         return ResponseEntity.ok(documentService.loadRevisionFile(id, revisionId));
+    }
+
+    @GetMapping("/due-for-review")
+    public ResponseEntity<Page<ControlledDocumentResponse>> getDueForReview(Pageable pageable) {
+        return ResponseEntity.ok(documentService.getDueForReview(pageable));
+    }
+
+    @GetMapping(value = "/{id}/report", produces = "application/pdf")
+    public ResponseEntity<byte[]> downloadReport(@PathVariable UUID id) {
+        ControlledDocumentResponse document = documentService.getDocument(id);
+        byte[] pdf = pdfReportService.generateControlledDocumentReport(
+                document,
+                documentService.getDocumentDistributions(id),
+                authenticatedActorService.currentActor()
+        );
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"controlled-document-" + document.getDocumentNumber() + ".pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 }

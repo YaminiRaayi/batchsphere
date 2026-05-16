@@ -4,7 +4,13 @@ import com.batchsphere.core.qms.analytics.dto.QmsAnalyticsResponse;
 import com.batchsphere.core.qms.capa.entity.Capa;
 import com.batchsphere.core.qms.capa.entity.CapaStatus;
 import com.batchsphere.core.qms.capa.repository.CapaRepository;
+import com.batchsphere.core.qms.changecontrol.entity.ChangeControlStatus;
+import com.batchsphere.core.qms.changecontrol.repository.ChangeControlRepository;
 import com.batchsphere.core.qms.deviation.repository.DeviationRepository;
+import com.batchsphere.core.qms.document.entity.ControlledDocumentStatus;
+import com.batchsphere.core.qms.document.repository.ControlledDocumentRepository;
+import com.batchsphere.core.hrms.training.entity.TrainingAssignmentStatus;
+import com.batchsphere.core.hrms.training.repository.TrainingAssignmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +30,9 @@ public class QmsAnalyticsServiceImpl implements QmsAnalyticsService {
 
     private final DeviationRepository deviationRepository;
     private final CapaRepository capaRepository;
+    private final ChangeControlRepository changeControlRepository;
+    private final ControlledDocumentRepository documentRepository;
+    private final TrainingAssignmentRepository trainingAssignmentRepository;
 
     @Override
     public QmsAnalyticsResponse getAnalytics() {
@@ -41,6 +50,15 @@ public class QmsAnalyticsServiceImpl implements QmsAnalyticsService {
                 .dueThisWeek(openCapas.stream().filter(c -> !c.getDueDate().isBefore(today) && c.getDueDate().isBefore(today.plusDays(8))).count())
                 .avgCapaClosureDays(calcAvgClosureDays())
                 .capaAging(buildAgingBuckets(openCapas, today))
+                .openChangeControls(changeControlRepository.countByIsActiveTrueAndStatusNotIn(
+                        Set.of(ChangeControlStatus.CLOSED, ChangeControlStatus.CANCELLED)))
+                .pendingCCApprovals(changeControlRepository.countByIsActiveTrueAndStatus(ChangeControlStatus.UNDER_REVIEW))
+                .overdueEffectivenessChecks(capaRepository.countByIsActiveTrueAndStatusAndEffectivenessReviewDateBefore(
+                        CapaStatus.EFFECTIVENESS_CHECK, today))
+                .documentsAwaitingReview(documentRepository.countByIsActiveTrueAndStatusAndNextReviewDateLessThanEqual(
+                        ControlledDocumentStatus.EFFECTIVE, today))
+                .overdueTrainingAssignments(trainingAssignmentRepository.countByIsActiveTrueAndStatusNotAndDueDateBefore(
+                        TrainingAssignmentStatus.COMPLETED, today))
                 .build();
     }
 

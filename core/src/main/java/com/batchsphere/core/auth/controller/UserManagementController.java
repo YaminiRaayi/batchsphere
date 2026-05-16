@@ -1,9 +1,11 @@
 package com.batchsphere.core.auth.controller;
 
 import com.batchsphere.core.auth.dto.CreateUserRequest;
+import com.batchsphere.core.auth.dto.TotpResetResponse;
 import com.batchsphere.core.auth.dto.UpdateUserRequest;
 import com.batchsphere.core.auth.dto.UserManagementResponse;
 import com.batchsphere.core.auth.service.UserManagementService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +47,11 @@ public class UserManagementController {
     @PostMapping("/{id}/unlock")
     public ResponseEntity<UserManagementResponse> unlockUser(@PathVariable UUID id) {
         return ResponseEntity.ok(userManagementService.unlockUser(id));
+    }
+
+    @PostMapping("/{id}/totp/reset")
+    public ResponseEntity<TotpResetResponse> resetTotp(@PathVariable UUID id, HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(userManagementService.resetTotp(id, httpRequest));
     }
 
     @DeleteMapping("/{id}")

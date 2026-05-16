@@ -1,6 +1,9 @@
 package com.batchsphere.core.transactions.sampling.controller;
 
+import com.batchsphere.core.report.CsvExportService;
 import com.batchsphere.core.transactions.sampling.dto.CreateSamplingPlanRequest;
+import com.batchsphere.core.transactions.sampling.dto.CompletePhase1Request;
+import com.batchsphere.core.transactions.sampling.dto.CompletePhase2Request;
 import com.batchsphere.core.transactions.sampling.dto.CompleteQaInvestigationReviewRequest;
 import com.batchsphere.core.transactions.sampling.dto.DestroyRetainedSampleRequest;
 import com.batchsphere.core.transactions.sampling.dto.EscalateQcInvestigationRequest;
@@ -11,6 +14,7 @@ import com.batchsphere.core.transactions.sampling.dto.QcReceiptRequest;
 import com.batchsphere.core.transactions.sampling.dto.QcDecisionRequest;
 import com.batchsphere.core.transactions.sampling.dto.QcInvestigationResponse;
 import com.batchsphere.core.transactions.sampling.dto.QcTestResultResponse;
+import com.batchsphere.core.transactions.sampling.dto.AmendQcTestResultRequest;
 import com.batchsphere.core.transactions.sampling.dto.RecordQcTestResultRequest;
 import com.batchsphere.core.transactions.sampling.dto.ResolveQcInvestigationRequest;
 import com.batchsphere.core.transactions.sampling.dto.SamplingLabelUpdateRequest;
@@ -22,7 +26,11 @@ import com.batchsphere.core.transactions.sampling.dto.StartQcReviewRequest;
 import com.batchsphere.core.transactions.sampling.dto.SamplingSummaryResponse;
 import com.batchsphere.core.transactions.sampling.dto.UpdateSamplingPlanRequest;
 import com.batchsphere.core.transactions.sampling.service.SamplingService;
+import com.batchsphere.core.auth.service.AuthenticatedActorService;
+import com.batchsphere.core.report.PdfReportService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,9 +40,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -43,10 +56,19 @@ import java.util.UUID;
 public class SamplingController {
 
     private final SamplingService samplingService;
+    private final CsvExportService csvExportService;
+    private final PdfReportService pdfReportService;
+    private final AuthenticatedActorService authenticatedActorService;
 
     @GetMapping
-    public ResponseEntity<Page<SamplingRequestResponse>> getAllSamplingRequests(Pageable pageable) {
-        return ResponseEntity.ok(samplingService.getAllSamplingRequests(pageable));
+    public ResponseEntity<?> getAllSamplingRequests(Pageable pageable,
+                                                    @RequestParam(required = false) String format,
+                                                    @RequestHeader(value = "Accept", required = false) String accept) {
+        Page<SamplingRequestResponse> page = samplingService.getAllSamplingRequests(pageable);
+        if (csvExportService.requested(format, accept)) {
+            return csvExportService.response("sampling-requests.csv", page.getContent());
+        }
+        return ResponseEntity.ok(page);
     }
 
     @GetMapping("/summary")
@@ -124,6 +146,31 @@ public class SamplingController {
         return ResponseEntity.ok(samplingService.recordWorksheetResult(id, testResultId, request));
     }
 
+    @PostMapping("/{id}/worksheet/{testResultId}/amend")
+    public ResponseEntity<QcTestResultResponse> amendWorksheetResult(@PathVariable UUID id,
+                                                                     @PathVariable UUID testResultId,
+                                                                     @Valid @RequestBody AmendQcTestResultRequest request) {
+        return ResponseEntity.ok(samplingService.amendWorksheetResult(id, testResultId, request));
+    }
+
+    @GetMapping("/{id}/worksheet/csv-template")
+    public ResponseEntity<byte[]> downloadWorksheetTemplate(@PathVariable UUID id) {
+        byte[] csv = samplingService.buildWorksheetCsvTemplate(id);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"worksheet-template-" + id + ".csv\"")
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .body(csv);
+    }
+
+    @PostMapping(value = "/{id}/worksheet/import-csv", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<List<QcTestResultResponse>> importWorksheetCsv(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file) {
+        String actor = authenticatedActorService.currentActor();
+        return ResponseEntity.ok(samplingService.importWorksheetCsv(id, file, actor));
+    }
+
     @GetMapping("/{id}/investigations")
     public ResponseEntity<java.util.List<QcInvestigationResponse>> getInvestigations(@PathVariable UUID id) {
         return ResponseEntity.ok(samplingService.getInvestigations(id));
@@ -140,6 +187,20 @@ public class SamplingController {
                                                                                    @PathVariable UUID investigationId,
                                                                                    @Valid @RequestBody EscalateQcInvestigationRequest request) {
         return ResponseEntity.ok(samplingService.escalateInvestigationToPhaseTwo(id, investigationId, request));
+    }
+
+    @PostMapping("/{id}/investigations/{investigationId}/complete-phase-1")
+    public ResponseEntity<QcInvestigationResponse> completePhase1(@PathVariable UUID id,
+                                                                   @PathVariable UUID investigationId,
+                                                                   @Valid @RequestBody CompletePhase1Request request) {
+        return ResponseEntity.ok(samplingService.completePhase1(id, investigationId, request));
+    }
+
+    @PostMapping("/{id}/investigations/{investigationId}/complete-phase-2")
+    public ResponseEntity<QcInvestigationResponse> completePhase2(@PathVariable UUID id,
+                                                                   @PathVariable UUID investigationId,
+                                                                   @Valid @RequestBody CompletePhase2Request request) {
+        return ResponseEntity.ok(samplingService.completePhase2(id, investigationId, request));
     }
 
     @PostMapping("/{id}/investigations/{investigationId}/resolve")
@@ -178,5 +239,15 @@ public class SamplingController {
     public ResponseEntity<SamplingRequestResponse> recordQcDecision(@PathVariable UUID id,
                                                                     @Valid @RequestBody QcDecisionRequest request) {
         return ResponseEntity.ok(samplingService.recordQcDecision(id, request));
+    }
+
+    @GetMapping(value = "/{id}/report", produces = "application/pdf")
+    public ResponseEntity<byte[]> downloadReport(@PathVariable UUID id) {
+        SamplingRequestResponse sampling = samplingService.getSamplingRequestById(id);
+        byte[] pdf = pdfReportService.generateSamplingReport(sampling, authenticatedActorService.currentActor());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"sampling-report-" + id + ".pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 }

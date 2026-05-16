@@ -6,6 +6,7 @@ import {
   deactivateManagedUser,
   fetchEmployees,
   fetchManagedUsers,
+  resetManagedUserTotp,
   unlockManagedUser,
   updateManagedUser
 } from "../../lib/api";
@@ -316,6 +317,7 @@ export function UserManagementPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [deactivatingUserId, setDeactivatingUserId] = useState<string | null>(null);
   const [unlockingUserId, setUnlockingUserId] = useState<string | null>(null);
+  const [resettingTotpUserId, setResettingTotpUserId] = useState<string | null>(null);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["managed-users"],
@@ -426,6 +428,23 @@ export function UserManagementPage() {
       toast.error(unlockError instanceof Error ? unlockError.message : "Failed to unlock user.");
     } finally {
       setUnlockingUserId(null);
+    }
+  }
+
+  async function handleResetTotp(user: ManagedUser) {
+    if (!window.confirm(`Reset TOTP MFA for ${user.username}?`)) {
+      return;
+    }
+
+    setResettingTotpUserId(user.id);
+    try {
+      await resetManagedUserTotp(user.id);
+      toast.success("TOTP MFA reset.");
+      await refetch();
+    } catch (resetError) {
+      toast.error(resetError instanceof Error ? resetError.message : "Failed to reset TOTP MFA.");
+    } finally {
+      setResettingTotpUserId(null);
     }
   }
 
@@ -579,6 +598,12 @@ export function UserManagementPage() {
                         >
                           {user.forcePasswordChange ? "Password change required" : "Password current"}
                         </span>
+                        <span
+                          data-testid={`user-totp-status-${user.id}`}
+                          className={user.totpEnabled ? "font-semibold text-emerald-700" : "text-slate-400"}
+                        >
+                          {user.totpEnabled ? "TOTP MFA enabled" : "TOTP MFA off"}
+                        </span>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-slate-500">{toLocalDate(user.createdAt)}</td>
@@ -605,6 +630,15 @@ export function UserManagementPage() {
                           className="rounded-xl border border-amber-200 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
                         >
                           {unlockingUserId === user.id ? "Working..." : "Unlock"}
+                        </button>
+                        <button
+                          data-testid={`btn-reset-totp-${user.id}`}
+                          type="button"
+                          onClick={() => void handleResetTotp(user)}
+                          disabled={!user.totpEnabled || resettingTotpUserId === user.id}
+                          className="rounded-xl border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300"
+                        >
+                          {resettingTotpUserId === user.id ? "Working..." : "Reset MFA"}
                         </button>
                         <button
                           data-testid={`btn-deactivate-user-${user.id}`}

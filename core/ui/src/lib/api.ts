@@ -1,4 +1,11 @@
 import type { Batch } from "../types/batch";
+import type {
+  CreateRetentionSampleRequest,
+  DisposeRetentionSampleRequest,
+  RetentionSample,
+  RetentionSampleSummary,
+  RetrieveRetentionSampleRequest
+} from "../types/retention-sample";
 import type { BusinessUnit, CreateBusinessUnitRequest } from "../types/business-unit";
 import type { LoginResponse } from "../types/auth";
 import type {
@@ -64,12 +71,15 @@ import type {
   CreateESignatureRequest,
   DestroyRetainedSampleRequest,
   ESignatureRecord,
+  CompletePhase1Request,
+  CompletePhase2Request,
   EscalateQcInvestigationRequest,
   QcDecisionRequest,
   QcReceiptRequest,
   QcInvestigation,
   QcWorksheetRow,
   OpenQcInvestigationRequest,
+  AmendQcWorksheetResultRequest,
   RecordQcWorksheetResultRequest,
   ResolveQcInvestigationRequest,
   ExecuteRetestRequest,
@@ -87,7 +97,23 @@ import type {
   UpdateDeviationRequest
 } from "../types/deviation";
 import type {
+  Complaint,
+  ComplaintStatusUpdateRequest,
+  ComplaintSummary,
+  CreateComplaintRequest,
+  UpdateComplaintRequest
+} from "../types/complaint";
+import type {
+  Equipment,
+  EquipmentSummary,
+  QualificationRecord,
+  CreateEquipmentRequest,
+  UpdateEquipmentRequest,
+  CreateQualificationRecordRequest
+} from "../types/equipment";
+import type {
   Capa,
+  CapaAlert,
   CapaApproveRequest,
   CapaAttachment,
   CapaAttachmentStage,
@@ -127,6 +153,43 @@ import type {
   VendorBusinessUnit
 } from "../types/vendor-business-unit";
 import type { CreateVendorRequest, Vendor, VendorApprovalRequest, VendorDocument } from "../types/vendor";
+import type {
+  RiskAssessment,
+  RiskAssessmentSummary,
+  RiskItem,
+  CreateRiskAssessmentRequest,
+  CreateRiskItemRequest,
+  AcceptRiskAssessmentRequest
+} from "../types/riskAssessment";
+import type {
+  Apqr,
+  ApqrConclusionRequest,
+  ApqrPage,
+  ApqrStatus,
+  ApqrSummaryItem,
+  ApproveApqrRequest,
+  CreateApqrRequest
+} from "../types/apqr";
+import type {
+  CreateSupplierQualityAgreementRequest,
+  SupplierQualityAgreement,
+  SupplierQualityAgreementPage,
+  SupplierQualityAgreementStatus,
+  SupplierQualityAgreementStatusRequest
+} from "../types/supplier-quality-agreement";
+import type {
+  AnalystSignCoaRequest,
+  BatchCertificate,
+  BatchReleaseStatus,
+  CertifyBatchRequest,
+  CoaResponse,
+  CreateQpBatchReleaseRequest,
+  IssueCoaRequest,
+  QpBatchRelease,
+  QpBatchReleasePage,
+  RejectBatchRequest
+} from "../types/qp-batch-release";
+import type { LotTraceabilityResponse } from "../types/traceability";
 import { useAuthStore } from "../stores/authStore";
 import { useAppShellStore } from "../stores/appShellStore";
 
@@ -341,6 +404,27 @@ export async function login(username: string, password: string) {
   });
 }
 
+export async function verifyTotpLogin(challengeToken: string, code: string) {
+  return requestMutation<LoginResponse>("/api/auth/totp/verify", {
+    method: "POST",
+    body: JSON.stringify({ challengeToken, code })
+  });
+}
+
+export async function setupTotp() {
+  return requestMutation<{ secret: string; otpauthUrl: string; qrCodeDataUrl: string }>("/api/auth/totp/setup", {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+}
+
+export async function confirmTotpSetup(code: string) {
+  return requestMutation<LoginResponse>("/api/auth/totp/verify", {
+    method: "POST",
+    body: JSON.stringify({ code })
+  });
+}
+
 export async function fetchCurrentUser() {
   return requestJson<LoginResponse["user"]>("/api/auth/me");
 }
@@ -375,6 +459,12 @@ export async function unlockManagedUser(id: string) {
   });
 }
 
+export async function resetManagedUserTotp(id: string) {
+  return requestMutation<{ userId: string; username: string; totpEnabled: boolean }>(`/api/auth/users/${id}/totp/reset`, {
+    method: "POST"
+  });
+}
+
 export async function fetchEmployees(includeInactive = false) {
   return requestJson<Employee[]>(`/api/employees?includeInactive=${includeInactive}`);
 }
@@ -405,6 +495,12 @@ export async function deactivateEmployee(id: string, updatedBy: string) {
 
 export async function logout() {
   return requestVoid("/api/auth/logout", {
+    method: "POST"
+  });
+}
+
+export async function notifySessionTimeout() {
+  return requestVoid("/api/auth/session-timeout", {
     method: "POST"
   });
 }
@@ -518,6 +614,10 @@ export async function fetchCapa(id: string) {
 
 export async function fetchCapaSummary() {
   return requestJson<CapaSummary>("/api/capas/summary");
+}
+
+export async function fetchCapaAlerts() {
+  return requestJson<CapaAlert[]>("/api/capas/alerts");
 }
 
 export async function createCapa(payload: CreateCapaRequest) {
@@ -759,11 +859,40 @@ export async function fetchDocumentRevisionFile(documentId: string, revisionId: 
   return requestBlob(`/api/documents/${documentId}/revisions/${revisionId}/file`);
 }
 
+export async function fetchDocumentReport(id: string): Promise<Blob> {
+  return requestBlob(`/api/documents/${id}/report`);
+}
+
+export async function downloadCsvExport(path: string, filename: string) {
+  const separator = path.includes("?") ? "&" : "?";
+  const blob = await requestBlob(`${path}${separator}format=csv`);
+  const url = URL.createObjectURL(blob);
+  const anchor = window.document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function downloadPdfReport(path: string, filename: string) {
+  const blob = await requestBlob(path);
+  const url = URL.createObjectURL(blob);
+  const anchor = window.document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 export async function acknowledgeDocumentDistribution(distributionId: string, payload: DocumentAcknowledgementRequest) {
   return requestMutation<DocumentDistribution>(`/api/documents/distributions/${distributionId}/acknowledge`, {
     method: "POST",
     body: JSON.stringify(payload)
   });
+}
+
+export async function fetchDocumentsDueForReview() {
+  return requestJson<ControlledDocumentPage>("/api/documents/due-for-review?size=50&sort=nextReviewDate,asc");
 }
 
 export async function fetchTrainingAssignments(employeeId?: string) {
@@ -1770,6 +1899,17 @@ export async function recordSamplingWorksheetResult(
   });
 }
 
+export async function amendSamplingWorksheetResult(
+  samplingRequestId: string,
+  testResultId: string,
+  payload: AmendQcWorksheetResultRequest
+) {
+  return requestMutation<QcWorksheetRow>(`/api/sampling-requests/${samplingRequestId}/worksheet/${testResultId}/amend`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
 export async function openSamplingInvestigation(
   samplingRequestId: string,
   payload: OpenQcInvestigationRequest
@@ -1808,6 +1948,28 @@ export async function escalateSamplingInvestigationToPhaseTwo(
   payload: EscalateQcInvestigationRequest
 ) {
   return requestMutation<QcInvestigation>(`/api/sampling-requests/${samplingRequestId}/investigations/${investigationId}/phase-ii`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function completeInvestigationPhase1(
+  samplingRequestId: string,
+  investigationId: string,
+  payload: CompletePhase1Request
+) {
+  return requestMutation<QcInvestigation>(`/api/sampling-requests/${samplingRequestId}/investigations/${investigationId}/complete-phase-1`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function completeInvestigationPhase2(
+  samplingRequestId: string,
+  investigationId: string,
+  payload: CompletePhase2Request
+) {
+  return requestMutation<QcInvestigation>(`/api/sampling-requests/${samplingRequestId}/investigations/${investigationId}/complete-phase-2`, {
     method: "POST",
     body: JSON.stringify(payload)
   });
@@ -1854,4 +2016,295 @@ export async function recordQcDecision(
       body: JSON.stringify(payload)
     }
   );
+}
+
+export type SecurityAuditEvent = {
+  id: string;
+  eventType: string;
+  username: string | null;
+  ipAddress: string | null;
+  details: string | null;
+  occurredAt: string;
+};
+
+export async function fetchSecurityAuditEvents(params?: {
+  username?: string;
+  from?: string;
+  to?: string;
+}): Promise<SecurityAuditEvent[]> {
+  const query = new URLSearchParams();
+  if (params?.username) query.set("username", params.username);
+  if (params?.from) query.set("from", params.from);
+  if (params?.to) query.set("to", params.to);
+  const qs = query.toString();
+  return requestJson<SecurityAuditEvent[]>(`/api/audit/security-events${qs ? `?${qs}` : ""}`);
+}
+
+export async function fetchComplaints(page = 0, size = 100) {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  return requestJson<PageResponse<Complaint>>(`/api/complaints?${params.toString()}`);
+}
+
+export async function fetchComplaint(id: string) {
+  return requestJson<Complaint>(`/api/complaints/${id}`);
+}
+
+export async function fetchComplaintSummary() {
+  return requestJson<ComplaintSummary>("/api/complaints/summary");
+}
+
+export async function createComplaint(payload: CreateComplaintRequest) {
+  return requestMutation<Complaint>("/api/complaints", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function updateComplaint(id: string, payload: UpdateComplaintRequest) {
+  return requestMutation<Complaint>(`/api/complaints/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+export async function updateComplaintStatus(id: string, payload: ComplaintStatusUpdateRequest) {
+  return requestMutation<Complaint>(`/api/complaints/${id}/status`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+export async function linkComplaintDeviation(id: string, deviationId: string) {
+  return requestMutation<Complaint>(`/api/complaints/${id}/link-deviation`, { method: "POST", body: JSON.stringify({ deviationId }) });
+}
+
+export async function linkComplaintCapa(id: string, capaId: string) {
+  return requestMutation<Complaint>(`/api/complaints/${id}/link-capa`, { method: "POST", body: JSON.stringify({ capaId }) });
+}
+
+export async function fetchEquipmentList(page = 0, size = 100) {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  return requestJson<PageResponse<Equipment>>(`/api/equipment?${params.toString()}`);
+}
+
+export async function fetchActiveInstruments() {
+  return requestJson<Equipment[]>("/api/equipment/active");
+}
+
+export async function fetchEquipment(id: string) {
+  return requestJson<Equipment>(`/api/equipment/${id}`);
+}
+
+export async function fetchEquipmentSummary() {
+  return requestJson<EquipmentSummary>("/api/equipment/summary");
+}
+
+export async function createEquipment(payload: CreateEquipmentRequest) {
+  return requestMutation<Equipment>("/api/equipment", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function updateEquipment(id: string, payload: UpdateEquipmentRequest) {
+  return requestMutation<Equipment>(`/api/equipment/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+export async function fetchQualificationRecords(equipmentId: string) {
+  return requestJson<QualificationRecord[]>(`/api/equipment/${equipmentId}/qualifications`);
+}
+
+export async function addQualificationRecord(equipmentId: string, payload: CreateQualificationRecordRequest) {
+  return requestMutation<QualificationRecord>(`/api/equipment/${equipmentId}/qualifications`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function fetchRiskAssessments(page = 0, size = 100) {
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  return requestJson<PageResponse<RiskAssessment>>(`/api/risk-assessments?${params.toString()}`);
+}
+
+export async function fetchRiskAssessment(id: string) {
+  return requestJson<RiskAssessment>(`/api/risk-assessments/${id}`);
+}
+
+export async function fetchRiskAssessmentSummary() {
+  return requestJson<RiskAssessmentSummary>("/api/risk-assessments/summary");
+}
+
+export async function createRiskAssessment(payload: CreateRiskAssessmentRequest) {
+  return requestMutation<RiskAssessment>("/api/risk-assessments", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function addRiskItem(assessmentId: string, payload: CreateRiskItemRequest) {
+  return requestMutation<RiskItem>(`/api/risk-assessments/${assessmentId}/items`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function updateRiskItem(assessmentId: string, itemId: string, payload: CreateRiskItemRequest) {
+  return requestMutation<RiskItem>(`/api/risk-assessments/${assessmentId}/items/${itemId}`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+export async function deleteRiskItem(assessmentId: string, itemId: string) {
+  return requestVoid(`/api/risk-assessments/${assessmentId}/items/${itemId}`, { method: "DELETE" });
+}
+
+export async function acceptRiskAssessment(id: string, payload: AcceptRiskAssessmentRequest) {
+  return requestMutation<RiskAssessment>(`/api/risk-assessments/${id}/accept`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function fetchApqrs(filters: { year?: number; materialId?: string; status?: ApqrStatus } = {}, page = 0, size = 100) {
+  const params = new URLSearchParams({ page: String(page), size: String(size), sort: "reviewYear,desc" });
+  if (filters.year) params.set("year", String(filters.year));
+  if (filters.materialId) params.set("materialId", filters.materialId);
+  if (filters.status) params.set("status", filters.status);
+  return requestJson<ApqrPage>(`/api/apqr?${params.toString()}`);
+}
+
+export async function fetchApqr(id: string) {
+  return requestJson<Apqr>(`/api/apqr/${id}`);
+}
+
+export async function fetchApqrSummary() {
+  return requestJson<ApqrSummaryItem[]>("/api/apqr/summary");
+}
+
+export async function createApqr(payload: CreateApqrRequest) {
+  return requestMutation<Apqr>("/api/apqr", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function compileApqr(id: string) {
+  return requestMutation<Apqr>(`/api/apqr/${id}/compile`, { method: "POST" });
+}
+
+export async function updateApqrConclusions(id: string, payload: ApqrConclusionRequest) {
+  return requestMutation<Apqr>(`/api/apqr/${id}/conclusions`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+export async function approveApqr(id: string, payload: ApproveApqrRequest) {
+  return requestMutation<Apqr>(`/api/apqr/${id}/approve`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function closeApqr(id: string) {
+  return requestMutation<Apqr>(`/api/apqr/${id}/close`, { method: "POST" });
+}
+
+export async function fetchQpBatchReleases(
+  filters: { status?: BatchReleaseStatus; materialId?: string } = {},
+  page = 0,
+  size = 100
+) {
+  const params = new URLSearchParams({ page: String(page), size: String(size), sort: "createdAt,desc" });
+  if (filters.status) params.set("status", filters.status);
+  if (filters.materialId) params.set("materialId", filters.materialId);
+  return requestJson<QpBatchReleasePage>(`/api/qp-batch-releases?${params.toString()}`);
+}
+
+export async function fetchQpBatchRelease(id: string) {
+  return requestJson<QpBatchRelease>(`/api/qp-batch-releases/${id}`);
+}
+
+export async function createQpBatchRelease(payload: CreateQpBatchReleaseRequest) {
+  return requestMutation<QpBatchRelease>("/api/qp-batch-releases", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function certifyQpBatchRelease(id: string, payload: CertifyBatchRequest) {
+  return requestMutation<QpBatchRelease>(`/api/qp-batch-releases/${id}/certify`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function rejectQpBatchRelease(id: string, payload: RejectBatchRequest) {
+  return requestMutation<QpBatchRelease>(`/api/qp-batch-releases/${id}/reject`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function fetchQpBatchCertificate(id: string) {
+  return requestJson<BatchCertificate>(`/api/qp-batch-releases/${id}/certificate`);
+}
+
+export async function fetchCoaDetails(id: string) {
+  return requestJson<CoaResponse>(`/api/qp-batch-releases/${id}/coa`);
+}
+
+export async function analystSignCoa(id: string, payload: AnalystSignCoaRequest) {
+  return requestMutation<CoaResponse>(`/api/qp-batch-releases/${id}/coa/analyst-sign`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function issueCoa(id: string, payload: IssueCoaRequest) {
+  return requestMutation<CoaResponse>(`/api/qp-batch-releases/${id}/coa/issue`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function fetchSupplierQualityAgreements(
+  filters: { supplierId?: string; status?: SupplierQualityAgreementStatus } = {},
+  page = 0,
+  size = 100
+) {
+  const params = new URLSearchParams({ page: String(page), size: String(size), sort: "createdAt,desc" });
+  if (filters.supplierId) params.set("supplierId", filters.supplierId);
+  if (filters.status) params.set("status", filters.status);
+  return requestJson<SupplierQualityAgreementPage>(`/api/supplier-quality-agreements?${params.toString()}`);
+}
+
+export async function fetchSupplierQualityAgreement(id: string) {
+  return requestJson<SupplierQualityAgreement>(`/api/supplier-quality-agreements/${id}`);
+}
+
+export async function createSupplierQualityAgreement(payload: CreateSupplierQualityAgreementRequest) {
+  return requestMutation<SupplierQualityAgreement>("/api/supplier-quality-agreements", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateSupplierQualityAgreement(id: string, payload: CreateSupplierQualityAgreementRequest) {
+  return requestMutation<SupplierQualityAgreement>(`/api/supplier-quality-agreements/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function updateSupplierQualityAgreementStatus(id: string, payload: SupplierQualityAgreementStatusRequest) {
+  return requestMutation<SupplierQualityAgreement>(`/api/supplier-quality-agreements/${id}/status`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchExpiringSupplierQualityAgreements(days = 60) {
+  return requestJson<SupplierQualityAgreement[]>(`/api/supplier-quality-agreements/expiring-soon?days=${days}`);
+}
+
+export async function fetchSuppliersWithoutSqa() {
+  return requestJson<Supplier[]>("/api/supplier-quality-agreements/suppliers-without-sqa");
+}
+
+export async function fetchSupplierQualityAgreementsBySupplier(supplierId: string) {
+  return requestJson<SupplierQualityAgreement[]>(`/api/suppliers/${supplierId}/quality-agreements`);
+}
+
+export async function fetchLotTraceability(searchKey: string) {
+  return requestJson<LotTraceabilityResponse>(`/api/lots/${encodeURIComponent(searchKey)}/traceability`);
+}
+
+// Retention Samples
+export async function fetchRetentionSamples(params: { status?: string; materialId?: string; lotNumber?: string; page?: number; size?: number } = {}) {
+  const q = new URLSearchParams();
+  if (params.status) q.set("status", params.status);
+  if (params.materialId) q.set("materialId", params.materialId);
+  if (params.lotNumber) q.set("lotNumber", params.lotNumber);
+  q.set("page", String(params.page ?? 0));
+  q.set("size", String(params.size ?? 20));
+  return requestJson<PageResponse<RetentionSample>>(`/api/retention-samples?${q.toString()}`);
+}
+
+export async function fetchRetentionSampleById(id: string) {
+  return requestJson<RetentionSample>(`/api/retention-samples/${id}`);
+}
+
+export async function fetchRetentionSampleSummary() {
+  return requestJson<RetentionSampleSummary>("/api/retention-samples/summary");
+}
+
+export async function fetchExpiringSoonRetentionSamples(days = 30) {
+  return requestJson<RetentionSample[]>(`/api/retention-samples/expiring-soon?days=${days}`);
+}
+
+export async function fetchDueForDisposalRetentionSamples() {
+  return requestJson<RetentionSample[]>("/api/retention-samples/due-for-disposal");
+}
+
+export async function createRetentionSample(payload: CreateRetentionSampleRequest) {
+  return requestMutation<RetentionSample>("/api/retention-samples", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function retrieveRetentionSample(id: string, payload: RetrieveRetentionSampleRequest) {
+  return requestMutation<RetentionSample>(`/api/retention-samples/${id}/retrieve`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function disposeRetentionSample(id: string, payload: DisposeRetentionSampleRequest) {
+  return requestMutation<RetentionSample>(`/api/retention-samples/${id}/dispose`, { method: "POST", body: JSON.stringify(payload) });
 }

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   createCapa,
+  downloadPdfReport,
   fetchCapas,
   fetchDeviation,
   fetchESignatures,
@@ -21,6 +22,16 @@ const deviationTypes: DeviationType[] = ["MATERIAL", "PROCESS", "DOCUMENTATION",
 const severities: DeviationSeverity[] = ["CRITICAL", "MAJOR", "MINOR"];
 const statusFlow: DeviationStatus[] = ["UNDER_INVESTIGATION", "CAPA_IN_PROGRESS", "CLOSED", "CANCELLED"];
 const capaStatusFlow: CapaStatus[] = ["IN_PROGRESS", "COMPLETED", "EFFECTIVENESS_CHECK", "CLOSED", "CANCELLED"];
+
+function sourceNavPath(module: string | undefined): string | null {
+  switch (module) {
+    case "GRN": return "/inbound/grn";
+    case "SAMPLING": return "/qc/sampling";
+    case "INVENTORY": return "/inventory";
+    case "WAREHOUSE": return "/warehouse";
+    default: return null;
+  }
+}
 
 export function DeviationDetailPage() {
   const { deviationId } = useParams();
@@ -192,9 +203,28 @@ export function DeviationDetailPage() {
           </div>
           <p className="mt-1 text-sm text-slate-500">{deviation.title}</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-right text-xs text-slate-500">
-          <div className="font-semibold text-slate-700">{formatLabel(deviation.sourceModule)}</div>
-          <div>{deviation.sourceReference ?? "No source reference"}</div>
+        <div className="flex flex-col items-end gap-2">
+          <button
+            type="button"
+            onClick={() => { void downloadPdfReport(`/api/deviations/${deviation.id}/report`, `deviation-${deviation.deviationNumber}.pdf`); }}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+          >
+            Download PDF
+          </button>
+          {(() => {
+            const navPath = sourceNavPath(deviation.sourceModule);
+            return navPath ? (
+              <Link to={navPath} className="block rounded-xl border border-slate-200 bg-white px-4 py-3 text-right text-xs text-slate-500 hover:border-blue-300 hover:bg-blue-50 transition">
+                <div className="font-semibold text-blue-600">{formatLabel(deviation.sourceModule)} ↗</div>
+                <div>{deviation.sourceReference ?? "No source reference"}</div>
+              </Link>
+            ) : (
+              <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-right text-xs text-slate-500">
+                <div className="font-semibold text-slate-700">{formatLabel(deviation.sourceModule)}</div>
+                <div>{deviation.sourceReference ?? "No source reference"}</div>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -212,7 +242,11 @@ export function DeviationDetailPage() {
 
           <div className="grid gap-4 lg:grid-cols-3">
             <Field label="Investigation summary"><textarea disabled={isClosed} value={form.investigationSummary ?? ""} onChange={(event) => setForm({ ...form, investigationSummary: event.target.value })} className={fieldClass("min-h-32")} /></Field>
-            <Field label="Root cause"><textarea disabled={isClosed} value={form.rootCause ?? ""} onChange={(event) => setForm({ ...form, rootCause: event.target.value })} className={fieldClass("min-h-32")} /></Field>
+            <div className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-600">Root cause</span>
+              <textarea disabled={isClosed} value={form.rootCause ?? ""} onChange={(event) => setForm({ ...form, rootCause: event.target.value })} className={fieldClass("min-h-32")} />
+              {!isClosed && <p className={`mt-0.5 text-[10px] ${(form.rootCause?.length ?? 0) >= 20 ? "text-slate-400" : "text-red-400"}`}>{form.rootCause?.length ?? 0}/20 chars min (ALCOA+)</p>}
+            </div>
             <Field label="Impact assessment"><textarea disabled={isClosed} value={form.impactAssessment ?? ""} onChange={(event) => setForm({ ...form, impactAssessment: event.target.value })} className={fieldClass("min-h-32")} /></Field>
           </div>
 
@@ -276,7 +310,11 @@ export function DeviationDetailPage() {
               <Field label="Due date"><input type="date" value={capaForm.dueDate} onChange={(event) => setCapaForm({ ...capaForm, dueDate: event.target.value })} className={fieldClass()} /></Field>
             </div>
             <div className="mt-3 grid gap-3 lg:grid-cols-3">
-              <Field label="Corrective action"><textarea value={capaForm.correctiveAction} onChange={(event) => setCapaForm({ ...capaForm, correctiveAction: event.target.value })} className={fieldClass("min-h-24")} /></Field>
+              <div className="block">
+                <span className="mb-1.5 block text-xs font-semibold text-slate-600">Corrective action</span>
+                <textarea value={capaForm.correctiveAction} onChange={(event) => setCapaForm({ ...capaForm, correctiveAction: event.target.value })} className={fieldClass("min-h-24")} />
+                <p className={`mt-0.5 text-[10px] ${capaForm.correctiveAction.length >= 30 ? "text-slate-400" : "text-red-400"}`}>{capaForm.correctiveAction.length}/30 chars min (ALCOA+)</p>
+              </div>
               <Field label="Preventive action"><textarea value={capaForm.preventiveAction ?? ""} onChange={(event) => setCapaForm({ ...capaForm, preventiveAction: event.target.value })} className={fieldClass("min-h-24")} /></Field>
               <Field label="Effectiveness check"><textarea value={capaForm.effectivenessCheck ?? ""} onChange={(event) => setCapaForm({ ...capaForm, effectivenessCheck: event.target.value })} className={fieldClass("min-h-24")} /></Field>
             </div>

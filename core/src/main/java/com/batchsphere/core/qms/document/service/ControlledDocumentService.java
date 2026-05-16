@@ -43,4 +43,6 @@ public interface ControlledDocumentService {
     DocumentDistributionResponse acknowledgeDistribution(UUID distributionId, DocumentAcknowledgementRequest request);
 
     Resource loadRevisionFile(UUID documentId, UUID revisionId);
+
+    Page<ControlledDocumentResponse> getDueForReview(Pageable pageable);
 }

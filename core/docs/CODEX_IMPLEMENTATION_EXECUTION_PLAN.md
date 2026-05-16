@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-10  
 **Purpose:** Step-by-step implementation plan for the pharma gaps listed in [Codex_plan_later.md](./Codex_plan_later.md) and [IMPLEMENTATION_GAP_ANALYSIS.md](./IMPLEMENTATION_GAP_ANALYSIS.md).  
-**Status:** Implementation in progress. Phase 1, Ticket 2.1, Ticket 2.3, Ticket 3.1, the backend compatibility layer for Ticket 3.2, Ticket 3.4, Phase 4, Phase 5 compliance infrastructure, Phase 6A Ticket 6A.1, Ticket 6A.2 backend guard regression coverage, Improvement 4 generic e-sign API, Ticket 6B.1 Deviation MVP, Ticket 6B.2 CAPA MVP, Ticket 6B.3 CAPA Approval Workflow, Ticket 6B.4 CAPA Ownership and Reassignment, Ticket 6B.5 CAPA Attachments, Ticket 6B.6 CAPA Effectiveness Review, Ticket 6B.7 QMS Analytics, Ticket 6B.9 Change Control Module, Ticket 6C.1 Employee / HRMS Foundation, Ticket 6C.2 Auth Hardening, Ticket 6D.1 Controlled Documents, Ticket 6D.2 Distribution And Acknowledgment, Ticket 6D.3 Fix Document Approval E-Sign Flow, Ticket 6D.4 Document Control UI Polish, Ticket 6E.1 Training Assignment, Ticket 6F.1 Reusable E-Signature Dialog, Ticket 6F.2 Audit Timeline, and Ticket 6F.3 Dashboard Live KPIs have been implemented/verified in code. Phase 6G (Pharma Compliance Gap Backfill — 10 tickets 6G.1–6G.10) defined 2026-05-13; not yet implemented.
+**Status:** Implementation in progress. Phase 1, Ticket 2.1, Ticket 2.3, Ticket 3.1, the backend compatibility layer for Ticket 3.2, Ticket 3.4, Phase 4, Phase 5 compliance infrastructure, Phase 6A Ticket 6A.1, Ticket 6A.2 backend guard regression coverage, Improvement 4 generic e-sign API, Ticket 6B.1 Deviation MVP, Ticket 6B.2 CAPA MVP, Ticket 6B.3 CAPA Approval Workflow, Ticket 6B.4 CAPA Ownership and Reassignment, Ticket 6B.5 CAPA Attachments, Ticket 6B.6 CAPA Effectiveness Review, Ticket 6B.7 QMS Analytics, Ticket 6B.9 Change Control Module, Ticket 6C.1 Employee / HRMS Foundation, Ticket 6C.2 Auth Hardening, Ticket 6D.1 Controlled Documents, Ticket 6D.2 Distribution And Acknowledgment, Ticket 6D.3 Fix Document Approval E-Sign Flow, Ticket 6D.4 Document Control UI Polish, Ticket 6E.1 Training Assignment, Ticket 6F.1 Reusable E-Signature Dialog, Ticket 6F.2 Audit Timeline, Ticket 6F.3 Dashboard Live KPIs, complaints, equipment qualification, Ticket 7.1 Risk Register, Ticket 7.2 APQR, and Ticket 7.3 Supplier Quality Agreement Management, Ticket 6G.1 Fix Pre-Existing Backend Compile Errors, Ticket 6G.4 Document Review Date Tracking, Ticket 6G.5 GRN Rejection Deviation Auto-Creation, Ticket 6G.6 MoA SOP Document Linkage, Ticket 6G.7 Training Gate Enforcement for Sampling and QC, Ticket 6G.8 OOS/OOT Two-Phase Investigation Workflow, and Ticket 6G.9 Lot/Batch Traceability View have been implemented/verified in code.
 
 ---
 
@@ -27,13 +27,13 @@ Do not build every future module at once. The first objective is to make the cur
 Latest existing migration:
 
 ```text
-V74__create_training_assignment.sql
+V89__create_supplier_quality_agreement.sql
 ```
 
 New migrations should start at:
 
 ```text
-V75
+V90
 ```
 
 ---
@@ -990,7 +990,7 @@ Make the already-built compliance backend (audit events, e-signatures) visible a
 
 ### Ticket 6G.1: Fix Pre-Existing Backend Compile Errors
 
-**Status:** Not implemented. Blocker.
+**Status:** Implemented. `./mvnw clean compile` passes with zero errors. 97 integration tests pass.
 
 **Backend**
 - Fix `AuthDataInitializer.java` — builder missing 6C.2 security fields.
@@ -1039,7 +1039,7 @@ Make the already-built compliance backend (audit events, e-signatures) visible a
 
 ### Ticket 6G.4: Document Review Date Tracking
 
-**Status:** Not implemented.
+**Status:** Implemented. `reviewStatus` computed dynamically from `nextReviewDate` (OVERDUE/DUE_SOON/CURRENT). `GET /api/documents/due-for-review` endpoint added. Frontend: "Due for Review" toggle tab, review status badge in document list and detail panel.
 
 **Regulatory basis:** EU GMP Chapter 4.7 — documents must be reviewed periodically; past-review SOPs are uncontrolled.
 
@@ -1060,7 +1060,7 @@ Make the already-built compliance backend (audit events, e-signatures) visible a
 
 ### Ticket 6G.5: GRN Rejection → Deviation Auto-Creation
 
-**Status:** Not implemented.
+**Status:** Implemented. V91 migration adds `linked_deviation_id`/`linked_deviation_number` to `grn`. On CoA REJECTED: `DeviationService.createAutoDeviation()` fires, GRN stores deviation reference. Frontend shows deviation number in rejection message and linked deviation panel in GRN detail. 99 tests pass.
 
 **Regulatory basis:** EU GMP Chapter 6.14 — material rejection events must be investigated with traceable documentation.
 
@@ -1077,7 +1077,7 @@ Make the already-built compliance backend (audit events, e-signatures) visible a
 
 ### Ticket 6G.6: MoA → Controlled SOP Document Linkage
 
-**Status:** Not implemented. Deferred from 6D.2.
+**Status:** Implemented. V92 migration adds `sop_document_id`, `sop_revision_id`, `sop_document_number` to `moa_master`. `MoaServiceImpl.applySopLink()` validates EFFECTIVE status and stores denormalized document number. Frontend: "Linked SOP Document" selector (EFFECTIVE docs only) in MoA form; `sopDocumentNumber` badge in detail panel. 99 tests pass.
 
 **Regulatory basis:** EU GMP Chapter 6.9 — test methods must reference approved analytical procedure SOPs.
 
@@ -1097,7 +1097,7 @@ Make the already-built compliance backend (audit events, e-signatures) visible a
 
 ### Ticket 6G.7: Training Gate Enforcement for Sampling and QC
 
-**Status:** Not implemented. Training assignment infrastructure from 6E.1 exists.
+**Status:** Implemented. `TrainingGateService` created; wired into `SamplingServiceImpl` for `startSampling` (SAMPLING_SOP), `recordWorksheetResult` (QC_ANALYST_TRAINING), `recordQcDecision` (QC_MANAGER_QUALIFICATION). Soft gate: only enforces when training records exist for the user+key pair.
 
 **Regulatory basis:** EU GMP Chapter 2.8–2.9 + FDA 211.68 — only trained personnel may perform regulated operations.
 
@@ -1115,7 +1115,7 @@ Make the already-built compliance backend (audit events, e-signatures) visible a
 
 ### Ticket 6G.8: OOS/OOT Investigation Two-Phase Workflow
 
-**Status:** Not implemented.
+**Status:** Implemented. V93 migration adds 8 columns. `QcPhase1Outcome` enum (NO_ASSIGNABLE_CAUSE, INVALID_RESULT). `completePhase1()` auto-advances to PHASE_II or closes as CLOSED_INVALID. `completePhase2()` requires QC Manager e-sign, submits to QA_REVIEW_PENDING. Frontend: Phase 1 completion form (OOT flag, outcome, retest count) + Phase 2 e-sign form on investigation cards.
 
 **Regulatory basis:** FDA OOS Guidance (2006) + EU GMP Chapter 6.15–6.18 — mandatory two-phase OOS investigation (Phase 1: lab; Phase 2: full investigation).
 
@@ -1135,7 +1135,7 @@ Make the already-built compliance backend (audit events, e-signatures) visible a
 
 ### Ticket 6G.9: Lot/Batch Traceability View
 
-**Status:** Not implemented.
+**Status:** Implemented. `GET /api/lots/{searchKey}/traceability` — searches by GRN number or vendor batch. `LotTraceabilityServiceImpl` assembles: GRN receipt, CoA review, sampling requests, QC results summary, QC disposition, QC decision, investigations (phases + closure), inventory transactions, deviations, CAPAs into a chronological timeline. Frontend: `/qms/traceability` search page with vertical timeline, status badges, event type color coding, linked deviation badge. Nav entry added.
 
 **Regulatory basis:** EU GMP Annex 15 + FDA 211.188 — full lot history from receipt to disposition must be reconstructable.
 

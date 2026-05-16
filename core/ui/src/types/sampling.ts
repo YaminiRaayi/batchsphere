@@ -228,13 +228,26 @@ export type QcWorksheetRow = {
   sequence: number;
   enteredAt: string | null;
   remarks: string | null;
+  isLocked: boolean;
+  equipmentId: string | null;
+  instrumentRef: string | null;
 };
 
 export type RecordQcWorksheetResultRequest = {
   resultValue?: number;
   resultText?: string;
   moaIdUsed?: string;
+  equipmentId?: string;
   remarks?: string;
+};
+
+export type AmendQcWorksheetResultRequest = {
+  resultValue?: number;
+  resultText?: string;
+  remarks?: string;
+  justification: string;
+  eSignatureUsername: string;
+  eSignaturePassword: string;
 };
 
 export type AuditEvent = {
@@ -314,6 +327,14 @@ export type QcInvestigation = {
   qaReviewConfirmedBy: string | null;
   qaReviewConfirmationText: string | null;
   qaReviewConfirmationAt: string | null;
+  phase1Outcome: "NO_ASSIGNABLE_CAUSE" | "INVALID_RESULT" | null;
+  phase1RootCause: string | null;
+  phase1CompletedBy: string | null;
+  phase1CompletedAt: string | null;
+  phase2Required: boolean;
+  ootFlag: boolean;
+  retestAuthorized: boolean;
+  retestSampleCount: number | null;
   isActive: boolean;
   createdBy: string;
   createdAt: string;
@@ -331,6 +352,26 @@ export type OpenQcInvestigationRequest = {
 export type EscalateQcInvestigationRequest = {
   phaseOneSummary: string;
   phaseTwoAssessment: string;
+};
+
+export type CompletePhase1Request = {
+  phase1Outcome: "NO_ASSIGNABLE_CAUSE" | "INVALID_RESULT";
+  phase1RootCause?: string;
+  ootFlag?: boolean;
+  retestSampleCount?: number;
+};
+
+export type CompletePhase2Request = {
+  phaseTwoSummary: string;
+  rootCause?: string;
+  resolutionRemarks?: string;
+  capaRequired?: boolean;
+  capaReference?: string;
+  confirmedBy: string;
+  confirmationText: string;
+  eSignatureUsername?: string;
+  eSignaturePassword?: string;
+  eSignatureMeaning?: string;
 };
 
 export type ResolveQcInvestigationRequest = {

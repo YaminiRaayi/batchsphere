@@ -44,4 +44,6 @@ public class QcTestResultResponse {
     Integer sequence;
     LocalDateTime enteredAt;
     String remarks;
+    UUID equipmentId;
+    String instrumentRef;
 }

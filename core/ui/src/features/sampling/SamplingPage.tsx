@@ -5,11 +5,15 @@ import { useAppShellStore } from "../../stores/appShellStore";
 import {
   completeSamplingInvestigationQaReview,
   completeSampling,
+  completeInvestigationPhase1,
+  completeInvestigationPhase2,
+  downloadCsvExport,
   destroySamplingRetainedSample,
   escalateSamplingInvestigationToPhaseTwo,
   executeSamplingResample,
   executeSamplingRetest,
   createSamplingPlan,
+  fetchActiveInstruments,
   fetchBatches,
   fetchGrnItemContainers,
   fetchMaterials,
@@ -35,6 +39,7 @@ import {
 } from "../../lib/api";
 import { useAuthStore } from "../../stores/authStore";
 import type { Batch } from "../../types/batch";
+import type { Equipment } from "../../types/equipment";
 import type { GrnContainer } from "../../types/grn";
 import type { Pallet } from "../../types/location";
 import type { Material } from "../../types/material";
@@ -42,6 +47,8 @@ import type { Moa } from "../../types/moa";
 import type { SamplingTool } from "../../types/sampling-tool";
 import type { Spec, SpecParameter } from "../../types/spec";
 import type {
+  CompletePhase1Request,
+  CompletePhase2Request,
   CompleteQaInvestigationReviewRequest,
   DestroyRetainedSampleRequest,
   EscalateQcInvestigationRequest,
@@ -238,12 +245,15 @@ export function SamplingPage() {
   const [qcReviewForm, setQcReviewForm]       = useState<StartQcReviewRequest>({ analystCode: "" });
   const [worksheet, setWorksheet]             = useState<QcWorksheetRow[]>([]);
   const [worksheetInputs, setWorksheetInputs] = useState<Record<string, RecordQcWorksheetResultRequest>>({});
+  const [activeInstruments, setActiveInstruments] = useState<Equipment[]>([]);
   const [cycles, setCycles]                   = useState<SamplingRequest[]>([]);
   const [investigations, setInvestigations]   = useState<QcInvestigation[]>([]);
   const [investigationForm, setInvestigationForm] = useState<OpenQcInvestigationRequest>({ qcTestResultId: "", reason: "", initialAssessment: "", investigationType: "OOS" });
   const [resolveForms, setResolveForms]       = useState<Record<string, ResolveQcInvestigationRequest>>({});
   const [phaseTwoForms, setPhaseTwoForms]     = useState<Record<string, EscalateQcInvestigationRequest>>({});
   const [qaReviewForms, setQaReviewForms]     = useState<Record<string, CompleteQaInvestigationReviewRequest>>({});
+  const [phase1Forms, setPhase1Forms]         = useState<Record<string, CompletePhase1Request>>({});
+  const [phase2Forms, setPhase2Forms]         = useState<Record<string, CompletePhase2Request>>({});
   const [retestForm, setRetestForm]           = useState<ExecuteRetestRequest>({ analystCode: "", remarks: "" });
   const [resampleForm, setResampleForm]       = useState<ExecuteResampleRequest>({ reason: "" });
   const [destroyRetainedForm, setDestroyRetainedForm] = useState<DestroyRetainedSampleRequest>({ remarks: "" });
@@ -266,7 +276,7 @@ export function SamplingPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const [requestPage, summaryData, materialPage, batchPage, palletPage, specData, moaData, toolData] =
+        const [requestPage, summaryData, materialPage, batchPage, palletPage, specData, moaData, toolData, instrumentData] =
           await Promise.all([
             fetchSamplingRequests(),
             fetchSamplingSummary(),
@@ -275,7 +285,8 @@ export function SamplingPage() {
             fetchPallets(),
             fetchSpecs(),
             fetchMoas(),
-            fetchSamplingTools()
+            fetchSamplingTools(),
+            fetchActiveInstruments()
           ]);
         const specParameterEntries = await Promise.all(
           specData.map(async (spec) => [spec.id, await fetchSpecParameters(spec.id)] as const)
@@ -289,6 +300,7 @@ export function SamplingPage() {
           setSpecs(specData);
           setMoas(moaData);
           setSamplingTools(toolData);
+          setActiveInstruments(instrumentData);
           setSpecParametersBySpecId(Object.fromEntries(specParameterEntries));
         }
       } catch (loadError) {
@@ -423,6 +435,7 @@ export function SamplingPage() {
           resultValue: row.resultValue ?? undefined,
           resultText: row.resultText ?? undefined,
           moaIdUsed: row.moaIdUsed ?? row.specMoaId ?? undefined,
+          equipmentId: row.equipmentId ?? undefined,
           remarks: row.remarks ?? undefined
         }])));
       } catch {
@@ -473,6 +486,24 @@ export function SamplingPage() {
           qaReviewRemarks: item.qaReviewRemarks ?? "",
           confirmedBy: item.qaReviewedBy ?? authenticatedUsername,
           confirmationText: ""
+        }])));
+        setPhase1Forms(Object.fromEntries(investigationRows.map((item) => [item.id, {
+          phase1Outcome: item.phase1Outcome ?? "NO_ASSIGNABLE_CAUSE",
+          phase1RootCause: item.phase1RootCause ?? "",
+          ootFlag: item.ootFlag,
+          retestSampleCount: item.retestSampleCount ?? undefined
+        }])));
+        setPhase2Forms(Object.fromEntries(investigationRows.map((item) => [item.id, {
+          phaseTwoSummary: item.phaseTwoSummary ?? "",
+          rootCause: item.rootCause ?? "",
+          resolutionRemarks: item.resolutionRemarks ?? "",
+          capaRequired: item.capaRequired,
+          capaReference: item.capaReference ?? "",
+          confirmedBy: authenticatedUsername,
+          confirmationText: "",
+          eSignatureUsername: "",
+          eSignaturePassword: "",
+          eSignatureMeaning: "I confirm Phase 2 OOS investigation completion"
         }])));
       } catch {
         if (!cancelled) {
@@ -733,6 +764,7 @@ export function SamplingPage() {
           resultValue: savedRow.resultValue ?? undefined,
           resultText: savedRow.resultText ?? undefined,
           moaIdUsed: savedRow.moaIdUsed ?? savedRow.specMoaId ?? undefined,
+          equipmentId: savedRow.equipmentId ?? undefined,
           remarks: savedRow.remarks ?? undefined
         }
       }));
@@ -791,6 +823,14 @@ export function SamplingPage() {
         ...current,
         [created.id]: { approved: true, qaReviewRemarks: "", confirmedBy: authenticatedUsername, confirmationText: "" }
       }));
+      setPhase1Forms((current) => ({
+        ...current,
+        [created.id]: { phase1Outcome: "NO_ASSIGNABLE_CAUSE", phase1RootCause: "", ootFlag: false }
+      }));
+      setPhase2Forms((current) => ({
+        ...current,
+        [created.id]: { phaseTwoSummary: "", rootCause: "", resolutionRemarks: "", capaRequired: false, capaReference: "", confirmedBy: authenticatedUsername, confirmationText: "", eSignatureUsername: "", eSignaturePassword: "", eSignatureMeaning: "I confirm Phase 2 OOS investigation completion" }
+      }));
       setInvestigationForm({ qcTestResultId: "", reason: "", initialAssessment: "", investigationType: "OOS" });
       setSuccessMessage("QC investigation opened.");
     } catch (err) {
@@ -821,6 +861,64 @@ export function SamplingPage() {
       setSuccessMessage("Investigation escalated to Phase II.");
     } catch (err) {
       setPlanError(err instanceof Error ? err.message : "Unknown error while escalating investigation");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleCompletePhase1(investigationId: string) {
+    if (!selectedRequest) return;
+    const payload = phase1Forms[investigationId];
+    if (!payload) return;
+    setIsSubmitting(true); setPlanError(null);
+    try {
+      const updated = await completeInvestigationPhase1(selectedRequest.id, investigationId, {
+        phase1Outcome: payload.phase1Outcome,
+        phase1RootCause: payload.phase1RootCause?.trim() || undefined,
+        ootFlag: payload.ootFlag,
+        retestSampleCount: payload.retestSampleCount
+      });
+      setInvestigations((current) => current.map((item) => item.id === updated.id ? updated : item));
+      const msg = payload.phase1Outcome === "NO_ASSIGNABLE_CAUSE"
+        ? "Phase 1 completed. No assignable cause — investigation advanced to Phase 2."
+        : "Phase 1 completed. Invalid result — investigation closed with retest authorization.";
+      setSuccessMessage(msg);
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : "Unknown error while completing Phase 1");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleCompletePhase2(investigationId: string) {
+    if (!selectedRequest) return;
+    const payload = phase2Forms[investigationId];
+    if (!payload?.phaseTwoSummary.trim()) {
+      setPlanError("Phase 2 summary is required.");
+      return;
+    }
+    if (!payload?.confirmationText.trim()) {
+      setPlanError("Confirmation text is required.");
+      return;
+    }
+    setIsSubmitting(true); setPlanError(null);
+    try {
+      const updated = await completeInvestigationPhase2(selectedRequest.id, investigationId, {
+        phaseTwoSummary: payload.phaseTwoSummary.trim(),
+        rootCause: payload.rootCause?.trim() || undefined,
+        resolutionRemarks: payload.resolutionRemarks?.trim() || undefined,
+        capaRequired: payload.capaRequired,
+        capaReference: payload.capaReference?.trim() || undefined,
+        confirmedBy: payload.confirmedBy,
+        confirmationText: payload.confirmationText,
+        eSignatureUsername: payload.eSignatureUsername,
+        eSignaturePassword: payload.eSignaturePassword,
+        eSignatureMeaning: payload.eSignatureMeaning
+      });
+      setInvestigations((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setSuccessMessage("Phase 2 completed. Investigation submitted for QA review.");
+    } catch (err) {
+      setPlanError(err instanceof Error ? err.message : "Unknown error while completing Phase 2");
     } finally {
       setIsSubmitting(false);
     }
@@ -991,6 +1089,7 @@ export function SamplingPage() {
           </button>
           <button
             type="button"
+            onClick={() => void downloadCsvExport("/api/sampling-requests?size=10000", "sampling-requests.csv")}
             className="flex items-center gap-2 rounded-xl border border-green-200 bg-white px-4 py-2 text-xs font-semibold text-green-700 hover:bg-green-50"
           >
             <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1833,9 +1932,57 @@ export function SamplingPage() {
                 <div className="overflow-hidden rounded-2xl border border-green-100 bg-white shadow-sm">
                   <div className="flex items-center justify-between border-b border-green-100 bg-gradient-to-r from-green-50 to-white px-5 py-3">
                     <span className="text-sm font-semibold text-slate-700">QC Worksheet</span>
-                    <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${worksheetReadyForApproval ? "bg-green-100 text-green-700" : worksheetFailCount > 0 ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"}`}>
-                      {worksheetPassCount}/{worksheetMandatoryCount} mandatory pass · {worksheetFailCount} fail
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${worksheetReadyForApproval ? "bg-green-100 text-green-700" : worksheetFailCount > 0 ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"}`}>
+                        {worksheetPassCount}/{worksheetMandatoryCount} mandatory pass · {worksheetFailCount} fail
+                      </span>
+                      {selectedRequest.requestStatus === "UNDER_REVIEW" ? (
+                        <>
+                          <a href={`/api/sampling-requests/${selectedRequest.id}/worksheet/csv-template`} download className="rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50">
+                            Template CSV
+                          </a>
+                          <label className="cursor-pointer rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-[11px] font-semibold text-violet-700 hover:bg-violet-100">
+                            Import CSV
+                            <input type="file" accept=".csv" className="hidden" onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (!f || !selectedRequest) return;
+                              void (async () => {
+                                setIsSubmitting(true); setPlanError(null);
+                                try {
+                                  const fd = new FormData();
+                                  fd.append("file", f);
+                                  const token = (useAuthStore.getState() as { token: string | null }).token;
+                                  const res = await fetch(`/api/sampling-requests/${selectedRequest.id}/worksheet/import-csv`, {
+                                    method: "POST",
+                                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                                    body: fd
+                                  });
+                                  if (!res.ok) {
+                                    const err = await res.json() as { message?: string };
+                                    throw new Error(err.message ?? "CSV import failed");
+                                  }
+                                  const updated = await res.json() as QcWorksheetRow[];
+                                  setWorksheet(updated);
+                                  setWorksheetInputs(Object.fromEntries(updated.map((row) => [row.id, {
+                                    resultValue: row.resultValue ?? undefined,
+                                    resultText: row.resultText ?? undefined,
+                                    moaIdUsed: row.moaIdUsed ?? row.specMoaId ?? undefined,
+                                    equipmentId: row.equipmentId ?? undefined,
+                                    remarks: row.remarks ?? undefined
+                                  }])));
+                                  setSuccessMessage("CSV imported successfully.");
+                                } catch (err) {
+                                  setPlanError(err instanceof Error ? err.message : "CSV import failed");
+                                } finally {
+                                  setIsSubmitting(false);
+                                  e.target.value = "";
+                                }
+                              })();
+                            }} />
+                          </label>
+                        </>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="min-w-[1180px] w-full text-xs">
@@ -1846,6 +1993,7 @@ export function SamplingPage() {
                           <th className="px-3 py-2 text-left">Type</th>
                           <th className="px-3 py-2 text-left">MOA</th>
                           <th className="px-3 py-2 text-left">Criteria</th>
+                          <th className="px-3 py-2 text-left">Instrument</th>
                           <th className="px-3 py-2 text-left">Result</th>
                           <th className="px-3 py-2 text-left">Remarks</th>
                           <th className="px-3 py-2 text-left">Status</th>
@@ -1854,29 +2002,51 @@ export function SamplingPage() {
                       </thead>
                       <tbody>
                         {worksheet.length === 0 ? (
-                          <tr><td colSpan={9} className="px-4 py-4 text-center text-slate-400">Worksheet will appear after QC receipt.</td></tr>
+                          <tr><td colSpan={10} className="px-4 py-4 text-center text-slate-400">Worksheet will appear after QC receipt.</td></tr>
                         ) : worksheet.map((row) => {
                           const input = worksheetInputs[row.id] ?? {};
                           const textBased = ["PASS_FAIL", "COMPLIES", "TEXT"].includes(row.criteriaTypeApplied);
+                          const locked = row.isLocked;
+                          const canEdit = !locked && selectedRequest.requestStatus === "UNDER_REVIEW" && !isSubmitting;
                           return (
                             <tr key={row.id} className="border-b border-green-50 align-top">
                               <td className="px-3 py-3 font-mono text-slate-500">{row.sequence}</td>
                               <td className="px-3 py-3">
-                                <div className="font-semibold text-slate-800">{row.parameterName}</div>
+                                <div className="flex items-center gap-1 font-semibold text-slate-800">
+                                  {row.parameterName}
+                                  {locked && <span title="Data locked — amendment requires e-signature" className="ml-1 text-amber-500">&#128274;</span>}
+                                </div>
                                 {row.mandatory ? <div className="text-[10px] text-rose-500">Mandatory</div> : <div className="text-[10px] text-slate-400">Optional</div>}
                               </td>
                               <td className="px-3 py-3 text-slate-600">{row.testType.replace(/_/g, " ")}</td>
                               <td className="px-3 py-3 text-slate-600">{row.specMoaCode ?? "—"}</td>
                               <td className="px-3 py-3 font-mono text-[11px] text-slate-600">{row.criteriaDisplay}</td>
                               <td className="px-3 py-3">
-                                {textBased ? (
-                                  <input value={input.resultText ?? ""} onChange={(e) => setWorksheetInputs((current) => ({ ...current, [row.id]: { ...current[row.id], resultText: e.target.value } }))} className={fieldCls} disabled={selectedRequest.requestStatus !== "UNDER_REVIEW" || isSubmitting} placeholder="Enter textual result" />
+                                {locked ? (
+                                  <span className="font-mono text-[11px] text-slate-500">{row.instrumentRef ?? "—"}</span>
                                 ) : (
-                                  <input type="number" step="0.0001" value={input.resultValue ?? ""} onChange={(e) => setWorksheetInputs((current) => ({ ...current, [row.id]: { ...current[row.id], resultValue: e.target.value ? Number(e.target.value) : undefined } }))} className={fieldCls} disabled={selectedRequest.requestStatus !== "UNDER_REVIEW" || isSubmitting} placeholder="Enter numeric result" />
+                                  <select
+                                    value={input.equipmentId ?? ""}
+                                    onChange={(e) => setWorksheetInputs((current) => ({ ...current, [row.id]: { ...current[row.id], equipmentId: e.target.value || undefined } }))}
+                                    className={`${fieldCls} min-w-[140px]`}
+                                    disabled={!canEdit}
+                                  >
+                                    <option value="">None</option>
+                                    {activeInstruments.map((eq) => (
+                                      <option key={eq.id} value={eq.id}>{eq.equipmentId} — {eq.name}</option>
+                                    ))}
+                                  </select>
                                 )}
                               </td>
                               <td className="px-3 py-3">
-                                <input value={input.remarks ?? ""} onChange={(e) => setWorksheetInputs((current) => ({ ...current, [row.id]: { ...current[row.id], remarks: e.target.value } }))} className={fieldCls} disabled={selectedRequest.requestStatus !== "UNDER_REVIEW" || isSubmitting} placeholder="Optional remarks" />
+                                {textBased ? (
+                                  <input value={input.resultText ?? ""} onChange={(e) => setWorksheetInputs((current) => ({ ...current, [row.id]: { ...current[row.id], resultText: e.target.value } }))} className={fieldCls} disabled={!canEdit} placeholder={locked ? "Locked — amend requires e-sign" : "Enter textual result"} />
+                                ) : (
+                                  <input type="number" step="0.0001" value={input.resultValue ?? ""} onChange={(e) => setWorksheetInputs((current) => ({ ...current, [row.id]: { ...current[row.id], resultValue: e.target.value ? Number(e.target.value) : undefined } }))} className={fieldCls} disabled={!canEdit} placeholder={locked ? "Locked — amend requires e-sign" : "Enter numeric result"} />
+                                )}
+                              </td>
+                              <td className="px-3 py-3">
+                                <input value={input.remarks ?? ""} onChange={(e) => setWorksheetInputs((current) => ({ ...current, [row.id]: { ...current[row.id], remarks: e.target.value } }))} className={fieldCls} disabled={!canEdit} placeholder="Optional remarks" />
                               </td>
                               <td className="px-3 py-3">
                                 <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold ${row.status === "PASS" ? "bg-green-100 text-green-700" : row.status === "FAIL" || row.status === "OOS" ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-600"}`}>
@@ -1885,11 +2055,17 @@ export function SamplingPage() {
                               </td>
                               <td className="px-3 py-3 text-right">
                                 <div className="flex justify-end gap-2">
-                                  <button type="button" onClick={() => void handleWorksheetSave(row.id)} disabled={selectedRequest.requestStatus !== "UNDER_REVIEW" || isSubmitting} className="rounded-lg border border-green-200 px-3 py-1.5 text-[11px] font-semibold text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:text-slate-300">
-                                    Save Result
-                                  </button>
-                                  {(row.status === "FAIL" || row.status === "OOS" || row.status === "INCONCLUSIVE") ? (
-                                    <button type="button" onClick={() => setInvestigationForm((current) => ({ ...current, qcTestResultId: row.id }))} disabled={selectedRequest.requestStatus !== "UNDER_REVIEW" || isSubmitting} className="rounded-lg border border-fuchsia-200 px-3 py-1.5 text-[11px] font-semibold text-fuchsia-700 hover:bg-fuchsia-50 disabled:cursor-not-allowed disabled:text-slate-300">
+                                  {locked ? (
+                                    <span className="inline-flex items-center rounded-lg border border-amber-200 px-3 py-1.5 text-[11px] font-semibold text-amber-600">
+                                      Locked
+                                    </span>
+                                  ) : (
+                                    <button type="button" onClick={() => void handleWorksheetSave(row.id)} disabled={!canEdit} className="rounded-lg border border-green-200 px-3 py-1.5 text-[11px] font-semibold text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:text-slate-300">
+                                      Save Result
+                                    </button>
+                                  )}
+                                  {!locked && (row.status === "FAIL" || row.status === "OOS" || row.status === "INCONCLUSIVE") ? (
+                                    <button type="button" onClick={() => setInvestigationForm((current) => ({ ...current, qcTestResultId: row.id }))} disabled={!canEdit} className="rounded-lg border border-fuchsia-200 px-3 py-1.5 text-[11px] font-semibold text-fuchsia-700 hover:bg-fuchsia-50 disabled:cursor-not-allowed disabled:text-slate-300">
                                       Select for Investigation
                                     </button>
                                   ) : null}
@@ -1938,7 +2114,7 @@ export function SamplingPage() {
                           <option value="GENERAL">General</option>
                         </select>
                       </label>
-                      <label className="block">
+                      <div className="block">
                         <span className={labelCls}>Investigation reason</span>
                         <input
                           value={investigationForm.reason}
@@ -1947,7 +2123,8 @@ export function SamplingPage() {
                           disabled={selectedRequest.requestStatus !== "UNDER_REVIEW" || isSubmitting}
                           placeholder="Why is this result being investigated?"
                         />
-                      </label>
+                        <p className={`mt-0.5 text-[10px] ${investigationForm.reason.length >= 20 ? "text-slate-400" : "text-red-400"}`}>{investigationForm.reason.length}/20 chars min (ALCOA+)</p>
+                      </div>
                       <div className="flex items-end">
                         <button
                           type="button"
@@ -2122,6 +2299,175 @@ export function SamplingPage() {
                                   </div>
                                 </div>
                               ) : null}
+                              {isActiveInvestigationStatus(item.status) && item.status === "PHASE_I" ? (
+                                <div className="mt-3 rounded-xl border border-violet-100 bg-violet-50/50 p-3">
+                                  <div className="mb-2 text-[11px] font-semibold text-violet-900">Complete Phase 1 (FDA OOS Two-Phase)</div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <label className="col-span-2 block">
+                                      <span className={labelCls}>Phase 1 Outcome</span>
+                                      <select
+                                        value={phase1Forms[item.id]?.phase1Outcome ?? "NO_ASSIGNABLE_CAUSE"}
+                                        onChange={(e) => setPhase1Forms((c) => ({ ...c, [item.id]: { ...c[item.id], phase1Outcome: e.target.value as "NO_ASSIGNABLE_CAUSE" | "INVALID_RESULT" } }))}
+                                        className={fieldCls}
+                                        disabled={isSubmitting}
+                                      >
+                                        <option value="NO_ASSIGNABLE_CAUSE">No Assignable Cause → advance to Phase 2</option>
+                                        <option value="INVALID_RESULT">Invalid Result → authorize retest</option>
+                                      </select>
+                                    </label>
+                                    <label className="col-span-2 block">
+                                      <span className={labelCls}>Phase 1 Root Cause</span>
+                                      <textarea
+                                        rows={2}
+                                        value={phase1Forms[item.id]?.phase1RootCause ?? ""}
+                                        onChange={(e) => setPhase1Forms((c) => ({ ...c, [item.id]: { ...c[item.id], phase1RootCause: e.target.value } }))}
+                                        className={fieldCls}
+                                        disabled={isSubmitting}
+                                        placeholder="e.g. No lab error identified in Phase 1 review"
+                                      />
+                                    </label>
+                                    {phase1Forms[item.id]?.phase1Outcome === "INVALID_RESULT" ? (
+                                      <label className="block">
+                                        <span className={labelCls}>Retest Sample Count</span>
+                                        <input
+                                          type="number"
+                                          min={1}
+                                          value={phase1Forms[item.id]?.retestSampleCount ?? ""}
+                                          onChange={(e) => setPhase1Forms((c) => ({ ...c, [item.id]: { ...c[item.id], retestSampleCount: e.target.value ? parseInt(e.target.value) : undefined } }))}
+                                          className={fieldCls}
+                                          disabled={isSubmitting}
+                                          placeholder="e.g. 2"
+                                        />
+                                      </label>
+                                    ) : null}
+                                    <label className="flex items-center gap-2 text-xs text-violet-900">
+                                      <input
+                                        type="checkbox"
+                                        checked={phase1Forms[item.id]?.ootFlag ?? false}
+                                        onChange={(e) => setPhase1Forms((c) => ({ ...c, [item.id]: { ...c[item.id], ootFlag: e.target.checked } }))}
+                                        disabled={isSubmitting}
+                                        className="h-3.5 w-3.5"
+                                      />
+                                      Flag as OOT (Out of Trend)
+                                    </label>
+                                  </div>
+                                  <div className="mt-3 flex justify-end">
+                                    <button
+                                      type="button"
+                                      onClick={() => void handleCompletePhase1(item.id)}
+                                      disabled={isSubmitting}
+                                      className="rounded-xl border border-violet-200 px-4 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-100 disabled:cursor-not-allowed disabled:text-slate-300"
+                                    >
+                                      Complete Phase 1
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : null}
+                              {isActiveInvestigationStatus(item.status) && item.status === "PHASE_II" ? (
+                                <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
+                                  <div className="mb-2 text-[11px] font-semibold text-indigo-900">Complete Phase 2 (QC Manager E-Sign)</div>
+                                  <label className="block">
+                                    <span className={labelCls}>Phase 2 Summary</span>
+                                    <textarea
+                                      rows={2}
+                                      value={phase2Forms[item.id]?.phaseTwoSummary ?? ""}
+                                      onChange={(e) => setPhase2Forms((c) => ({ ...c, [item.id]: { ...c[item.id], phaseTwoSummary: e.target.value } }))}
+                                      className={fieldCls}
+                                      disabled={isSubmitting}
+                                      placeholder="e.g. Full batch review confirms no systemic process deviation"
+                                    />
+                                  </label>
+                                  <label className="block mt-2">
+                                    <span className={labelCls}>Root Cause</span>
+                                    <textarea
+                                      rows={2}
+                                      value={phase2Forms[item.id]?.rootCause ?? ""}
+                                      onChange={(e) => setPhase2Forms((c) => ({ ...c, [item.id]: { ...c[item.id], rootCause: e.target.value } }))}
+                                      className={fieldCls}
+                                      disabled={isSubmitting}
+                                      placeholder="e.g. Isolated instrument calibration drift"
+                                    />
+                                  </label>
+                                  <label className="block mt-2">
+                                    <span className={labelCls}>Resolution Remarks</span>
+                                    <textarea
+                                      rows={2}
+                                      value={phase2Forms[item.id]?.resolutionRemarks ?? ""}
+                                      onChange={(e) => setPhase2Forms((c) => ({ ...c, [item.id]: { ...c[item.id], resolutionRemarks: e.target.value } }))}
+                                      className={fieldCls}
+                                      disabled={isSubmitting}
+                                      placeholder="e.g. Instrument recalibrated and verification results acceptable"
+                                    />
+                                  </label>
+                                  <label className="mt-2 flex items-center gap-2 text-xs text-indigo-900">
+                                    <input
+                                      type="checkbox"
+                                      checked={phase2Forms[item.id]?.capaRequired ?? false}
+                                      onChange={(e) => setPhase2Forms((c) => ({ ...c, [item.id]: { ...c[item.id], capaRequired: e.target.checked } }))}
+                                      disabled={isSubmitting}
+                                      className="h-3.5 w-3.5"
+                                    />
+                                    CAPA Required
+                                  </label>
+                                  {phase2Forms[item.id]?.capaRequired ? (
+                                    <label className="block mt-2">
+                                      <span className={labelCls}>CAPA Reference</span>
+                                      <input
+                                        type="text"
+                                        value={phase2Forms[item.id]?.capaReference ?? ""}
+                                        onChange={(e) => setPhase2Forms((c) => ({ ...c, [item.id]: { ...c[item.id], capaReference: e.target.value } }))}
+                                        className={fieldCls}
+                                        disabled={isSubmitting}
+                                        placeholder="e.g. CAPA-2026-042"
+                                      />
+                                    </label>
+                                  ) : null}
+                                  <div className="mt-3 border-t border-indigo-100 pt-3">
+                                    <div className="text-[11px] font-semibold text-indigo-800 mb-1">E-Signature (QC Manager)</div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <label className="block">
+                                        <span className={labelCls}>Username</span>
+                                        <input type="text" value={phase2Forms[item.id]?.eSignatureUsername ?? ""} onChange={(e) => setPhase2Forms((c) => ({ ...c, [item.id]: { ...c[item.id], eSignatureUsername: e.target.value } }))} className={fieldCls} disabled={isSubmitting} placeholder="qc.manager" />
+                                      </label>
+                                      <label className="block">
+                                        <span className={labelCls}>Password</span>
+                                        <input type="password" value={phase2Forms[item.id]?.eSignaturePassword ?? ""} onChange={(e) => setPhase2Forms((c) => ({ ...c, [item.id]: { ...c[item.id], eSignaturePassword: e.target.value } }))} className={fieldCls} disabled={isSubmitting} placeholder="••••••••" />
+                                      </label>
+                                      <label className="col-span-2 block">
+                                        <span className={labelCls}>Confirmed By</span>
+                                        <input type="text" value={phase2Forms[item.id]?.confirmedBy ?? ""} onChange={(e) => setPhase2Forms((c) => ({ ...c, [item.id]: { ...c[item.id], confirmedBy: e.target.value } }))} className={fieldCls} disabled={isSubmitting} />
+                                      </label>
+                                      <label className="col-span-2 block">
+                                        <span className={labelCls}>Confirmation Text</span>
+                                        <input type="text" value={phase2Forms[item.id]?.confirmationText ?? ""} onChange={(e) => setPhase2Forms((c) => ({ ...c, [item.id]: { ...c[item.id], confirmationText: e.target.value } }))} className={fieldCls} disabled={isSubmitting} placeholder="I confirm Phase 2 OOS investigation completion" />
+                                      </label>
+                                    </div>
+                                  </div>
+                                  <div className="mt-3 flex justify-end">
+                                    <button
+                                      type="button"
+                                      onClick={() => void handleCompletePhase2(item.id)}
+                                      disabled={isSubmitting || !phase2Forms[item.id]?.phaseTwoSummary.trim()}
+                                      className="rounded-xl border border-indigo-200 px-4 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:text-slate-300"
+                                    >
+                                      Complete Phase 2 &amp; Submit to QA
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : null}
+                              {item.ootFlag ? (
+                                <div className="mt-2 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                                  OOT — Out of Trend
+                                </div>
+                              ) : null}
+                              {item.phase1Outcome ? (
+                                <div className="mt-2 rounded-xl border border-violet-100 bg-violet-50/50 px-3 py-2 text-[11px] text-violet-900">
+                                  <span className="font-semibold">Phase 1 outcome:</span>{" "}
+                                  {item.phase1Outcome === "NO_ASSIGNABLE_CAUSE" ? "No Assignable Cause → Phase 2 required" : "Invalid Result → Retest authorized"}
+                                  {item.retestSampleCount ? <span> ({item.retestSampleCount} samples)</span> : null}
+                                  {item.phase1CompletedBy ? <span className="ml-1 text-violet-600">by {item.phase1CompletedBy}</span> : null}
+                                </div>
+                              ) : null}
                               {item.phaseOneSummary ? (
                                 <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-700">
                                   <span className="font-semibold">Phase I summary:</span> {item.phaseOneSummary}
@@ -2151,6 +2497,9 @@ export function SamplingPage() {
                                 <div className="text-[11px] font-semibold text-slate-700">Audit Timeline</div>
                                 <div className="mt-2 space-y-2 text-[11px] text-slate-600">
                                   <div>Opened by {item.openedBy} on {new Date(item.openedAt).toLocaleString()}</div>
+                                  {item.phase1CompletedAt ? (
+                                    <div>Phase 1 completed ({item.phase1Outcome === "INVALID_RESULT" ? "Invalid Result" : "No Assignable Cause"}) by {item.phase1CompletedBy ?? "—"} on {new Date(item.phase1CompletedAt).toLocaleString()}</div>
+                                  ) : null}
                                   {item.phaseTwoEscalatedAt ? (
                                     <div>Escalated to Phase II by {item.phaseTwoEscalatedBy ?? "—"} on {new Date(item.phaseTwoEscalatedAt).toLocaleString()}</div>
                                   ) : null}

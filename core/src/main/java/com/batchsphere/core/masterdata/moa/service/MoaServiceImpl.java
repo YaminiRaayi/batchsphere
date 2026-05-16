@@ -13,6 +13,9 @@ import com.batchsphere.core.masterdata.moa.repository.MoaRepository;
 import com.batchsphere.core.masterdata.quality.dto.RejectRequest;
 import com.batchsphere.core.masterdata.quality.dto.ReviewSubmissionRequest;
 import com.batchsphere.core.masterdata.quality.enums.ReviewRoute;
+import com.batchsphere.core.qms.document.entity.ControlledDocument;
+import com.batchsphere.core.qms.document.entity.ControlledDocumentStatus;
+import com.batchsphere.core.qms.document.repository.ControlledDocumentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -26,6 +29,7 @@ import java.util.UUID;
 public class MoaServiceImpl implements MoaService {
 
     private final MoaRepository moaRepository;
+    private final ControlledDocumentRepository controlledDocumentRepository;
     private final AuthenticatedActorService authenticatedActorService;
 
     @Override
@@ -62,6 +66,7 @@ public class MoaServiceImpl implements MoaService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
+        applySopLink(moa, request.getSopDocumentId());
         return moaRepository.save(moa);
     }
 
@@ -106,6 +111,7 @@ public class MoaServiceImpl implements MoaService {
         moa.setSampleSolutionStabilityCondition(request.getSampleSolutionStabilityCondition());
         moa.setValidationStatus(resolveValidationStatus(request.getValidationStatus()));
         moa.setReviewRoute(resolveReviewRoute(request.getReviewRoute()));
+        applySopLink(moa, request.getSopDocumentId());
         moa.setUpdatedBy(actor);
         moa.setUpdatedAt(LocalDateTime.now());
 
@@ -226,5 +232,23 @@ public class MoaServiceImpl implements MoaService {
         }
         return moa.getValidationStatus() == MoaValidationStatus.VALIDATED
                 || moa.getValidationStatus() == MoaValidationStatus.VALIDATED_COMPENDIAL;
+    }
+
+    private void applySopLink(Moa moa, UUID sopDocumentId) {
+        if (sopDocumentId == null) {
+            moa.setSopDocumentId(null);
+            moa.setSopRevisionId(null);
+            moa.setSopDocumentNumber(null);
+            return;
+        }
+        ControlledDocument doc = controlledDocumentRepository.findByIdAndIsActiveTrue(sopDocumentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Controlled document not found: " + sopDocumentId));
+        if (doc.getStatus() != ControlledDocumentStatus.EFFECTIVE) {
+            throw new BusinessConflictException(
+                    "Linked SOP document must be EFFECTIVE. Current status: " + doc.getStatus());
+        }
+        moa.setSopDocumentId(doc.getId());
+        moa.setSopRevisionId(doc.getCurrentRevisionId());
+        moa.setSopDocumentNumber(doc.getDocumentNumber());
     }
 }

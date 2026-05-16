@@ -20,4 +20,9 @@ export type QmsAnalytics = {
   dueThisWeek: number;
   avgCapaClosureDays: number | null;
   capaAging: CapaAgingBuckets;
+  openChangeControls: number;
+  pendingCCApprovals: number;
+  overdueEffectivenessChecks: number;
+  documentsAwaitingReview: number;
+  overdueTrainingAssignments: number;
 };

@@ -2,7 +2,7 @@
 
 **Prepared:** 2026-05-11  
 **Inputs reviewed:** `BATCHSPHERE_PROJECT_STATUS_2026-04-30.md`, `IMPLEMENTATION_GAP_ANALYSIS.md`, `CODEX_IMPLEMENTATION_EXECUTION_PLAN.md`, `PHASE_6_PLAN_2026-05-11.md`, current code search through migrations V56-V66.  
-**Current baseline:** V74 `Training Assignment`; next new migration should be V75.
+**Current baseline:** V97 `create_approval_delegation`; V95 retention-sample migration is H2-compatible after removing the PostgreSQL-only UUID default.
 
 ---
 
@@ -35,14 +35,14 @@ Still genuinely open:
 
 | Area | Gap |
 |---|---|
-| QMS | Deviation MVP and CAPA MVP are implemented; Change Control is still open |
-| HRMS | No Employee entity or real user-to-employee model yet |
-| Document Control | Controlled document/revision/approval and distribution/acknowledgement MVPs implemented; MoA SOP revision linkage still pending |
-| Training | No SOP training assignment or training gate yet |
+| QMS | Deviation, CAPA workflow extensions, Change Control, Complaints, Risk Register, APQR auto-compilation, QP batch release, and lot traceability are implemented |
+| HRMS | Employee entity, user-to-employee linkage, training assignment foundation, and training gate enforcement are implemented |
+| Document Control | Controlled document/revision/approval, distribution/acknowledgement, review-date tracking, and MoA SOP revision linkage are implemented |
+| Training | Training assignment, role requirement foundation, and SOP/QC operation training gates are implemented |
 | Compliance UI | Implemented. `ESignatureDialog` and `AuditTimeline` reusable components built; wired into QC sampling, deviation, GRN, and document approval flows. |
 | Dashboard | Implemented. 5 live KPI cards: quarantine lots, pending sampling, open deviations, expiring inventory ≤30d, overdue VBU requalifications. All cards navigate to relevant module pages. |
-| LIMS | Instrument, standard, reagent, raw-data traceability not started |
-| Alerting | Should wait until HRMS/document/training ownership exists |
+| LIMS | Equipment/instrument qualification foundation implemented; retention samples implemented; standards, reagents, raw-data traceability still open |
+| Alerting | CAPA escalation alerts implemented; broader notification bell remains future polish |
 
 ---
 
@@ -190,7 +190,7 @@ Status: implemented for current backend guard coverage. Added focused coverage f
   - missing approved spec blocked
   - approved material-source combination passes
 - Inventory issue and QC worksheet gate coverage already exists in the current backend test suite.
-- Browser E2E coverage for blocked GRN cases is parked under Ticket 6A.4.
+- Browser E2E coverage for GRN happy path and role-blocked access is active; deeper blocked-GRN matrix can expand during regression polish.
 
 Ticket 6A.3: VBU Qualification Consistency Fix
 
@@ -201,7 +201,7 @@ Status: backend rule covered by integration test; current UI code refreshes the 
 
 Ticket 6A.4: E2E Stabilization For Inbound Compliance
 
-Status: not implemented.
+Status: Implemented (2026-05-15) — overview happy path no longer uses the direct VBU qualification API helper; browser flow uses the site qualification action and verifies the qualified state. Existing GRN/auth specs cover role-blocked access and core GRN creation/receive/document/cancel flows.
 
 - Remove test-only API workarounds from inbound happy-path E2E where the browser flow should now support the same behavior.
 - Verify VBU qualification updates correctly from the browser flow after audit approval or qualification action.
@@ -377,7 +377,7 @@ Status: implemented.
 
 Ticket 6B.8: CAPA Escalation Alerts
 
-Status: not implemented. Recommended after HRMS ownership and alert/notification foundation.
+Status: Implemented (2026-05-15) — `GET /api/capas/alerts` computes due-soon, overdue, and overdue-effectiveness alerts; CAPA summary includes alert counts; CAPA board shows escalation alert cards.
 
 - Add due-soon and overdue escalation rules.
 - Escalate to owner, owner manager, and QA/QC manager based on thresholds.
@@ -656,7 +656,7 @@ Status: implemented.
 
 Ticket 6G.1: Fix Pre-Existing Backend Compile Errors
 
-Status: not implemented.
+Status: implemented. Backend compiles clean and the existing backend test suite passes with 97 tests.
 
 Regulatory basis: Blocker. Backend compile failures prevent running integration tests that validate safety guards — a prerequisite for pharma audit readiness.
 
@@ -676,7 +676,7 @@ Done means:
 
 Ticket 6G.2: Audit Timeline Wiring — CAPA and Change Control
 
-Status: not implemented.
+Status: implemented. CAPA and Change Control detail pages show audit timelines; CAPA transitions already record audit events; Change Control task and affected-entity actions now record audit events; focused integration coverage verifies CAPA approval and Change Control closure are visible through `/api/audit-events`.
 
 Regulatory basis: FDA 21 CFR Part 11 §11.10(e) requires computer-generated, time-stamped audit trails for all CAPA records and controlled change records. `AuditTimeline` component exists and is wired to deviation, sampling, GRN, and documents — but CAPA detail and Change Control detail are missing it.
 
@@ -702,7 +702,7 @@ Done means:
 
 Ticket 6G.3: Dashboard QMS/Compliance KPI Expansion
 
-Status: not implemented.
+Status: implemented. `/api/qms/analytics` now returns open change controls, pending CC approvals, overdue CAPA effectiveness checks, documents awaiting review, and overdue training assignments. Dashboard cards are wired for QMS health and training, and focused integration coverage verifies the new analytics counts.
 
 Regulatory basis: FDA QSIT and EU GMP Chapter 1 require management review of quality metrics. Current dashboard shows inbound/inventory KPIs but does not surface QMS operational health metrics that a QC Manager needs daily.
 
@@ -711,7 +711,7 @@ Backend:
   - `openChangeControls`: count of change controls not in `CLOSED` or `CANCELLED`
   - `pendingCCApprovals`: count of change controls in `UNDER_REVIEW`
   - `overdueEffectivenessChecks`: count of CAPAs in `EFFECTIVENESS_CHECK` with `effectivenessReviewDate < today`
-  - `documentsAwaitingReview`: count of `ControlledDocument` records where `nextReviewDate ≤ today` (once Ticket 6G.4 adds the field)
+  - `documentsAwaitingReview`: count of `ControlledDocument` records where `nextReviewDate ≤ today`
   - `overdueTrainingAssignments`: count of `TrainingAssignment` records past `dueDate` with status not `COMPLETED`
 - Compute counts from existing repositories; no new migration needed.
 
@@ -734,7 +734,7 @@ Done means:
 
 Ticket 6G.4: Document Review Date Tracking
 
-Status: not implemented.
+Status: Implemented (2026-05-15) — V80/V72-era document review fields exist; `ControlledDocumentController` exposes `/api/documents/due-for-review`; `DocumentsPage` shows review status and due-for-review data.
 
 Regulatory basis: EU GMP Chapter 4.7 states documents must be reviewed and updated periodically. SOPs past their review date are effectively uncontrolled documents under GMP. FDA 211.68 requires regular review of lab records procedures.
 
@@ -765,7 +765,7 @@ Done means:
 
 Ticket 6G.5: GRN Rejection → Deviation Auto-Creation
 
-Status: not implemented.
+Status: Implemented (2026-05-15) — V91 `add_grn_linked_deviation`, `GrnServiceImpl` auto-creates linked GRN deviations, GRN DTO/UI show `linkedDeviationId`/`linkedDeviationNumber`, and traceability includes linked deviation data.
 
 Regulatory basis: EU GMP Chapter 6.14 requires that material rejection events be investigated and documented. Manual deviation creation after a GRN rejection creates a traceability gap — the investigation record must be automatically linked to the triggering event.
 
@@ -798,7 +798,7 @@ Done means:
 
 Ticket 6G.6: MoA → Controlled SOP Document Linkage
 
-Status: not implemented. Deferred from 6D.2.
+Status: Implemented (2026-05-15) — V92 `add_moa_sop_document_link`, `Moa` entity/DTO/service support `sopDocumentId` and SOP document metadata, and `SpecMoaPage` exposes SOP document linkage.
 
 Regulatory basis: EU GMP Chapter 6.9 requires QC test methods to reference approved analytical procedures. An MoA without a link to its controlling analytical SOP is a traceability gap under GMP inspection.
 
@@ -829,7 +829,7 @@ Done means:
 
 Ticket 6G.7: Training Gate Enforcement for Sampling and QC Operations
 
-Status: not implemented. Training assignment infrastructure exists from 6E.1.
+Status: Implemented (2026-05-15) — `TrainingGateService.assertTrainedForRequirement` wired into `SamplingServiceImpl` at startSampling (SAMPLING_SOP), enterQcResult (QC_ANALYST_TRAINING), finalDisposition (QC_MANAGER_QUALIFICATION). Training gate error propagates to frontend via BusinessConflictException.
 
 Regulatory basis: EU GMP Chapter 2.8–2.9 and FDA 211.68 require that personnel performing regulated operations are qualified for those operations. `TrainingAssignment` and `RoleQualificationRequirement` records exist but no enforcement gate blocks an untrained analyst from starting sampling or entering QC results.
 
@@ -860,7 +860,7 @@ Done means:
 
 Ticket 6G.8: OOS/OOT Investigation Two-Phase Workflow
 
-Status: not implemented.
+Status: Implemented (2026-05-15) — V93 migration adds phase columns to qc_investigation; CompletePhase1Request/CompletePhase2Request DTOs; QcPhase1Outcome enum; phase1/phase2 endpoints in SamplingController; phase 1 + phase 2 UI panels in SamplingPage with oot_flag toggle.
 
 Regulatory basis: FDA OOS Guidance (2006) and EU GMP Chapter 6.15–6.18 define a mandatory two-phase investigation for Out-of-Specification results. Phase 1 is the laboratory investigation (instrument, analyst, calculation errors). Phase 2 is the full investigation (batch, process, raw materials). Current `QcInvestigation` is a single-step record with no phase structure, which does not meet the FDA OOS procedure requirement.
 
@@ -904,7 +904,7 @@ Done means:
 
 Ticket 6G.9: Lot/Batch Traceability View
 
-Status: not implemented.
+Status: Implemented (2026-05-15) — `GET /api/lots/{searchKey}/traceability` searches by GRN number or vendor batch and returns GRN receipt, CoA review, sampling, QC worksheet/results, disposition, inventory transactions, deviations, CAPAs, and a chronological timeline. Frontend page `/qms/traceability` exists with search, timeline, status badges, and source navigation.
 
 Regulatory basis: EU GMP Annex 15 and FDA 211.188 require that for any lot, the complete material history from receipt to disposition be reconstructable. Currently no single view shows a lot's full journey without navigating across 4–5 separate module pages.
 
@@ -941,7 +941,7 @@ Done means:
 
 Ticket 6G.10: Change Control Affected Entity Navigation and Display
 
-Status: not implemented.
+Status: Implemented (2026-05-15) — V94 `add_cc_affected_entity_display_fields`, `ChangeControlServiceImpl` resolves display names/numbers/navigation paths, response DTO includes them, and `ChangeControlPage` renders readable affected-entity labels/links.
 
 Regulatory basis: EU GMP Chapter 13 requires each change record to explicitly identify the controlled items being changed. Currently `ChangeControlAffectedEntity` stores only `affectedEntityType` (enum) and `affectedEntityId` (raw VARCHAR). There are no human-readable names and no navigation links — raw UUIDs are not inspection-readable.
 
@@ -1030,23 +1030,23 @@ Reason: this protects the working inbound/QC flow first, then introduces QMS whe
 
 ### Per-Ticket Effort Estimates
 
-| Ticket | Description | Working Days |
+| Ticket | Description / status | Working Days |
 |---|---|---|
-| 6G.1 | Fix pre-existing compile errors | 2 |
-| 6G.2 | Audit timeline wiring — CAPA + Change Control | 4 |
-| 6H.1 | ALCOA+ data integrity (data lock, SecurityAuditEvent, TIMESTAMPTZ, e-sig) | 10 |
-| Sec 1.1 | Frontend session timeout (idle timer, modal, 21 CFR Part 11) | 3 |
-| Sec 1.2 | TOTP MFA (backend TOTP entity + controller, login step 2, Annex 11) | 5 |
-| Rep 2.1 | PDF export — 5 pharma report templates (OpenPDF) | 5 |
-| Rep 2.2 | CSV export — `?format=csv` on all list endpoints | 3 |
-| 6G.7 | Training gate enforcement before sampling/QC | 5 |
-| 6G.8 | OOS/OOT two-phase investigation workflow | 5 |
-| 6H.3 | Complaint and product defect management (EU GMP Ch.8) | 10 |
-| 6H.4 | Equipment/instrument qualification IQ/OQ/PQ (Annex 15) | 8 |
-| 7.4 | QP batch release + batch certificate (Annex 16) | 5 |
-| 6G.9 | Lot/batch traceability view (recall readiness) | 5 |
-| 7.1 | ICH Q9 risk management FMEA register | 8 |
-| 7.2 | Annual Product Quality Review — auto-compiled (ICH Q10) | 10 |
+| 6G.1 | Fix pre-existing compile errors — implemented | 2 |
+| 6G.2 | Audit timeline wiring — CAPA + Change Control — implemented | 4 |
+| 6H.1 | ALCOA+ data integrity (data lock, SecurityAuditEvent, TIMESTAMPTZ, e-sig) — implemented | 10 |
+| Sec 1.1 | Frontend session timeout (idle timer, modal, 21 CFR Part 11) — implemented | 3 |
+| Sec 1.2 | TOTP MFA (backend TOTP entity + controller, login step 2, Annex 11) — implemented | 5 |
+| Rep 2.1 | PDF export — 5 pharma report templates (OpenPDF) — implemented | 5 |
+| Rep 2.2 | CSV export — `?format=csv` on all list endpoints — implemented | 3 |
+| 6G.7 | Training gate enforcement before sampling/QC — implemented | 5 |
+| 6G.8 | OOS/OOT two-phase investigation workflow — implemented | 5 |
+| 6H.3 | Complaint and product defect management (EU GMP Ch.8) — implemented | 10 |
+| 6H.4 | Equipment/instrument qualification IQ/OQ/PQ (Annex 15) — implemented | 8 |
+| 7.4 | QP batch release + batch certificate (Annex 16) — implemented | 5 |
+| 6G.9 | Lot/batch traceability view (recall readiness) — implemented | 5 |
+| 7.1 | ICH Q9 risk management FMEA register — implemented | 8 |
+| 7.2 | Annual Product Quality Review — auto-compiled (ICH Q10) — implemented | 10 |
 | Buffer | Bug fixes, cross-module integration, code review, QA testing | 14 |
 | **Total** | | **107 working days** |
 
@@ -1097,13 +1097,13 @@ Build after Month 1+2 foundation is stable and tested.
 
 | Item | Reason deferred |
 |---|---|
-| 7.3 Supplier Quality Agreement | Useful but not audit-blocking in v1 |
-| 6G.4 Document review date tracking | Lower inspector priority |
-| 6G.5 GRN rejection → deviation auto-link | Convenience, not compliance gap |
-| 6G.6 MoA → SOP linkage | Low audit risk |
-| 6G.10 Change Control FK navigation | UX improvement, not compliance |
-| Sec 1.3 Password policy | Cover with MFA in v1 |
-| Sec 1.4 Approval delegation | v1.1 |
+| 7.3 Supplier Quality Agreement | Implemented on 2026-05-15; keep supplier-detail tab polish as future UX work |
+| 6G.4 Document review date tracking | Implemented on 2026-05-15 |
+| 6G.5 GRN rejection → deviation auto-link | Implemented on 2026-05-15 |
+| 6G.6 MoA → SOP linkage | Implemented on 2026-05-15 |
+| 6G.10 Change Control FK navigation | Implemented on 2026-05-15 |
+| Sec 1.3 Password policy | Implemented on 2026-05-15 |
+| Sec 1.4 Approval delegation | Implemented on 2026-05-15 |
 | UX improvements 3.x | Post-launch polish |
 | Architecture improvements 4.x | Post-launch |
 | Performance improvements 5.x | Post-launch |
@@ -1119,3 +1119,811 @@ Every ticket ships with all of the following before marking done:
 5. Role-gating verified (unauthorized role returns 403)
 6. Audit event fires on every state-changing action
 7. E-signature captured where action is irreversible (disposition, certification, approval)
+
+---
+
+## 8. Phase 6H — Global Pharma Guidelines Compliance Gaps
+
+**Regulatory sources:** FDA Data Integrity Guidance (2018), EU GMP Annex 15, EU GMP Annex 19, EU GMP Chapter 8, FDA 21 CFR 211.198
+**Migration baseline entering Phase 6H:** V83 (last 6G migration)
+
+---
+
+### Ticket 6H.1: ALCOA+ Data Integrity Controls
+
+**Status:** Implemented (2026-05-15) — data lock + 423 on QcTestResult post-disposition, DATA_AMENDMENT e-sign workflow, SecurityAuditEvent entity/service/controller, `/api/audit/security-events`, `hibernate.jdbc.time_zone=UTC`, rootCause ≥20 chars + correctiveAction ≥30 chars + investigation reason ≥20 chars enforced, frontend locked-field UI, SecurityAuditPage at `/admin/security-audit`, char count helpers on all ALCOA+ free-text fields.
+**Priority:** High — FDA inspectors cite data integrity violations as the #1 reason for Warning Letters.
+**Migration:** None (entity field + service logic only)
+
+#### Regulatory Basis
+
+FDA Data Integrity Guidance (2018) and EU GMP Chapter 4 require all GMP records to follow ALCOA+ principles: Attributable, Legible, Contemporaneous, Original, Accurate, Complete, Consistent, Enduring, Available.
+
+#### Backend
+
+**Data lock after QC disposition:**
+- After a `SamplingRequest` reaches `RELEASED` or `REJECTED` disposition, block any `PUT` on `QcTestResult` records linked to that sampling request.
+- Only `QC_MANAGER` or `SUPER_ADMIN` can unlock with written justification; create audit event `DATA_AMENDMENT` with justification text and e-sign.
+- Add `isLocked: boolean` to `QcTestResult` entity; set true on disposition finalize.
+- Return `423 Locked` with message `"QC results are locked after disposition. Contact QC Manager to amend."` if non-authorized edit attempted.
+
+**Security / session audit log:**
+- Add `SecurityAuditEvent` entity: `eventType` enum (`LOGIN`, `LOGOUT`, `LOGIN_FAILED`, `SESSION_TIMEOUT`, `PASSWORD_CHANGED`, `ACCOUNT_LOCKED`, `ACCOUNT_UNLOCKED`), `username`, `ipAddress`, `userAgent`, `sessionId`, `timestamp`.
+- Record events in `AuthController` for login/fail and in Spring Security logout handler for logout.
+- Add `GET /api/audit/security-events?username=&from=&to=` endpoint (SUPER_ADMIN only).
+
+**Timezone-aware timestamps:**
+- Audit all Flyway migrations V1–V83: confirm all `TIMESTAMP` columns are `TIMESTAMPTZ`.
+- For any plain `TIMESTAMP` column found: create corrective migration `Vxx__fix_timestamp_timezone.sql`.
+- Spring Boot JPA: set `spring.jpa.properties.hibernate.jdbc.time_zone=UTC` in `application.yaml`.
+
+**Free-text field minimum length validation:**
+- `Deviation.rootCause` — minimum 20 characters when status moves past `OPEN`.
+- `Capa.correctiveAction` — minimum 30 characters on create.
+- `QcInvestigation.description` — minimum 20 characters.
+- Enforce in service layer with `BusinessConflictException` for too-short critical fields.
+
+#### Frontend
+
+- QC test result entry: disable edit fields on results where `isLocked = true`; show lock icon with tooltip "Results locked after disposition. Amendment requires QC Manager authorization."
+- Security events log: SUPER_ADMIN page at `/admin/security-audit` — table of login/logout/fail events with date, user, IP, event type filter.
+- Validation: show character count helper below free-text mandatory fields; show red border if under minimum on submit attempt.
+
+#### Tests
+
+- `PUT /api/sampling/{id}/results/{resultId}` returns 423 after disposition is finalized.
+- `QC_MANAGER` with justification + e-sign can amend a locked result; audit event `DATA_AMENDMENT` created.
+- Unauthorized role attempting amendment gets 403.
+- Login event appears in security audit log.
+- Failed login increments `failedLoginAttempts` and appears in security log.
+
+#### Done Means
+
+- QC test results are immutable after disposition without QA-authorized data amendment trail.
+- Every login, logout, and failed login is recorded with IP and timestamp.
+- Timezone-aware timestamps throughout all audit records.
+- Critical GMP free-text fields cannot be submitted with placeholder content.
+
+---
+
+### Ticket 6H.2: Retention Sample Lifecycle Management
+
+**Status:** Implemented (2026-05-15) — V95 migration, `lims/retentionsample` backend, RetentionSamplePage + RetentionSampleDetailPage frontend.
+**Priority:** High — EU GMP Annex 19 compliance gap visible in any sampling audit.
+**Migration:** `V95__create_retention_sample.sql`
+
+#### Regulatory Basis
+
+EU GMP Annex 19 requires retention (reference) samples kept for each batch: minimum 2× full test quantity, storage location tracked, retention period = expiry + 12 months minimum, chain of custody, retrieval and testing records, disposal record.
+
+#### Migration SQL
+
+```sql
+CREATE TABLE retention_sample (
+  id UUID PRIMARY KEY,
+  sampling_request_id UUID NOT NULL REFERENCES sampling_request(id),
+  lot_number VARCHAR(100) NOT NULL,
+  material_id UUID REFERENCES material(id),
+  material_name VARCHAR(255),
+  quantity NUMERIC(14,4) NOT NULL,
+  uom VARCHAR(20) NOT NULL,
+  container_description VARCHAR(255),
+  storage_location VARCHAR(255) NOT NULL,
+  storage_condition VARCHAR(100),
+  retention_until DATE NOT NULL,
+  status VARCHAR(30) NOT NULL DEFAULT 'STORED',  -- STORED, RETRIEVED, TESTED, DISPOSED
+  received_by VARCHAR(100) NOT NULL,
+  received_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  retrieval_reason TEXT,
+  retrieved_by VARCHAR(100),
+  retrieved_at TIMESTAMP WITH TIME ZONE,
+  test_result_reference VARCHAR(255),
+  disposal_reason TEXT,
+  disposed_by VARCHAR(100),
+  disposed_at TIMESTAMP WITH TIME ZONE,
+  disposal_method VARCHAR(100),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_by VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_by VARCHAR(100),
+  updated_at TIMESTAMP WITH TIME ZONE
+);
+```
+
+#### Backend
+
+**Package:** `lims/retentionsample`
+
+DTOs: `CreateRetentionSampleRequest`, `RetrieveRetentionSampleRequest`, `DisposeRetentionSampleRequest`, `RetentionSampleResponse` (with computed `daysUntilExpiry`).
+
+Service — `RetentionSampleService` / `RetentionSampleServiceImpl`:
+- `createRetentionSample(request)`: validate `samplingRequestId` has RETENTION draw. Auto-calculate `retentionUntil` = material expiry + 12 months if not provided. Record audit event.
+- `retrieveSample(id, request)`: set status `RETRIEVED`, record actor, reason, timestamp. Audit event.
+- `disposeSample(id, request)`: set status `DISPOSED`. Require `QC_MANAGER` role. Audit event.
+- `findDueForDisposal()`: samples where `retentionUntil < today` and status `STORED`.
+- `findExpiringSoon(daysAhead)`: samples where `retentionUntil <= today + daysAhead`.
+
+API — `/api/retention-samples`:
+- `GET /api/retention-samples?status=&materialId=&lotNumber=`
+- `POST /api/retention-samples`
+- `GET /api/retention-samples/{id}`
+- `POST /api/retention-samples/{id}/retrieve`
+- `POST /api/retention-samples/{id}/dispose`
+- `GET /api/retention-samples/expiring-soon?days=30`
+
+#### Frontend
+
+Route: `/lims/retention-samples` | Mockup: `core/ux-mockups/14-retention-samples.html`
+
+List: lot number, material, storage location, quantity, retention until, status pill, days remaining (green >60d, amber 30–60d, red <30d).
+KPI strip: Total Stored, Expiring 30d, Overdue Disposal, Retrieved This Month.
+Detail: storage section, lifecycle timeline (Stored → Retrieved → Disposed), "Record Retrieval" and "Record Disposal" actions, `<AuditTimeline entityType="RETENTION_SAMPLE" entityId={...} />`.
+
+#### Tests
+
+- `POST /api/retention-samples` creates linked to valid sampling request with RETENTION draw.
+- Retrieval sets status `RETRIEVED` with actor and reason.
+- Disposal restricted to `QC_MANAGER` role.
+- `expiring-soon?days=30` returns samples within 30 days of `retentionUntil`.
+
+#### Done Means
+
+- Every batch's retention samples tracked from storage through retrieval to disposal.
+- Overdue retention samples surface in dashboard. Annex 19 chain of custody is auditable.
+
+---
+
+### Ticket 6H.3: Complaint and Product Defect Management
+
+**Status:** Implemented (2026-05-14) — V82 migration, `qms/complaint` backend, ComplaintListPage + ComplaintDetailPage frontend.
+**Priority:** High — EU GMP Chapter 8 is one of the first areas an inspector reviews. Absence = critical finding.
+**Migration:** `V85__create_complaint_management.sql`
+
+#### Regulatory Basis
+
+EU GMP Chapter 8 and FDA 21 CFR 211.198 require: written procedure for product complaints, classification (quality defect/adverse event/labeling error/packaging defect), investigation with root cause and recall consideration, regulatory reporting decision, link to deviation/CAPA, trending.
+
+#### Migration SQL
+
+```sql
+CREATE TYPE complaint_source AS ENUM ('CUSTOMER', 'MARKET', 'CLINICAL', 'INTERNAL', 'DISTRIBUTOR', 'REGULATORY_AUTHORITY');
+CREATE TYPE complaint_category AS ENUM ('PRODUCT_QUALITY', 'ADVERSE_EVENT', 'LABELING_ERROR', 'PACKAGING_DEFECT', 'EFFICACY', 'CONTAMINATION', 'OTHER');
+CREATE TYPE complaint_severity AS ENUM ('CRITICAL', 'MAJOR', 'MINOR', 'INFORMATIONAL');
+CREATE TYPE complaint_status AS ENUM ('RECEIVED', 'UNDER_INVESTIGATION', 'PENDING_CLOSURE', 'CLOSED', 'WITHDRAWN');
+CREATE TYPE regulatory_reportability AS ENUM ('NOT_ASSESSED', 'REPORTABLE', 'NOT_REPORTABLE', 'REPORTED');
+
+CREATE TABLE complaint (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  complaint_number VARCHAR(30) UNIQUE NOT NULL,
+  received_date DATE NOT NULL,
+  source complaint_source NOT NULL,
+  category complaint_category NOT NULL,
+  severity complaint_severity NOT NULL,
+  status complaint_status NOT NULL DEFAULT 'RECEIVED',
+  product_name VARCHAR(255),
+  lot_number VARCHAR(100),
+  reported_by VARCHAR(255),
+  description TEXT NOT NULL,
+  initial_assessment TEXT,
+  root_cause TEXT,
+  impact_assessment TEXT,
+  recall_required BOOLEAN DEFAULT FALSE,
+  regulatory_reportability regulatory_reportability DEFAULT 'NOT_ASSESSED',
+  regulatory_report_date DATE,
+  regulatory_authority VARCHAR(100),
+  linked_deviation_id UUID REFERENCES qms_deviation(id),
+  linked_capa_id UUID REFERENCES qms_capa(id),
+  closed_by VARCHAR(100),
+  closed_at TIMESTAMP WITH TIME ZONE,
+  closure_summary TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_by VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_by VARCHAR(100),
+  updated_at TIMESTAMP WITH TIME ZONE
+);
+```
+
+#### Backend
+
+**Package:** `qms/complaint`
+
+Enums: `ComplaintSource`, `ComplaintCategory`, `ComplaintSeverity`, `ComplaintStatus`, `RegulatoryReportability`
+
+DTOs: `CreateComplaintRequest`, `UpdateComplaintRequest`, `LinkComplaintRequest`, `CloseComplaintRequest` (with e-sign fields), `ComplaintResponse`, `ComplaintSummary`.
+
+Service — `ComplaintService` / `ComplaintServiceImpl`:
+- Auto-generate `complaintNumber` = `"COMP-" + year + "-" + sequence`.
+- `linkToDeviation(complaintId, deviationId)`: validate deviation exists; add audit event.
+- `linkToCapa(complaintId, capaId)`: similar.
+- `closeComplaint(complaintId, request)`: require e-sign, set status `CLOSED`.
+- `getSummary()`: counts by status/category/severity for dashboard.
+
+API — `/api/complaints`:
+- `GET /api/complaints?status=&category=&severity=&from=&to=`
+- `POST /api/complaints`
+- `GET /api/complaints/{id}`
+- `PUT /api/complaints/{id}`
+- `PUT /api/complaints/{id}/status`
+- `POST /api/complaints/{id}/link-deviation`
+- `POST /api/complaints/{id}/link-capa`
+- `GET /api/complaints/summary`
+
+#### Frontend
+
+Route: `/qms/complaints` | Mockup: `core/ux-mockups/12-complaint-management.html`
+
+List: KPI strip (Total Open, Critical, Under Investigation, Regulatory Reportable), filters (source/category/severity/status/date range), table with complaint number/date/source/category/severity/status/product-lot/linked deviation.
+Detail: overview, investigation section (root cause, impact, recall flag, regulatory reportability), linked records (deviation + CAPA navigate buttons), e-sign closure, audit timeline.
+
+#### Tests
+
+- `POST /api/complaints` creates with auto-generated `complaintNumber`.
+- Closure requires e-sign.
+- Link to non-existent deviation returns 404.
+- `GET /api/complaints/summary` returns correct counts.
+- `QC_ANALYST` can create; `QC_MANAGER` can close.
+
+#### Done Means
+
+- Every product complaint has traceable investigation record. Links to deviations and CAPAs. Regulatory reportability documented. EU GMP Chapter 8 enforced.
+
+---
+
+### Ticket 6H.4: Equipment and Instrument Qualification (IQ/OQ/PQ)
+
+**Status:** Implemented (2026-05-14) — V83 migration, `lims/equipment` backend, EquipmentPage + EquipmentDetailPage frontend.
+**Priority:** Medium-High — prerequisite for LIMS Phase 8 and Annex 15 compliance.
+**Migration:** `V86__create_equipment_qualification.sql`
+
+#### Regulatory Basis
+
+EU GMP Annex 15 requires all QC equipment formally qualified: IQ (Installation), OQ (Operational), PQ (Performance Qualification). Requalification required after significant maintenance, relocation, or failure. Calibration certificates tracked for expiry.
+
+#### Migration SQL
+
+```sql
+CREATE TYPE equipment_type AS ENUM (
+  'BALANCE', 'HPLC', 'GC', 'UV_SPECTROPHOTOMETER', 'IR_SPECTROPHOTOMETER',
+  'DISSOLUTION', 'PARTICLE_SIZE', 'KF_TITRATOR', 'PH_METER', 'TOC_ANALYZER',
+  'STABILITY_CHAMBER', 'REFRIGERATOR', 'AUTOCLAVE', 'LAB_COMPUTER', 'OTHER'
+);
+CREATE TYPE equipment_status AS ENUM ('ACTIVE', 'UNDER_MAINTENANCE', 'RETIRED', 'PENDING_QUALIFICATION');
+CREATE TYPE qualification_type AS ENUM ('IQ', 'OQ', 'PQ', 'REQUALIFICATION', 'CALIBRATION');
+CREATE TYPE qualification_result AS ENUM ('PASS', 'FAIL', 'CONDITIONAL_PASS', 'PENDING');
+
+CREATE TABLE equipment (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  equipment_id VARCHAR(50) UNIQUE NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  equipment_type equipment_type NOT NULL,
+  manufacturer VARCHAR(255),
+  model VARCHAR(255),
+  serial_number VARCHAR(100),
+  location VARCHAR(255) NOT NULL,
+  status equipment_status NOT NULL DEFAULT 'PENDING_QUALIFICATION',
+  installation_date DATE,
+  last_qualification_date DATE,
+  next_qualification_due DATE,
+  last_calibration_date DATE,
+  next_calibration_due DATE,
+  calibration_interval_months INT DEFAULT 12,
+  responsible_analyst VARCHAR(100),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_by VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_by VARCHAR(100),
+  updated_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE equipment_qualification_record (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  equipment_id UUID NOT NULL REFERENCES equipment(id),
+  qualification_type qualification_type NOT NULL,
+  protocol_reference VARCHAR(255) NOT NULL,
+  protocol_document_id UUID REFERENCES controlled_document(id),
+  performed_by VARCHAR(100) NOT NULL,
+  performed_at DATE NOT NULL,
+  reviewed_by VARCHAR(100),
+  reviewed_at DATE,
+  result qualification_result NOT NULL DEFAULT 'PENDING',
+  deviation_noted TEXT,
+  next_requalification_due DATE,
+  calibration_certificate_number VARCHAR(255),
+  calibration_certificate_expiry DATE,
+  report_document_id UUID REFERENCES controlled_document(id),
+  e_signature_id UUID,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_by VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
+);
+```
+
+#### Backend
+
+**Package:** `lims/equipment`
+
+Entities: `Equipment`, `EquipmentQualificationRecord`
+
+DTOs: `CreateEquipmentRequest`, `UpdateEquipmentRequest`, `CreateQualificationRecordRequest`, `EquipmentResponse` (with `calibrationOverdue`, `qualificationOverdue`, `daysUntilCalibrationDue`), `EquipmentSummary`.
+
+Service — `EquipmentService` / `EquipmentServiceImpl`:
+- Auto-generate `equipmentId` = `"EQ-" + type abbreviation + "-" + sequence`.
+- Approved PQ record (PASS): update `lastQualificationDate`, `nextQualificationDue`, set status `ACTIVE`.
+- Failed qualification: set status `UNDER_MAINTENANCE`.
+- `findCalibrationDueSoon(days)`, `findQualificationDueSoon(days)` for dashboard alerts.
+
+API — `/api/equipment`:
+- `GET /api/equipment?status=&type=`
+- `POST /api/equipment`
+- `GET /api/equipment/{id}`
+- `PUT /api/equipment/{id}`
+- `GET /api/equipment/{id}/qualifications`
+- `POST /api/equipment/{id}/qualifications`
+- `PUT /api/equipment/{id}/qualifications/{qrId}`
+- `GET /api/equipment/summary`
+
+#### Frontend
+
+Route: `/lims/equipment` | Mockup: `core/ux-mockups/15-equipment-qualification.html`
+
+List: KPI strip (Total Active, Calibration Due 30d, Qualification Due, Under Maintenance), color-coded rows (red = overdue, amber = due within 30d).
+Detail: equipment specs, Qualification History tab (IQ/OQ/PQ records with result/date/protocol), Calibration tab (certificate number/expiry/doc link), "Add Qualification Record" (QC_MANAGER only), audit timeline.
+
+#### Tests
+
+- `POST /api/equipment` creates with auto-generated equipment ID.
+- Approved PQ record updates `equipment.status` to `ACTIVE` and sets `nextQualificationDue`.
+- Failed qualification sets status to `UNDER_MAINTENANCE`.
+- `GET /api/equipment/summary` returns correct overdue counts.
+
+#### Done Means
+
+- Every QC instrument has traceable IQ/OQ/PQ history. Calibration due dates surfaced in dashboard. Links to controlling SOPs via `ControlledDocument`. EU GMP Annex 15 met.
+
+---
+
+## 9. Phase 7 — Advanced QMS Modules
+
+**Regulatory sources:** ICH Q9, ICH Q10, PIC/S PE 009, WHO TRS 957, EU GMP Annex 16, FDA 21 CFR 211.188
+**Prerequisites:** Phase 6G and 6H stable. Employee, document control, deviation, CAPA modules fully wired.
+**Migration baseline entering Phase 7:** V86 was planned; actual code now has V84 Risk Assessment and V88 APQR. Next new migration should be V89.
+
+---
+
+### Ticket 7.1: ICH Q9 Quality Risk Management — FMEA and Risk Register
+
+**Status:** Implemented (2026-05-14) — V84 migration, `qms/riskassessment` backend, RiskRegisterPage + RiskAssessmentDetailPage frontend.
+**Priority:** High — ICH Q9 adopted by FDA (2006) and EU GMP. Inspectors ask how risk is formally managed.
+**Migration:** `V87__create_risk_assessment.sql`
+
+#### Regulatory Basis
+
+ICH Q9 FMEA: Probability × Severity × Detectability = RPN (max 125). Threshold ≥ 50 = mandatory action. Scales 1–5 each.
+
+#### Migration SQL
+
+```sql
+CREATE TYPE risk_assessment_status AS ENUM ('DRAFT', 'UNDER_REVIEW', 'ACCEPTED', 'CLOSED');
+CREATE TYPE risk_assessment_scope AS ENUM ('PROCESS', 'PRODUCT', 'EQUIPMENT', 'SUPPLIER', 'SYSTEM', 'MATERIAL', 'CHANGE_CONTROL', 'OTHER');
+CREATE TYPE risk_control_type AS ENUM ('ELIMINATE', 'REDUCE_PROBABILITY', 'REDUCE_SEVERITY', 'INCREASE_DETECTABILITY', 'ACCEPT');
+
+CREATE TABLE risk_assessment (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  assessment_number VARCHAR(30) UNIQUE NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  scope risk_assessment_scope NOT NULL,
+  scope_entity_type VARCHAR(50),
+  scope_entity_id UUID,
+  scope_entity_display VARCHAR(255),
+  status risk_assessment_status NOT NULL DEFAULT 'DRAFT',
+  methodology VARCHAR(50) DEFAULT 'FMEA',
+  prepared_by VARCHAR(100) NOT NULL,
+  reviewed_by VARCHAR(100),
+  accepted_by VARCHAR(100),
+  accepted_at TIMESTAMP WITH TIME ZONE,
+  acceptance_e_signature_id UUID,
+  next_review_date DATE,
+  residual_risk_acceptable BOOLEAN,
+  overall_risk_conclusion TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_by VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_by VARCHAR(100),
+  updated_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE TABLE risk_item (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  risk_assessment_id UUID NOT NULL REFERENCES risk_assessment(id),
+  sequence_number INT NOT NULL,
+  process_step VARCHAR(255),
+  failure_mode TEXT NOT NULL,
+  failure_effect TEXT NOT NULL,
+  failure_cause TEXT NOT NULL,
+  current_controls TEXT,
+  probability INT NOT NULL CHECK (probability BETWEEN 1 AND 5),
+  severity INT NOT NULL CHECK (severity BETWEEN 1 AND 5),
+  detectability INT NOT NULL CHECK (detectability BETWEEN 1 AND 5),
+  rpn INT GENERATED ALWAYS AS (probability * severity * detectability) STORED,
+  risk_control_type risk_control_type,
+  proposed_action TEXT,
+  action_owner VARCHAR(100),
+  action_due_date DATE,
+  linked_capa_id UUID REFERENCES qms_capa(id),
+  residual_probability INT CHECK (residual_probability BETWEEN 1 AND 5),
+  residual_severity INT CHECK (residual_severity BETWEEN 1 AND 5),
+  residual_detectability INT CHECK (residual_detectability BETWEEN 1 AND 5),
+  residual_rpn INT GENERATED ALWAYS AS (
+    COALESCE(residual_probability, probability) *
+    COALESCE(residual_severity, severity) *
+    COALESCE(residual_detectability, detectability)
+  ) STORED,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_by VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_by VARCHAR(100),
+  updated_at TIMESTAMP WITH TIME ZONE
+);
+```
+
+#### Backend
+
+**Package:** `qms/riskassessment`
+
+DTOs: `CreateRiskAssessmentRequest`, `CreateRiskItemRequest`, `UpdateRiskItemRequest`, `AcceptRiskAssessmentRequest` (with e-sign fields), `RiskAssessmentResponse` (with `highRpnItems` count, `criticalItems` count).
+
+Service — `RiskAssessmentService` / `RiskAssessmentServiceImpl`:
+- Auto-generate `assessmentNumber` = `"RA-" + year + "-" + sequence`.
+- `acceptRiskAssessment(id, request)`: require `QC_MANAGER` e-sign.
+- `getRiskMatrix()`: returns risk items grouped by P×S cell for heat-map display.
+- Link suggestion: when CC is `UNDER_REVIEW`, suggest linked risk assessment.
+
+API — `/api/risk-assessments`:
+- `GET /api/risk-assessments?scope=&status=`
+- `POST /api/risk-assessments`
+- `GET /api/risk-assessments/{id}`
+- `PUT /api/risk-assessments/{id}`
+- `POST /api/risk-assessments/{id}/items`
+- `PUT /api/risk-assessments/{id}/items/{itemId}`
+- `DELETE /api/risk-assessments/{id}/items/{itemId}` (soft-delete)
+- `POST /api/risk-assessments/{id}/accept`
+
+#### Frontend
+
+Route: `/qms/risk-register` | Mockup: `core/ux-mockups/13-risk-assessment.html`
+
+List: KPI strip (Total, High RPN ≥50, Critical S=5, Pending Acceptance), table with RA number/title/scope/status/highest RPN.
+Detail: 5×5 risk matrix heat map (P×S, color-coded), Risk Items tab (P/S/D columns, RPN badge color by threshold — red ≥75, orange 50–74, yellow 25–49, green <25), inline add item form with live RPN calculation, Accept Assessment e-sign, audit timeline.
+
+#### Tests
+
+- `POST /{id}/items` creates item; RPN auto-computed = P×S×D (stored column).
+- Acceptance requires `QC_MANAGER` e-sign; other roles blocked.
+- Items with RPN ≥ 50 appear in `highRpnItems` count.
+- Soft-delete sets `isActive = false`; excluded from default list.
+
+#### Done Means
+
+- Every process/product/change risk has formal FMEA. RPN drives prioritization. ICH Q9 lifecycle system-enforced.
+
+---
+
+### Ticket 7.2: Annual Product Quality Review (APQR)
+
+**Status:** Implemented (2026-05-15) — V88 migration and `qms/apqr` backend package exist; APQR frontend route/page, API client/types, sidebar entry, real compilation hooks, password-verified approval e-signature, and focused integration test were added.
+**Priority:** High — first document requested in FDA pre-approval or EU GMP routine inspection.
+**Migration:** `V88__create_apqr.sql`
+
+#### Regulatory Basis
+
+ICH Q10 §3.2.1 and EU GMP Chapter 1.10: annual review per product covering GRN rejections, OOS/OOT rates, deviations, CAPAs, change controls, complaints, stability, QP status.
+
+#### Migration SQL
+
+```sql
+CREATE TYPE apqr_status AS ENUM ('DRAFT', 'UNDER_REVIEW', 'APPROVED', 'CLOSED');
+
+CREATE TABLE apqr (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  apqr_number VARCHAR(30) UNIQUE NOT NULL,
+  product_name VARCHAR(255) NOT NULL,
+  material_id UUID REFERENCES material(id),
+  review_year INT NOT NULL,
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+  status apqr_status NOT NULL DEFAULT 'DRAFT',
+  total_batches_manufactured INT DEFAULT 0,
+  total_grn_received INT DEFAULT 0,
+  grn_rejection_count INT DEFAULT 0,
+  oos_count INT DEFAULT 0,
+  oot_count INT DEFAULT 0,
+  deviation_count INT DEFAULT 0,
+  open_capa_count INT DEFAULT 0,
+  change_control_count INT DEFAULT 0,
+  complaint_count INT DEFAULT 0,
+  process_in_control BOOLEAN,
+  trends_identified TEXT,
+  recommendations TEXT,
+  prepared_by VARCHAR(100) NOT NULL,
+  prepared_at TIMESTAMP WITH TIME ZONE,
+  reviewed_by VARCHAR(100),
+  reviewed_at TIMESTAMP WITH TIME ZONE,
+  approved_by VARCHAR(100),
+  approved_at TIMESTAMP WITH TIME ZONE,
+  approval_e_signature_id UUID,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_by VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_by VARCHAR(100),
+  updated_at TIMESTAMP WITH TIME ZONE
+);
+```
+
+#### Backend
+
+**Package:** `qms/apqr`
+
+DTOs: `CreateApqrRequest`, `ApqrCompileResponse`, `ApqrConclusionRequest`, `ApproveApqrRequest` (with e-sign).
+
+Service — `ApqrService` / `ApqrServiceImpl`:
+- `compileApqr(id)`: auto-populate stats by querying DeviationRepository, CapaRepository, ChangeControlRepository, ComplaintRepository, GrnRepository, SamplingRepository for the period and material.
+- `approveApqr(id, request)`: require `QC_MANAGER` e-sign.
+- `generateApqrSummary()`: products × years matrix showing APQR status and gaps.
+
+Current code note:
+- `ApqrController`, `ApqrService`, `ApqrServiceImpl`, `ApqrRepository`, and `Apqr` entity exist.
+- API endpoints exist under `/api/apqr`.
+- `compileApqr(id)` now moves DRAFT to UNDER_REVIEW and compiles GRN receipt/rejection, distinct batch, OOS/OOT, deviation, open CAPA, change control, and complaint counts from repository queries for the review period.
+- `approveApqr(id, request)` now uses the standard password-verified `ESignatureService.sign(...)` flow and persists `approvalESignatureId`.
+
+API — `/api/apqr`:
+- `GET /api/apqr?year=&materialId=`
+- `POST /api/apqr`
+- `GET /api/apqr/{id}`
+- `POST /api/apqr/{id}/compile`
+- `PUT /api/apqr/{id}/conclusions`
+- `POST /api/apqr/{id}/approve`
+- `GET /api/apqr/summary`
+
+#### Frontend
+
+Route: `/qms/apqr` | Mockup: `core/ux-mockups/16-apqr.html`
+
+List: KPI strip (Products With APQR This Year, Overdue APQRs, Draft In Progress, Approved), table (product/year/period/status/batches/OOS/deviations/CAPAs).
+Detail: "Compile Data" button, stats cards row, linked records tabs (Deviations/CAPAs/Change Controls/Complaints for period), conclusions section with process-in-control toggle, QC Manager e-sign approval, audit timeline.
+
+Current frontend note:
+- `/qms/apqr` React page exists with create, compile, conclusion, approval, and close actions.
+- APQR UI types/client methods exist.
+- App shell nav exposes APQR under Quality.
+
+#### Tests
+
+- `POST /{id}/compile` populates stat fields from related entity counts.
+- Approval requires `QC_MANAGER` e-sign.
+- `GET /api/apqr/summary` shows products with missing APQR for last full year.
+
+#### Done Means
+
+- Every product has annual quality review. Stats auto-compiled — no manual data entry. ICH Q10 met.
+
+---
+
+### Ticket 7.3: Supplier Quality Agreement Management
+
+**Status:** Implemented on 2026-05-15.
+**Priority:** Medium — required by PIC/S and WHO GMP; increasingly scrutinized in EU GMP inspections.
+**Migration:** `V89__create_supplier_quality_agreement.sql`
+
+#### Regulatory Basis
+
+PIC/S PE 009 Chapter 7 and WHO TRS 957: formal written quality agreements with all suppliers covering GMP responsibilities, change notification, audit rights, testing responsibilities, retention sample requirements.
+
+#### Migration SQL
+
+```sql
+CREATE TYPE sqa_status AS ENUM ('DRAFT', 'UNDER_NEGOTIATION', 'ACTIVE', 'EXPIRED', 'TERMINATED');
+
+CREATE TABLE supplier_quality_agreement (
+  id UUID PRIMARY KEY,
+  sqa_number VARCHAR(30) UNIQUE NOT NULL,
+  supplier_id UUID REFERENCES supplier(id),
+  vendor_business_unit_id UUID REFERENCES vendor_business_unit(id),
+  title VARCHAR(255) NOT NULL,
+  effective_date DATE,
+  expiry_date DATE,
+  status sqa_status NOT NULL DEFAULT 'DRAFT',
+  sop_document_id UUID REFERENCES controlled_document(id),
+  gmp_responsibilities TEXT,
+  change_notification_requirements TEXT,
+  audit_rights TEXT,
+  testing_responsibilities TEXT,
+  retention_sample_requirements TEXT,
+  agreed_acceptance_criteria TEXT,
+  our_signatory VARCHAR(100),
+  our_signatory_date DATE,
+  supplier_signatory VARCHAR(255),
+  supplier_signatory_date DATE,
+  terminated_reason TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_by VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_by VARCHAR(100),
+  updated_at TIMESTAMP
+);
+```
+
+#### Backend
+
+**Package:** `masterdata/supplier/sqa`
+
+Service:
+- `findExpiringSoon(days)`: SQAs where `expiryDate ≤ today + days`.
+- `findSuppliersWithoutSqa()`: suppliers with `QUALIFIED` status but no `ACTIVE` SQA.
+- Audit trail records create, update, and status changes as `SUPPLIER_QUALITY_AGREEMENT` events.
+
+API — `/api/supplier-quality-agreements`:
+- `GET /api/supplier-quality-agreements?supplierId=&status=`
+- `POST /api/supplier-quality-agreements`
+- `GET /api/supplier-quality-agreements/{id}`
+- `PUT /api/supplier-quality-agreements/{id}`
+- `PUT /api/supplier-quality-agreements/{id}/status`
+- `GET /api/supplier-quality-agreements/expiring-soon?days=60`
+- `GET /api/suppliers/{id}/quality-agreements`
+
+#### Frontend
+
+Implemented first as a standalone `/supplier-quality-agreements` page because supplier detail routing is not split yet. The page includes supplier/site links, title, effective/expiry dates, linked SOP document, text sections for responsibilities/change notification/audit rights/testing/retention/acceptance criteria, expiry warning badge if <60 days, and KPI card for "Suppliers Without SQA".
+
+Future UI polish:
+- Add the same agreement list as a tab inside a dedicated Supplier detail page when supplier detail routing is created.
+
+#### Done Means
+
+- Every qualified supplier has formal SQA on record. Expiry tracked. Links to agreement document. PIC/S Chapter 7 met.
+
+#### Verification
+
+- `./mvnw test -Dtest=SupplierQualityAgreementControllerIntegrationTest`
+- `./mvnw -DskipTests compile`
+- `npm run build`
+
+---
+
+### Ticket 7.4: QP Batch Release and Batch Certificate
+
+**Status:** Implemented (2026-05-15) — V90 migration, `qms/batchrelease` backend, QpBatchReleasePage frontend, all 6 endpoints live.
+**Priority:** Medium — required in EU GMP before any batch released for distribution.
+**Migration:** `V90__create_qp_batch_release.sql`
+
+#### Regulatory Basis
+
+EU GMP Annex 16: QP certifies each batch before market release. 4-item checklist: QC disposition confirmed, OOS investigations closed, no open critical deviations, documentation complete.
+
+#### Migration SQL
+
+```sql
+CREATE TYPE batch_release_status AS ENUM ('PENDING_QP_REVIEW', 'UNDER_REVIEW', 'CERTIFIED', 'REJECTED', 'ON_HOLD');
+
+CREATE TABLE qp_batch_release (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  release_number VARCHAR(30) UNIQUE NOT NULL,
+  lot_number VARCHAR(100) NOT NULL,
+  product_name VARCHAR(255) NOT NULL,
+  material_id UUID REFERENCES material(id),
+  grn_id UUID REFERENCES grn(id),
+  batch_size NUMERIC(14,4),
+  batch_uom VARCHAR(20),
+  manufacture_date DATE,
+  expiry_date DATE,
+  status batch_release_status NOT NULL DEFAULT 'PENDING_QP_REVIEW',
+  qc_disposition_confirmed BOOLEAN DEFAULT FALSE,
+  oos_investigations_closed BOOLEAN DEFAULT FALSE,
+  no_open_critical_deviations BOOLEAN DEFAULT FALSE,
+  documents_complete BOOLEAN DEFAULT FALSE,
+  qp_name VARCHAR(255),
+  qp_employee_id UUID REFERENCES employee(id),
+  qp_certification_statement TEXT,
+  certified_at TIMESTAMP WITH TIME ZONE,
+  certification_e_signature_id UUID,
+  rejection_reason TEXT,
+  on_hold_reason TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_by VARCHAR(100) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+  updated_by VARCHAR(100),
+  updated_at TIMESTAMP WITH TIME ZONE
+);
+```
+
+#### Backend
+
+**Package:** `qms/batchrelease`
+
+Service — `QpBatchReleaseService` / `QpBatchReleaseServiceImpl`:
+- `createBatchRelease(request)`: auto-generate `releaseNumber`. Auto-populate checklist:
+  - `SamplingRepository`: lot has `RELEASED` disposition → `qcDispositionConfirmed`.
+  - `QcInvestigationRepository`: no open OOS for lot → `oosInvestigationsClosed`.
+  - `DeviationRepository`: no `CRITICAL` open deviations for lot → `noOpenCriticalDeviations`.
+- `certifyBatch(id, request)`: require `QC_MANAGER` e-sign. Block if any checklist item false.
+- `rejectBatch(id, reason)`.
+- `getBatchCertificate(id)`: structured `BatchCertificateResponse` for PDF generation.
+
+API — `/api/qp-batch-releases`:
+- `GET /api/qp-batch-releases?status=&materialId=`
+- `POST /api/qp-batch-releases`
+- `GET /api/qp-batch-releases/{id}`
+- `POST /api/qp-batch-releases/{id}/certify`
+- `POST /api/qp-batch-releases/{id}/reject`
+- `GET /api/qp-batch-releases/{id}/certificate`
+
+#### Frontend
+
+Route: `/qms/batch-release` | Mockup: `core/ux-mockups/17-qp-batch-release.html`
+
+Queue list: KPI strip (Pending Review, Certified This Month, Rejected, On Hold), table with release number/lot/product/manufacture date/expiry/status.
+QP Review detail: 4-item checklist with green ✓ / red ✗ indicators, batch info, QP Certification section (enabled only when all 4 green), "Certify Batch" e-sign, "Batch Certificate" download button, audit timeline.
+Batch Certificate view: formal layout with release number, lot, product, test results summary, QP name, e-sign reference, certification date.
+
+#### Tests
+
+- `POST /api/qp-batch-releases` auto-populates checklist from existing QC/deviation records.
+- Certification blocked if any checklist item false.
+- Certification requires `QC_MANAGER` e-sign.
+- `GET /{id}/certificate` returns full structured certificate data.
+
+#### Done Means
+
+- Every lot has formal QP batch release record before distribution. E-signed, checklist-gated. Batch certificate generatable. EU GMP Annex 16 met.
+
+---
+
+## 10. Technical Improvements (Cross-Cutting)
+
+Full detail: `core/docs/spec/TECH_IMPROVEMENTS.md`
+
+| Priority | Item | Regulatory / Impact | Phase |
+|---|---|---|---|
+| P0 | Session timeout (30 min idle) | Annex 11 §12 — unattended terminal | Month 1 |
+| P0 | Data lock after QC disposition | FDA data integrity | Part of 6H.1 |
+| P1 | PDF export — deviation, CAPA, lot, APQR reports | Inspector expects printed GMP records | Implemented (2026-05-15) |
+| P1 | CSV export on all list tables | Table-stakes pharma ERP | Implemented (2026-05-15) |
+| P1 | OpenAPI / Swagger at `/swagger-ui.html` | Integration readiness | Post-launch |
+| P1 | API versioning `/api/v1/` prefix | Long-term stability | Post-launch |
+| P2 | Notification bell — pending approvals count | UX — 5-min polling | Post-launch |
+| P2 | Column sort on all list tables | UX standard | Post-launch |
+| P2 | Supplier scorecard analytics | VMS value | Post-launch |
+| P2 | Password policy engine | Annex 11 §12 | Implemented |
+| P3 | MFA / TOTP | 21 CFR Part 11 §11.200 | Implemented (2026-05-15) |
+| P3 | Approval delegation | Common pharma acting authority | Implemented |
+| P4 | Inspector read-only role | Demo professionalism | Post-launch |
+| P4 | S3-compatible storage abstraction | Production readiness | Post-launch |
+
+Session timeout (P0) implementation — **Implemented (2026-05-15)**:
+- `SessionTimeoutModal.tsx` — idle timer, 25min warning countdown, 30min auto-signout, activity reset on mousemove/keydown/click/scroll.
+- `AppShell.tsx` — mounted, `handleSessionTimeout` calls `POST /api/auth/session-timeout` (records `SESSION_TIMEOUT` audit event), clears auth, redirects to `/login?reason=timeout`.
+- `LoginPage.tsx` — shows "Session expired due to 30 min inactivity (21 CFR Part 11 §11.10)" banner on `?reason=timeout`.
+- Backend: `POST /api/auth/session-timeout` records `SESSION_TIMEOUT` event distinct from `LOGOUT` in SecurityAuditEvent log.
+
+PDF export (P1) — **Implemented (2026-05-15)** — `com.github.librepdf:openpdf:1.3.x`:
+- `GET /api/deviations/{id}/report` → deviation closure PDF ✓
+- `GET /api/capas/{id}/report` → CAPA closure PDF ✓
+- `GET /api/qp-batch-releases/{id}/certificate/pdf` → batch certificate PDF ✓
+- `GET /api/apqr/{id}/report` → APQR PDF ✓
+- `GET /api/sampling-requests/{id}/report` → lot release package PDF ✓
+- Frontend: Download PDF buttons on DeviationDetailPage, CapaBoardPage, QpBatchReleasePage, ApqrPage ✓
+- `downloadPdfReport(path, filename)` helper in api.ts ✓
+
+CSV export (P1) — **Implemented (2026-05-15)**:
+- All list endpoints support `?format=csv` or `Accept: text/csv`.
+- Controllers with CSV export: Deviation, CAPA, Complaint, Equipment, RetentionSample, RiskAssessment, QpBatchRelease, APQR, Sampling.
+- Frontend: Export CSV buttons on list pages that support it.
+- `downloadCsvExport(path, filename)` helper in api.ts.
+
+MFA / TOTP (P3) — **Implemented (2026-05-15)**:
+- Backend: `TotpService` (HMAC-SHA1 TOTP, ±1 step window), `TotpController` at `/api/auth/totp/setup` + `/api/auth/totp/verify`.
+- Login flow: `POST /api/auth/login` returns `mfaRequired=true` + `mfaChallengeToken` when TOTP is enabled; frontend prompts for 6-digit code.
+- Setup flow: authenticated user calls `POST /api/auth/totp/setup` → receives QR code data URL + manual secret; confirms with `POST /api/auth/totp/verify` (no challengeToken = setup confirmation).
+- Frontend: "2FA" button in AppShell header → opens setup modal with QR code, manual secret, and code confirmation field.
+- Admin: `POST /api/auth/users/{id}/totp/reset` for SUPER_ADMIN TOTP reset.

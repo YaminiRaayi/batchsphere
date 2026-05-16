@@ -9,6 +9,8 @@ import com.batchsphere.core.batch.entity.BatchType;
 import com.batchsphere.core.batch.repository.BatchRepository;
 import com.batchsphere.core.exception.BusinessConflictException;
 import com.batchsphere.core.exception.DuplicateResourceException;
+import com.batchsphere.core.masterdata.businessunit.entity.BusinessUnit;
+import com.batchsphere.core.masterdata.businessunit.repository.BusinessUnitRepository;
 import com.batchsphere.core.masterdata.material.entity.Material;
 import com.batchsphere.core.masterdata.material.entity.StorageCondition;
 import com.batchsphere.core.masterdata.material.repository.MaterialRepository;
@@ -16,6 +18,7 @@ import com.batchsphere.core.masterdata.supplier.entity.Supplier;
 import com.batchsphere.core.masterdata.supplier.repository.SupplierRepository;
 import com.batchsphere.core.masterdata.vendor.entity.Vendor;
 import com.batchsphere.core.masterdata.vendor.repository.VendorRepository;
+import com.batchsphere.core.masterdata.vendorbusinessunit.entity.QualificationStatus;
 import com.batchsphere.core.masterdata.vendorbusinessunit.entity.VendorBusinessUnit;
 import com.batchsphere.core.masterdata.vendorbusinessunit.repository.VendorBusinessUnitRepository;
 import com.batchsphere.core.masterdata.warehouselocation.dto.AvailablePalletResponse;
@@ -91,6 +94,11 @@ class WarehouseLocationServiceIntegrationTest {
     @Autowired
     private GrnItemRepository grnItemRepository;
 
+    @Autowired
+    private BusinessUnitRepository businessUnitRepository;
+
+    private UUID businessUnitId;
+
     @BeforeEach
     void setUpAuthentication() {
         AuthenticatedUser user = new AuthenticatedUser(User.builder()
@@ -105,6 +113,14 @@ class WarehouseLocationServiceIntegrationTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities())
         );
+        businessUnitId = businessUnitRepository.save(BusinessUnit.builder()
+                .id(UUID.randomUUID())
+                .unitCode("BU-" + UUID.randomUUID().toString().substring(0, 8))
+                .unitName("Warehouse Test BU")
+                .isActive(true)
+                .createdBy("warehouse-tester")
+                .createdAt(LocalDateTime.now())
+                .build()).getId();
     }
 
     @AfterEach
@@ -376,6 +392,7 @@ class WarehouseLocationServiceIntegrationTest {
         CreateWarehouseRequest request = new CreateWarehouseRequest();
         request.setWarehouseCode(code);
         request.setWarehouseName(code + "-NAME");
+        request.setBusinessUnitId(businessUnitId);
         request.setCreatedBy("test-user");
         return request;
     }
@@ -481,6 +498,11 @@ class WarehouseLocationServiceIntegrationTest {
                 .id(UUID.randomUUID())
                 .vendorId(vendor.getId())
                 .unitName(prefix + "-UNIT")
+                .qualificationStatus(QualificationStatus.QUALIFIED)
+                .isWhoGmpCertified(true)
+                .isUsfda(false)
+                .isEuGmp(false)
+                .isApproved(true)
                 .isActive(true)
                 .createdBy("warehouse-tester")
                 .createdAt(LocalDateTime.now())

@@ -80,6 +80,7 @@ export type SpecParameter = {
   compendialChapterRef: string | null;
   unit: string | null;
   isMandatory: boolean;
+  requiresInstrument: boolean;
   sequence: number;
   notes: string | null;
   isActive: boolean;
@@ -139,6 +140,7 @@ export type SpecParameterRequest = {
   compendialChapterRef?: string;
   unit?: string;
   isMandatory: boolean;
+  requiresInstrument?: boolean;
   sequence: number;
   notes?: string;
 };

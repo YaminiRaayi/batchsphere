@@ -9,4 +9,5 @@ public class ESignatureRequest {
     private String username;
     private String password;
     private String meaning;
+    private String delegatedByUsername;
 }

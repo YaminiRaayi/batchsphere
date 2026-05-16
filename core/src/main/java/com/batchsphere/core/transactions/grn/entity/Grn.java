@@ -84,6 +84,12 @@ public class Grn {
     @Column(name = "status", nullable = false, length = 30)
     private GrnStatus status;
 
+    @Column(name = "linked_deviation_id")
+    private UUID linkedDeviationId;
+
+    @Column(name = "linked_deviation_number", length = 100)
+    private String linkedDeviationNumber;
+
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 

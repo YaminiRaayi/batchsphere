@@ -53,6 +53,8 @@ export type Grn = {
   labelVerificationStatus: string | null;
   quantityVarianceReason: string | null;
   status: GrnStatus;
+  linkedDeviationId: string | null;
+  linkedDeviationNumber: string | null;
   isActive: boolean;
   createdBy: string;
   createdAt: string;

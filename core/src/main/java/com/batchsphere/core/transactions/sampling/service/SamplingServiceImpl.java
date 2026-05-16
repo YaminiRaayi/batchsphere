@@ -14,8 +14,10 @@ import com.batchsphere.core.masterdata.moa.repository.MoaRepository;
 import com.batchsphere.core.masterdata.samplingtool.repository.SamplingToolRepository;
 import com.batchsphere.core.masterdata.spec.entity.MaterialSpecLink;
 import com.batchsphere.core.masterdata.spec.entity.Spec;
+import com.batchsphere.core.masterdata.spec.entity.SpecParameter;
 import com.batchsphere.core.masterdata.spec.entity.SpecStatus;
 import com.batchsphere.core.masterdata.spec.repository.MaterialSpecLinkRepository;
+import com.batchsphere.core.masterdata.spec.repository.SpecParameterRepository;
 import com.batchsphere.core.masterdata.spec.repository.SpecRepository;
 import com.batchsphere.core.transactions.grn.entity.GrnContainer;
 import com.batchsphere.core.transactions.grn.entity.GrnItem;
@@ -24,7 +26,10 @@ import com.batchsphere.core.transactions.inventory.entity.InventoryStatus;
 import com.batchsphere.core.transactions.inventory.entity.InventoryReferenceType;
 import com.batchsphere.core.transactions.inventory.repository.InventoryRepository;
 import com.batchsphere.core.transactions.inventory.service.InventoryService;
+import com.batchsphere.core.transactions.sampling.dto.AmendQcTestResultRequest;
 import com.batchsphere.core.transactions.sampling.dto.CreateSamplingPlanRequest;
+import com.batchsphere.core.transactions.sampling.dto.CompletePhase1Request;
+import com.batchsphere.core.transactions.sampling.dto.CompletePhase2Request;
 import com.batchsphere.core.transactions.sampling.dto.CompleteQaInvestigationReviewRequest;
 import com.batchsphere.core.transactions.sampling.dto.DestroyRetainedSampleRequest;
 import com.batchsphere.core.transactions.sampling.dto.EscalateQcInvestigationRequest;
@@ -85,14 +90,22 @@ import com.batchsphere.core.transactions.sampling.repository.SamplingContainerSa
 import com.batchsphere.core.transactions.sampling.repository.SamplingContainerDrawRepository;
 import com.batchsphere.core.transactions.sampling.repository.SamplingPlanRepository;
 import com.batchsphere.core.transactions.sampling.repository.SamplingRequestRepository;
+import com.batchsphere.core.hrms.training.service.TrainingGateService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -133,6 +146,7 @@ public class SamplingServiceImpl implements SamplingService {
     private final MaterialRepository materialRepository;
     private final SpecRepository specRepository;
     private final MaterialSpecLinkRepository materialSpecLinkRepository;
+    private final SpecParameterRepository specParameterRepository;
     private final MoaRepository moaRepository;
     private final SamplingToolRepository samplingToolRepository;
     private final GrnContainerRepository grnContainerRepository;
@@ -149,6 +163,7 @@ public class SamplingServiceImpl implements SamplingService {
     private final QcTestResultService qcTestResultService;
     private final AuditEventService auditEventService;
     private final ESignatureService eSignatureService;
+    private final TrainingGateService trainingGateService;
 
     @Override
     @Transactional
@@ -370,6 +385,7 @@ public class SamplingServiceImpl implements SamplingService {
     @Transactional
     public SamplingRequestResponse startSampling(UUID samplingRequestId, SamplingStartRequest request) {
         String actor = authenticatedActorService.currentActor();
+        trainingGateService.assertTrainedForRequirement(actor, "SAMPLING_SOP");
         SamplingRequest samplingRequest = getSamplingRequest(samplingRequestId);
         SamplingPlan plan = samplingPlanRepository.findBySamplingRequestId(samplingRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Sampling plan not found for request: " + samplingRequestId));
@@ -557,7 +573,16 @@ public class SamplingServiceImpl implements SamplingService {
         findPrimarySample(samplingRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("QC sample not found for request: " + samplingRequestId));
         String actor = authenticatedActorService.currentActor();
+        trainingGateService.assertTrainedForRequirement(actor, "QC_ANALYST_TRAINING");
         return qcTestResultService.recordResult(testResultId, request, actor);
+    }
+
+    @Override
+    @Transactional
+    public QcTestResultResponse amendWorksheetResult(UUID samplingRequestId, UUID testResultId, AmendQcTestResultRequest request) {
+        getSamplingRequest(samplingRequestId);
+        String actor = authenticatedActorService.currentActor();
+        return qcTestResultService.amendResult(testResultId, request, actor);
     }
 
     @Override
@@ -610,6 +635,9 @@ public class SamplingServiceImpl implements SamplingService {
                 .reason(request.getReason().trim())
                 .initialAssessment(trimToNull(request.getInitialAssessment()))
                 .capaRequired(false)
+                .phase2Required(false)
+                .ootFlag(false)
+                .retestAuthorized(false)
                 .openedBy(actor)
                 .openedAt(now)
                 .isActive(true)
@@ -672,6 +700,93 @@ public class SamplingServiceImpl implements SamplingService {
         investigation.setUpdatedBy(actor);
         investigation.setUpdatedAt(now);
         qcInvestigationRepository.save(investigation);
+        return toQcInvestigationResponse(investigation);
+    }
+
+    @Override
+    @Transactional
+    public QcInvestigationResponse completePhase1(UUID samplingRequestId, UUID investigationId, CompletePhase1Request request) {
+        String actor = authenticatedActorService.currentActor();
+        getSamplingRequest(samplingRequestId);
+        QcInvestigation investigation = qcInvestigationRepository.findById(investigationId)
+                .orElseThrow(() -> new ResourceNotFoundException("QC investigation not found with id: " + investigationId));
+        if (!investigation.getSamplingRequestId().equals(samplingRequestId)) {
+            throw new BusinessConflictException("QC investigation does not belong to the sampling request");
+        }
+        if (investigation.getStatus() != QcInvestigationStatus.PHASE_I) {
+            throw new BusinessConflictException("Phase 1 can only be completed when investigation is in PHASE_I status");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        investigation.setPhase1Outcome(request.getPhase1Outcome());
+        investigation.setPhase1RootCause(request.getPhase1RootCause());
+        investigation.setOotFlag(Boolean.TRUE.equals(request.getOotFlag()));
+        investigation.setPhase1CompletedBy(actor);
+        investigation.setPhase1CompletedAt(now);
+        investigation.setUpdatedBy(actor);
+        investigation.setUpdatedAt(now);
+
+        if (request.getPhase1Outcome() == com.batchsphere.core.transactions.sampling.entity.QcPhase1Outcome.NO_ASSIGNABLE_CAUSE) {
+            investigation.setPhase2Required(true);
+            investigation.setStatus(QcInvestigationStatus.PHASE_II);
+            investigation.setPhase(QcInvestigationPhase.PHASE_II);
+            investigation.setPhaseTwoEscalatedBy(actor);
+            investigation.setPhaseTwoEscalatedAt(now);
+        } else {
+            investigation.setRetestAuthorized(true);
+            investigation.setRetestSampleCount(request.getRetestSampleCount());
+            investigation.setStatus(QcInvestigationStatus.CLOSED_INVALID);
+            investigation.setClosedBy(actor);
+            investigation.setClosedAt(now);
+        }
+
+        qcInvestigationRepository.save(investigation);
+        auditEventService.record("QC_INVESTIGATION", investigation.getId(), AuditEventType.STATUS_CHANGE,
+                "status", QcInvestigationStatus.PHASE_I.name(), investigation.getStatus().name(),
+                "Phase 1 completed with outcome: " + request.getPhase1Outcome(), actor, "QC_INVESTIGATION");
+        return toQcInvestigationResponse(investigation);
+    }
+
+    @Override
+    @Transactional
+    public QcInvestigationResponse completePhase2(UUID samplingRequestId, UUID investigationId, CompletePhase2Request request) {
+        String actor = authenticatedActorService.currentActor();
+        assertFinalQcDecisionRole();
+        assertConfirmationMatchesActor(request.getConfirmedBy(), actor);
+        getSamplingRequest(samplingRequestId);
+        QcInvestigation investigation = qcInvestigationRepository.findById(investigationId)
+                .orElseThrow(() -> new ResourceNotFoundException("QC investigation not found with id: " + investigationId));
+        if (!investigation.getSamplingRequestId().equals(samplingRequestId)) {
+            throw new BusinessConflictException("QC investigation does not belong to the sampling request");
+        }
+        if (investigation.getStatus() != QcInvestigationStatus.PHASE_II) {
+            throw new BusinessConflictException("Phase 2 can only be completed when investigation is in PHASE_II status");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        investigation.setPhaseTwoSummary(request.getPhaseTwoSummary().trim());
+        investigation.setRootCause(request.getRootCause());
+        investigation.setResolutionRemarks(request.getResolutionRemarks());
+        investigation.setCapaRequired(Boolean.TRUE.equals(request.getCapaRequired()));
+        investigation.setCapaReference(request.getCapaReference());
+        investigation.setStatus(QcInvestigationStatus.QA_REVIEW_PENDING);
+        investigation.setOutcomeSubmittedBy(actor);
+        investigation.setOutcomeSubmittedAt(now);
+        investigation.setUpdatedBy(actor);
+        investigation.setUpdatedAt(now);
+        qcInvestigationRepository.save(investigation);
+
+        ESignatureRequest signatureRequest = new ESignatureRequest();
+        signatureRequest.setUsername(request.getESignatureUsername());
+        signatureRequest.setPassword(request.getESignaturePassword());
+        signatureRequest.setMeaning(request.getESignatureMeaning());
+        eSignatureService.sign("QC_INVESTIGATION", investigation.getId(), "PHASE_2_COMPLETION",
+                "Phase 2 investigation completion by QC Manager", actor, signatureRequest,
+                request.getResolutionRemarks());
+
+        auditEventService.record("QC_INVESTIGATION", investigation.getId(), AuditEventType.STATUS_CHANGE,
+                "status", QcInvestigationStatus.PHASE_II.name(), QcInvestigationStatus.QA_REVIEW_PENDING.name(),
+                "Phase 2 completed, submitted for QA review", actor, "QC_INVESTIGATION");
         return toQcInvestigationResponse(investigation);
     }
 
@@ -943,6 +1058,7 @@ public class SamplingServiceImpl implements SamplingService {
     @Transactional
     public SamplingRequestResponse recordQcDecision(UUID samplingRequestId, QcDecisionRequest request) {
         String actor = authenticatedActorService.currentActor();
+        trainingGateService.assertTrainedForRequirement(actor, "QC_MANAGER_QUALIFICATION");
         assertFinalQcDecisionRole();
         assertConfirmationMatchesActor(request.getConfirmedBy(), actor);
         assertApprovalConfirmationText(
@@ -1063,6 +1179,8 @@ public class SamplingServiceImpl implements SamplingService {
             plan.setUpdatedAt(LocalDateTime.now());
             samplingPlanRepository.save(plan);
         }
+
+        qcTestResultService.lockResultsForSamplingRequest(samplingRequest.getId(), actor);
 
         return toResponse(samplingRequest);
     }
@@ -2066,11 +2184,136 @@ public class SamplingServiceImpl implements SamplingService {
                 .qaReviewConfirmedBy(investigation.getQaReviewConfirmedBy())
                 .qaReviewConfirmationText(investigation.getQaReviewConfirmationText())
                 .qaReviewConfirmationAt(investigation.getQaReviewConfirmationAt())
+                .phase1Outcome(investigation.getPhase1Outcome())
+                .phase1RootCause(investigation.getPhase1RootCause())
+                .phase1CompletedBy(investigation.getPhase1CompletedBy())
+                .phase1CompletedAt(investigation.getPhase1CompletedAt())
+                .phase2Required(investigation.getPhase2Required())
+                .ootFlag(investigation.getOotFlag())
+                .retestAuthorized(investigation.getRetestAuthorized())
+                .retestSampleCount(investigation.getRetestSampleCount())
                 .isActive(investigation.getIsActive())
                 .createdBy(investigation.getCreatedBy())
                 .createdAt(investigation.getCreatedAt())
                 .updatedBy(investigation.getUpdatedBy())
                 .updatedAt(investigation.getUpdatedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] buildWorksheetCsvTemplate(UUID samplingRequestId) {
+        List<QcTestResultResponse> rows = getWorksheet(samplingRequestId);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (PrintWriter pw = new PrintWriter(baos, true, StandardCharsets.UTF_8)) {
+            pw.println("parameter_name,result_value,result_text,equipment_id,remarks");
+            for (QcTestResultResponse row : rows) {
+                pw.printf("\"%s\",,,,%n", row.getParameterName().replace("\"", "\"\""));
+            }
+        }
+        return baos.toByteArray();
+    }
+
+    @Override
+    @Transactional
+    public List<QcTestResultResponse> importWorksheetCsv(UUID samplingRequestId, MultipartFile file, String actor) {
+        List<QcTestResultResponse> worksheet = getWorksheet(samplingRequestId);
+        Map<String, QcTestResultResponse> byName = new LinkedHashMap<>();
+        for (QcTestResultResponse row : worksheet) {
+            byName.put(row.getParameterName().trim().toLowerCase(), row);
+        }
+
+        List<Map<String, String>> csvRows = parseCsv(file);
+        List<Map.Entry<Integer, String>> errors = new ArrayList<>();
+
+        for (int i = 0; i < csvRows.size(); i++) {
+            Map<String, String> cols = csvRows.get(i);
+            String paramName = cols.getOrDefault("parameter_name", "").trim();
+            if (paramName.isEmpty()) continue;
+
+            QcTestResultResponse target = byName.get(paramName.toLowerCase());
+            if (target == null) {
+                errors.add(Map.entry(i + 2, "Unknown parameter: " + paramName));
+                continue;
+            }
+
+            RecordQcTestResultRequest req = new RecordQcTestResultRequest();
+            String rv = cols.getOrDefault("result_value", "").trim();
+            if (!rv.isEmpty()) {
+                try { req.setResultValue(new BigDecimal(rv)); }
+                catch (NumberFormatException e) { errors.add(Map.entry(i + 2, "Invalid result_value for: " + paramName)); continue; }
+            }
+            String rt = cols.getOrDefault("result_text", "").trim();
+            if (!rt.isEmpty()) req.setResultText(rt);
+            String eqId = cols.getOrDefault("equipment_id", "").trim();
+            if (!eqId.isEmpty()) {
+                try { req.setEquipmentId(UUID.fromString(eqId)); }
+                catch (IllegalArgumentException e) { errors.add(Map.entry(i + 2, "Invalid equipment_id for: " + paramName)); continue; }
+            }
+            String rem = cols.getOrDefault("remarks", "").trim();
+            if (!rem.isEmpty()) req.setRemarks(rem);
+
+            try {
+                qcTestResultService.recordResult(target.getId(), req, actor);
+            } catch (Exception e) {
+                errors.add(Map.entry(i + 2, e.getMessage()));
+            }
+        }
+
+        if (!errors.isEmpty()) {
+            StringBuilder sb = new StringBuilder("CSV import failed. Errors:\n");
+            for (Map.Entry<Integer, String> err : errors) {
+                sb.append("  Row ").append(err.getKey()).append(": ").append(err.getValue()).append("\n");
+            }
+            throw new BusinessConflictException(sb.toString());
+        }
+
+        return getWorksheet(samplingRequestId);
+    }
+
+    private List<Map<String, String>> parseCsv(MultipartFile file) {
+        List<Map<String, String>> rows = new ArrayList<>();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+            String headerLine = reader.readLine();
+            if (headerLine == null) return rows;
+            String[] headers = splitCsv(headerLine);
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (line.isBlank()) continue;
+                String[] vals = splitCsv(line);
+                Map<String, String> row = new LinkedHashMap<>();
+                for (int i = 0; i < headers.length; i++) {
+                    row.put(headers[i].trim().toLowerCase(), i < vals.length ? vals[i].trim() : "");
+                }
+                rows.add(row);
+            }
+        } catch (IOException e) {
+            throw new BusinessConflictException("Failed to read CSV file: " + e.getMessage());
+        }
+        return rows;
+    }
+
+    private String[] splitCsv(String line) {
+        List<String> fields = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (c == '"') {
+                if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    current.append('"'); i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (c == ',' && !inQuotes) {
+                fields.add(current.toString());
+                current.setLength(0);
+            } else {
+                current.append(c);
+            }
+        }
+        fields.add(current.toString());
+        return fields.toArray(new String[0]);
     }
 }

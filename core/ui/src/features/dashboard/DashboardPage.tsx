@@ -7,6 +7,8 @@ import {
   fetchGrnSummary,
   fetchInventorySummary,
   fetchMaterials,
+  fetchMyTrainingAssignments,
+  fetchQmsAnalytics,
   fetchSamplingSummary,
   fetchSuppliers,
   fetchVendorBusinessUnits,
@@ -20,8 +22,10 @@ import type { Grn, GrnSummary } from "../../types/grn";
 import type { InventorySummary } from "../../types/inventory";
 import type { WmsSummary } from "../../types/location";
 import type { Material } from "../../types/material";
+import type { QmsAnalytics } from "../../types/qms-analytics";
 import type { SamplingSummary } from "../../types/sampling";
 import type { Supplier } from "../../types/supplier";
+import type { TrainingAssignment } from "../../types/training";
 import type { VendorBusinessUnit } from "../../types/vendor-business-unit";
 
 function formatDisplayDate(value: string) {
@@ -91,6 +95,8 @@ export function DashboardPage() {
   const [inventorySummary, setInventorySummary] = useState<InventorySummary | null>(null);
   const [samplingSummary, setSamplingSummary] = useState<SamplingSummary | null>(null);
   const [deviationSummary, setDeviationSummary] = useState<DeviationSummary | null>(null);
+  const [qmsAnalytics, setQmsAnalytics] = useState<QmsAnalytics | null>(null);
+  const [myTrainingAssignments, setMyTrainingAssignments] = useState<TrainingAssignment[]>([]);
   const [wmsSummary, setWmsSummary] = useState<WmsSummary | null>(null);
   const [recentGrns, setRecentGrns] = useState<Grn[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -102,6 +108,7 @@ export function DashboardPage() {
 
   const canViewWarehouse = authUser?.role === "SUPER_ADMIN" || authUser?.role === "WAREHOUSE_OP";
   const canViewQc = authUser?.role === "SUPER_ADMIN" || authUser?.role === "QC_ANALYST" || authUser?.role === "QC_MANAGER";
+  const canViewQmsHealth = authUser?.role === "SUPER_ADMIN" || authUser?.role === "QC_MANAGER";
   const canViewProcurement = authUser?.role === "SUPER_ADMIN" || authUser?.role === "PROCUREMENT";
   const canViewMaterials = canViewWarehouse || canViewQc || canViewProcurement;
 
@@ -152,6 +159,18 @@ export function DashboardPage() {
             run: async () => setDeviationSummary(await fetchDeviationSummary())
           });
         }
+
+        if (canViewQmsHealth) {
+          loaders.push({
+            label: "QMS analytics",
+            run: async () => setQmsAnalytics(await fetchQmsAnalytics())
+          });
+        }
+
+        loaders.push({
+          label: "My training",
+          run: async () => setMyTrainingAssignments(await fetchMyTrainingAssignments())
+        });
 
         if (canViewProcurement || authUser?.role === "SUPER_ADMIN") {
           loaders.push({
@@ -225,6 +244,16 @@ export function DashboardPage() {
 
   const quarantineLots = inventorySummary?.countsByStatus?.QUARANTINE ?? 0;
   const expiringInventory = inventorySummary?.expiringIn30Days ?? 0;
+  const today = new Date().toISOString().slice(0, 10);
+  const myOverdueTrainingAssignments = myTrainingAssignments.filter(
+    (assignment) => assignment.dueDate
+      && assignment.dueDate < today
+      && assignment.status !== "COMPLETED"
+      && assignment.status !== "CANCELLED"
+  ).length;
+  const overdueTrainingAssignments = canViewQmsHealth
+    ? qmsAnalytics?.overdueTrainingAssignments ?? myOverdueTrainingAssignments
+    : myOverdueTrainingAssignments;
 
   const openDeviations = deviationSummary
     ? (deviationSummary.countsByStatus.OPEN ?? 0)
@@ -232,7 +261,6 @@ export function DashboardPage() {
       + (deviationSummary.countsByStatus.CAPA_IN_PROGRESS ?? 0)
     : null;
 
-  const today = new Date().toISOString().slice(0, 10);
   const auditOverdueCount = vbus.filter(
     (vbu) => vbu.nextRequalificationDue && vbu.nextRequalificationDue <= today
   ).length;
@@ -456,6 +484,56 @@ export function DashboardPage() {
             border: "border-l-purple-400",
             noteClass: auditOverdueCount > 0 ? "text-purple-600" : "text-slate-500",
             href: canViewProcurement || authUser?.role === "SUPER_ADMIN" ? "/master-data/partners/vendors" : undefined
+          }
+        ].map((kpi) => {
+          const card = (
+            <article key={kpi.label} className={`rounded-xl border border-blue-100 border-l-4 bg-white p-5 shadow-sm ${kpi.border} ${kpi.href ? "cursor-pointer transition hover:-translate-y-0.5" : ""}`}>
+              <div className="text-xs text-slate-500">{kpi.label}</div>
+              <div className="mt-2 text-4xl font-bold leading-none text-slate-800">{isLoading ? "--" : kpi.value}</div>
+              <div className={`mt-3 text-xs font-medium ${kpi.noteClass}`}>{kpi.note}</div>
+            </article>
+          );
+          return kpi.href ? (
+            <Link key={kpi.label} to={kpi.href}>{card}</Link>
+          ) : (
+            <div key={kpi.label}>{card}</div>
+          );
+        })}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-4">
+        {[
+          {
+            label: "Open Change Controls",
+            value: canViewQmsHealth ? (qmsAnalytics?.openChangeControls ?? "0") : "—",
+            note: canViewQmsHealth ? "Active controlled changes" : "QC Manager role only",
+            border: "border-l-cyan-500",
+            noteClass: (qmsAnalytics?.openChangeControls ?? 0) > 0 ? "text-cyan-700" : "text-slate-500",
+            href: canViewQmsHealth ? "/qms/change-controls" : undefined
+          },
+          {
+            label: "Overdue Effectiveness",
+            value: canViewQmsHealth ? (qmsAnalytics?.overdueEffectivenessChecks ?? "0") : "—",
+            note: canViewQmsHealth ? "CAPA reviews past due" : "QC Manager role only",
+            border: "border-l-rose-500",
+            noteClass: (qmsAnalytics?.overdueEffectivenessChecks ?? 0) > 0 ? "text-rose-600" : "text-slate-500",
+            href: canViewQmsHealth ? "/qms/capas" : undefined
+          },
+          {
+            label: "Docs Due Review",
+            value: canViewQmsHealth ? (qmsAnalytics?.documentsAwaitingReview ?? "0") : "—",
+            note: canViewQmsHealth ? "Effective SOPs due" : "QC Manager role only",
+            border: "border-l-violet-500",
+            noteClass: (qmsAnalytics?.documentsAwaitingReview ?? 0) > 0 ? "text-violet-600" : "text-slate-500",
+            href: canViewQmsHealth ? "/documents" : undefined
+          },
+          {
+            label: "Overdue Training",
+            value: overdueTrainingAssignments || "0",
+            note: canViewQmsHealth ? "Assignments past due" : "Your assignments past due",
+            border: "border-l-emerald-500",
+            noteClass: overdueTrainingAssignments > 0 ? "text-emerald-700" : "text-slate-500",
+            href: "/hrms/training"
           }
         ].map((kpi) => {
           const card = (

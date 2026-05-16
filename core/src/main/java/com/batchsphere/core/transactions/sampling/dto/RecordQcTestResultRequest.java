@@ -12,6 +12,7 @@ public class RecordQcTestResultRequest {
     @Size(max = 500)
     private String resultText;
     private UUID moaIdUsed;
+    private UUID equipmentId;
     @Size(max = 500)
     private String remarks;
 }

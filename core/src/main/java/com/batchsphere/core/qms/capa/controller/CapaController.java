@@ -1,6 +1,7 @@
 package com.batchsphere.core.qms.capa.controller;
 
 import com.batchsphere.core.qms.capa.dto.CapaApproveRequest;
+import com.batchsphere.core.qms.capa.dto.CapaAlertResponse;
 import com.batchsphere.core.qms.capa.dto.CapaEffectivenessReviewRequest;
 import com.batchsphere.core.qms.capa.dto.CapaReassignmentResponse;
 import com.batchsphere.core.qms.capa.dto.CapaRejectRequest;
@@ -11,17 +12,23 @@ import com.batchsphere.core.qms.capa.dto.CapaStatusUpdateRequest;
 import com.batchsphere.core.qms.capa.dto.CapaSummaryResponse;
 import com.batchsphere.core.qms.capa.dto.CreateCapaRequest;
 import com.batchsphere.core.qms.capa.dto.UpdateCapaRequest;
+import com.batchsphere.core.auth.service.AuthenticatedActorService;
 import com.batchsphere.core.qms.capa.service.CapaService;
+import com.batchsphere.core.report.CsvExportService;
+import com.batchsphere.core.report.PdfReportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,6 +42,9 @@ import java.util.UUID;
 public class CapaController {
 
     private final CapaService capaService;
+    private final PdfReportService pdfReportService;
+    private final CsvExportService csvExportService;
+    private final AuthenticatedActorService authenticatedActorService;
 
     @PostMapping
     public ResponseEntity<CapaResponse> createCapa(@Valid @RequestBody CreateCapaRequest request) {
@@ -42,14 +52,25 @@ public class CapaController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<CapaResponse>> getAllCapas(@RequestParam(required = false) UUID deviationId,
-                                                          Pageable pageable) {
-        return ResponseEntity.ok(capaService.getAllCapas(deviationId, pageable));
+    public ResponseEntity<?> getAllCapas(@RequestParam(required = false) UUID deviationId,
+                                         @RequestParam(required = false) String format,
+                                         @RequestHeader(value = "Accept", required = false) String accept,
+                                         Pageable pageable) {
+        Page<CapaResponse> page = capaService.getAllCapas(deviationId, pageable);
+        if (csvExportService.requested(format, accept)) {
+            return csvExportService.response("capas.csv", page.getContent());
+        }
+        return ResponseEntity.ok(page);
     }
 
     @GetMapping("/summary")
     public ResponseEntity<CapaSummaryResponse> getSummary() {
         return ResponseEntity.ok(capaService.getSummary());
+    }
+
+    @GetMapping("/alerts")
+    public ResponseEntity<List<CapaAlertResponse>> getAlerts() {
+        return ResponseEntity.ok(capaService.getAlerts());
     }
 
     @GetMapping("/{id}")
@@ -106,5 +127,15 @@ public class CapaController {
     @GetMapping("/{id}/reassignments")
     public ResponseEntity<List<CapaReassignmentResponse>> getReassignmentHistory(@PathVariable UUID id) {
         return ResponseEntity.ok(capaService.getReassignmentHistory(id));
+    }
+
+    @GetMapping(value = "/{id}/report", produces = "application/pdf")
+    public ResponseEntity<byte[]> downloadReport(@PathVariable UUID id) {
+        CapaResponse capa = capaService.getCapaById(id);
+        byte[] pdf = pdfReportService.generateCapaReport(capa, authenticatedActorService.currentActor());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"capa-" + capa.getCapaNumber() + ".pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 }

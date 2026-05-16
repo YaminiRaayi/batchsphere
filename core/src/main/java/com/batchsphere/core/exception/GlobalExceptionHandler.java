@@ -60,4 +60,10 @@ ErrorResponse errorResponse = new ErrorResponse("Validation Failed",errors, Loca
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
 
+    @ExceptionHandler(RecordLockedException.class)
+    public ResponseEntity<ErrorResponse> handleRecordLocked(RecordLockedException ex) {
+        ErrorResponse response = new ErrorResponse("Record Locked", ex.getMessage(), LocalDateTime.now());
+        return new ResponseEntity<>(response, HttpStatus.LOCKED);
+    }
+
 }

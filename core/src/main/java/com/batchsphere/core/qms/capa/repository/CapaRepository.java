@@ -32,7 +32,15 @@ public interface CapaRepository extends JpaRepository<Capa, UUID> {
 
     long countByIsActiveTrueAndStatusNotAndDueDateBetween(CapaStatus status, LocalDate from, LocalDate to);
 
+    List<Capa> findByIsActiveTrueAndStatusNotAndDueDateBefore(CapaStatus status, LocalDate dueDate);
+
+    List<Capa> findByIsActiveTrueAndStatusNotAndDueDateBetween(CapaStatus status, LocalDate from, LocalDate to);
+
     List<Capa> findByIsActiveTrueAndStatusNotIn(Collection<CapaStatus> statuses);
 
     List<Capa> findByIsActiveTrueAndStatus(CapaStatus status);
+
+    long countByIsActiveTrueAndStatusAndEffectivenessReviewDateBefore(CapaStatus status, LocalDate date);
+
+    List<Capa> findByIsActiveTrueAndStatusAndEffectivenessReviewDateBefore(CapaStatus status, LocalDate date);
 }

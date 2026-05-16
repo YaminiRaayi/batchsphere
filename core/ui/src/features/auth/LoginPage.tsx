@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { login, setAccessToken } from "../../lib/api";
+import { login, setAccessToken, verifyTotpLogin } from "../../lib/api";
 import { useAuthStore } from "../../stores/authStore";
 import { useAppShellStore } from "../../stores/appShellStore";
 
@@ -21,10 +21,13 @@ export function LoginPage() {
 
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("Admin@123");
+  const [totpCode, setTotpCode] = useState("");
+  const [mfaChallengeToken, setMfaChallengeToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const redirectTo = (location.state as { from?: string } | null)?.from ?? "/";
+  const isSessionTimeout = new URLSearchParams(location.search).get("reason") === "timeout";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,7 +35,15 @@ export function LoginPage() {
     setError(null);
 
     try {
-      const response = await login(username.trim(), password);
+      const response = mfaChallengeToken
+        ? await verifyTotpLogin(mfaChallengeToken, totpCode.trim())
+        : await login(username.trim(), password);
+      if (response.mfaRequired && response.mfaChallengeToken) {
+        setMfaChallengeToken(response.mfaChallengeToken);
+        setTotpCode("");
+        setError(null);
+        return;
+      }
       if (response.user.forcePasswordChange) {
         setAccessToken(null);
         setError("Password change is required before access. Contact an administrator to reset this account password.");
@@ -102,31 +113,67 @@ export function LoginPage() {
             Use the seeded admin account for now. This will later move behind proper user provisioning.
           </p>
 
-          <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-ink">Username</span>
-              <input
-                data-testid="login-username"
-                required
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel"
-                placeholder="admin"
-              />
-            </label>
+          {isSessionTimeout && (
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              Your session expired due to 30 minutes of inactivity (21 CFR Part 11 §11.10). Please sign in again.
+            </div>
+          )}
 
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-ink">Password</span>
-              <input
-                data-testid="login-password"
-                required
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel"
-                placeholder="Admin@123"
-              />
-            </label>
+          <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
+            {mfaChallengeToken ? (
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-ink">Authenticator Code</span>
+                <input
+                  data-testid="login-totp-code"
+                  required
+                  inputMode="numeric"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  value={totpCode}
+                  onChange={(event) => setTotpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                  className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel"
+                  placeholder="123456"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMfaChallengeToken(null);
+                    setTotpCode("");
+                    setError(null);
+                  }}
+                  className="mt-3 text-xs font-semibold text-slate-500 hover:text-ink"
+                >
+                  Use a different password
+                </button>
+              </label>
+            ) : (
+              <>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Username</span>
+                  <input
+                    data-testid="login-username"
+                    required
+                    value={username}
+                    onChange={(event) => setUsername(event.target.value)}
+                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel"
+                    placeholder="admin"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-ink">Password</span>
+                  <input
+                    data-testid="login-password"
+                    required
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    className="w-full rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-steel"
+                    placeholder="Admin@123"
+                  />
+                </label>
+              </>
+            )}
 
             {error ? (
               <div
@@ -143,7 +190,7 @@ export function LoginPage() {
               disabled={isSubmitting}
               className="w-full rounded-2xl bg-ink px-4 py-3 text-sm font-semibold text-white transition hover:bg-ink/90 disabled:cursor-not-allowed disabled:bg-ink/50"
             >
-              {isSubmitting ? "Signing in..." : "Sign in"}
+              {isSubmitting ? "Signing in..." : mfaChallengeToken ? "Verify code" : "Sign in"}
             </button>
           </form>
         </section>

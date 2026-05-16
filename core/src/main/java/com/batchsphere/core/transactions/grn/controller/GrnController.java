@@ -1,5 +1,6 @@
 package com.batchsphere.core.transactions.grn.controller;
 
+import com.batchsphere.core.report.CsvExportService;
 import com.batchsphere.core.transactions.grn.dto.CoaReviewRequest;
 import com.batchsphere.core.transactions.grn.dto.CreateGrnRequest;
 import com.batchsphere.core.transactions.grn.dto.ContainerSamplingLabelRequest;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -38,6 +40,7 @@ import java.util.UUID;
 public class GrnController {
 
     private final GrnService grnService;
+    private final CsvExportService csvExportService;
 
     @PostMapping
     public ResponseEntity<GrnResponse> createGrn(@Valid @RequestBody CreateGrnRequest request) {
@@ -55,12 +58,17 @@ public class GrnController {
     }
 
     @GetMapping
-    public ResponseEntity<Page<GrnResponse>> getAllGrns(Pageable pageable,
-                                                        @RequestParam(required = false) UUID vendorId) {
-        if (vendorId != null) {
-            return ResponseEntity.ok(grnService.getGrnsByVendor(vendorId, pageable));
+    public ResponseEntity<?> getAllGrns(Pageable pageable,
+                                        @RequestParam(required = false) UUID vendorId,
+                                        @RequestParam(required = false) String format,
+                                        @RequestHeader(value = "Accept", required = false) String accept) {
+        Page<GrnResponse> page = vendorId != null
+                ? grnService.getGrnsByVendor(vendorId, pageable)
+                : grnService.getAllGrns(pageable);
+        if (csvExportService.requested(format, accept)) {
+            return csvExportService.response("grns.csv", page.getContent());
         }
-        return ResponseEntity.ok(grnService.getAllGrns(pageable));
+        return ResponseEntity.ok(page);
     }
 
     @PutMapping("/{id}")

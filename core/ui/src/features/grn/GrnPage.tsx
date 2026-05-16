@@ -4,6 +4,7 @@ import { useAppShellStore } from "../../stores/appShellStore";
 import {
   cancelGrn,
   createGrn,
+  downloadCsvExport,
   fetchBatches,
   fetchContainerLabels,
   fetchGrnById,
@@ -601,7 +602,11 @@ export function GrnPage() {
       setSelectedGrn(updatedGrn);
       setCoaReviewForm(createCoaReviewForm(updatedGrn));
       await loadGrns(currentPage);
-      setQueueMessage(`CoA review updated for ${updatedGrn.grnNumber}.`);
+      if (updatedGrn.coaReviewStatus === "REJECTED" && updatedGrn.linkedDeviationNumber) {
+        setQueueMessage(`CoA rejected. Deviation ${updatedGrn.linkedDeviationNumber} automatically created.`);
+      } else {
+        setQueueMessage(`CoA review updated for ${updatedGrn.grnNumber}.`);
+      }
     } catch (reviewError) {
       const message =
         reviewError instanceof Error ? reviewError.message : "Unknown error while saving CoA review";
@@ -720,13 +725,22 @@ export function GrnPage() {
               </button>
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => setIsCreateMode(true)}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700"
-            >
-              + New GRN
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => void downloadCsvExport("/api/grns?size=10000", "grns.csv")}
+                className="rounded-lg border border-blue-200 bg-white px-4 py-2 text-xs font-semibold text-blue-700 shadow-sm hover:bg-blue-50"
+              >
+                Export CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsCreateMode(true)}
+                className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700"
+              >
+                + New GRN
+              </button>
+            </div>
           )}
         </div>
       </section>
@@ -1145,6 +1159,22 @@ export function GrnPage() {
                                     ) : null}
                                   </div>
                                 ))}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {selectedGrn.linkedDeviationId ? (
+                            <div className="rounded-2xl border border-red-100 bg-red-50 p-4 shadow-sm">
+                              <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-red-500">
+                                <div className="h-4 w-1 rounded bg-red-500" />
+                                Linked Deviation
+                              </div>
+                              <div className="flex items-center gap-3 rounded-xl border border-red-100 bg-white px-3 py-2.5">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 text-[10px] font-bold text-red-600">DEV</div>
+                                <div>
+                                  <div className="font-mono text-xs font-bold text-red-800">{selectedGrn.linkedDeviationNumber}</div>
+                                  <div className="text-[10px] text-slate-500">Auto-created on CoA rejection · Severity: MAJOR</div>
+                                </div>
                               </div>
                             </div>
                           ) : null}

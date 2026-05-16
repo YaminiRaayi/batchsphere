@@ -18,6 +18,7 @@ public record UserManagementResponse(
         LocalDateTime lockedUntil,
         LocalDateTime passwordChangedAt,
         Boolean forcePasswordChange,
+        Boolean totpEnabled,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

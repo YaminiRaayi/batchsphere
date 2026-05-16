@@ -17,6 +17,7 @@ export type ManagedUser = {
   lockedUntil: string | null;
   passwordChangedAt: string | null;
   forcePasswordChange: boolean;
+  totpEnabled: boolean;
   createdAt: string;
   updatedAt: string | null;
 };

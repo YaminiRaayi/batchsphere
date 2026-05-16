@@ -26,6 +26,7 @@ import com.batchsphere.core.qms.document.entity.DocumentApprovalStep;
 import com.batchsphere.core.qms.document.entity.DocumentDistribution;
 import com.batchsphere.core.qms.document.entity.DocumentDistributionStatus;
 import com.batchsphere.core.qms.document.entity.DocumentRevision;
+import com.batchsphere.core.qms.document.entity.DocumentReviewStatus;
 import com.batchsphere.core.qms.document.entity.DocumentRevisionStatus;
 import com.batchsphere.core.qms.document.repository.ControlledDocumentRepository;
 import com.batchsphere.core.qms.document.repository.DocumentApprovalRepository;
@@ -106,7 +107,10 @@ public class ControlledDocumentServiceImpl implements ControlledDocumentService 
                                                          String search,
                                                          Pageable pageable) {
         String normalizedSearch = StringUtils.hasText(search) ? search.trim() : null;
-        return documentRepository.search(type, status, normalizedSearch, pageable).map(this::toResponse);
+        Page<ControlledDocument> documents = normalizedSearch == null
+                ? documentRepository.search(type, status, pageable)
+                : documentRepository.searchWithText(type, status, normalizedSearch, pageable);
+        return documents.map(this::toResponse);
     }
 
     @Override
@@ -421,6 +425,7 @@ public class ControlledDocumentServiceImpl implements ControlledDocumentService 
                 .linkedMoaCode(document.getLinkedMoaCode())
                 .reviewCycleMonths(document.getReviewCycleMonths())
                 .nextReviewDate(document.getNextReviewDate())
+                .reviewStatus(deriveReviewStatus(document.getNextReviewDate()))
                 .effectiveDate(document.getEffectiveDate())
                 .isActive(document.getIsActive())
                 .createdBy(document.getCreatedBy())
@@ -523,5 +528,28 @@ public class ControlledDocumentServiceImpl implements ControlledDocumentService 
             throw new BusinessConflictException("Review cycle must be at least 1 month");
         }
         return value;
+    }
+
+    private DocumentReviewStatus deriveReviewStatus(LocalDate nextReviewDate) {
+        if (nextReviewDate == null) {
+            return DocumentReviewStatus.CURRENT;
+        }
+        LocalDate today = LocalDate.now();
+        if (nextReviewDate.isBefore(today)) {
+            return DocumentReviewStatus.OVERDUE;
+        }
+        if (!nextReviewDate.isAfter(today.plusDays(30))) {
+            return DocumentReviewStatus.DUE_SOON;
+        }
+        return DocumentReviewStatus.CURRENT;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ControlledDocumentResponse> getDueForReview(Pageable pageable) {
+        LocalDate cutoff = LocalDate.now().plusDays(30);
+        return documentRepository
+                .findDueForReview(ControlledDocumentStatus.EFFECTIVE, cutoff, pageable)
+                .map(this::toResponse);
     }
 }

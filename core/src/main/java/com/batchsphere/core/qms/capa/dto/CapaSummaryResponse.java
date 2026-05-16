@@ -12,4 +12,6 @@ public class CapaSummaryResponse {
     Map<CapaStatus, Long> countsByStatus;
     Long overdue;
     Long dueThisWeek;
+    Long alertCount;
+    Long overdueEffectiveness;
 }

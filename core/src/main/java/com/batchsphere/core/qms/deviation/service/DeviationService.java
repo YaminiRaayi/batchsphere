@@ -22,4 +22,6 @@ public interface DeviationService {
     DeviationResponse updateStatus(UUID id, DeviationStatusUpdateRequest request);
 
     DeviationSummaryResponse getSummary();
+
+    DeviationResponse createAutoDeviation(UUID sourceEntityId, String sourceReference, String title, String actor);
 }

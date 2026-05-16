@@ -2,6 +2,7 @@ package com.batchsphere.core.qms.document.dto;
 
 import com.batchsphere.core.qms.document.entity.ControlledDocumentStatus;
 import com.batchsphere.core.qms.document.entity.ControlledDocumentType;
+import com.batchsphere.core.qms.document.entity.DocumentReviewStatus;
 import lombok.Builder;
 import lombok.Value;
 
@@ -25,6 +26,7 @@ public class ControlledDocumentResponse {
     String linkedMoaCode;
     Integer reviewCycleMonths;
     LocalDate nextReviewDate;
+    DocumentReviewStatus reviewStatus;
     LocalDate effectiveDate;
     Boolean isActive;
     String createdBy;

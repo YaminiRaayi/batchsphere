@@ -26,6 +26,9 @@ export type ChangeControlAffectedEntity = {
   entityReference: string;
   entityId: string | null;
   notes: string | null;
+  entityDisplayName: string | null;
+  entityNumber: string | null;
+  navigationPath: string | null;
   createdAt: string;
 };
 

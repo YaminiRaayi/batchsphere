@@ -97,6 +97,32 @@ class CapaControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"IN_PROGRESS\",\"reason\":\"Owner started action execution\"}"))
                 .andReturn();
+        mockMvc.perform(post("/api/capas/{id}/submit-for-approval", capaId)
+                        .header("Authorization", "Bearer " + token))
+                .andReturn();
+        mockMvc.perform(post("/api/capas/{id}/approve", capaId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "admin",
+                                  "password": "Admin@123",
+                                  "meaning": "I approve this CAPA action plan",
+                                  "comments": "Action plan approved for execution."
+                                }
+                                """))
+                .andReturn();
+        MvcResult auditResult = mockMvc.perform(get("/api/audit-events")
+                        .header("Authorization", "Bearer " + token)
+                        .param("entityType", "QMS_CAPA")
+                        .param("entityId", capaId))
+                .andReturn();
+        assertEquals(200, auditResult.getResponse().getStatus(), auditResult.getResponse().getContentAsString());
+        JsonNode auditEvents = objectMapper.readTree(auditResult.getResponse().getContentAsString());
+        assertTrue(auditEvents.isArray());
+        assertTrue(auditEvents.findValues("fieldName").stream().anyMatch(node -> "approvalStatus".equals(node.asText())));
+        assertTrue(auditEvents.findValues("eventType").stream().anyMatch(node -> "E_SIGNATURE".equals(node.asText())));
+
         mockMvc.perform(put("/api/capas/{id}/status", capaId)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -106,6 +132,29 @@ class CapaControllerIntegrationTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"EFFECTIVENESS_CHECK\",\"completionSummary\":\"Effectiveness monitoring started.\"}"))
+                .andReturn();
+        mockMvc.perform(post("/api/capas/{id}/schedule-effectiveness-review", capaId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "effectivenessReviewDate": "%s",
+                                  "effectivenessReviewer": "admin"
+                                }
+                                """.formatted(LocalDate.now().plusDays(30))))
+                .andReturn();
+        mockMvc.perform(post("/api/capas/{id}/review-effectiveness", capaId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "outcome": "PASSED",
+                                  "comments": "No repeat deviation observed during monitoring window.",
+                                  "username": "admin",
+                                  "password": "Admin@123",
+                                  "meaning": "I confirm CAPA effectiveness verified"
+                                }
+                                """))
                 .andReturn();
 
         long signatureCountBefore = eSignatureRecordRepository.count();

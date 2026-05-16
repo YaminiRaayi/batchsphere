@@ -9,6 +9,7 @@ import com.batchsphere.core.compliance.esign.service.ESignatureService;
 import com.batchsphere.core.exception.BusinessConflictException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.qms.capa.dto.CapaApproveRequest;
+import com.batchsphere.core.qms.capa.dto.CapaAlertResponse;
 import com.batchsphere.core.qms.capa.dto.CapaEffectivenessReviewRequest;
 import com.batchsphere.core.qms.capa.dto.CapaReassignmentResponse;
 import com.batchsphere.core.qms.capa.dto.CapaRejectRequest;
@@ -80,7 +81,7 @@ public class CapaServiceImpl implements CapaService {
                 .effectivenessOutcome(CapaEffectivenessOutcome.PENDING)
                 .owner(trimRequired(request.getOwner(), "CAPA owner is required"))
                 .dueDate(request.getDueDate())
-                .correctiveAction(trimRequired(request.getCorrectiveAction(), "Corrective action is required"))
+                .correctiveAction(requireMinLength(trimRequired(request.getCorrectiveAction(), "Corrective action is required"), 30, "Corrective action"))
                 .preventiveAction(blankToNull(request.getPreventiveAction()))
                 .effectivenessCheck(blankToNull(request.getEffectivenessCheck()))
                 .isActive(true)
@@ -131,7 +132,7 @@ public class CapaServiceImpl implements CapaService {
         capa.setSeverity(request.getSeverity());
         capa.setOwner(trimRequired(request.getOwner(), "CAPA owner is required"));
         capa.setDueDate(request.getDueDate());
-        capa.setCorrectiveAction(trimRequired(request.getCorrectiveAction(), "Corrective action is required"));
+        capa.setCorrectiveAction(requireMinLength(trimRequired(request.getCorrectiveAction(), "Corrective action is required"), 30, "Corrective action"));
         capa.setPreventiveAction(blankToNull(request.getPreventiveAction()));
         capa.setEffectivenessCheck(blankToNull(request.getEffectivenessCheck()));
         capa.setUpdatedBy(actor);
@@ -397,11 +398,37 @@ public class CapaServiceImpl implements CapaService {
             statusCounts.put((CapaStatus) row[0], (Long) row[1]);
         }
         LocalDate today = LocalDate.now();
+        long overdueEffectiveness = capaRepository.countByIsActiveTrueAndStatusAndEffectivenessReviewDateBefore(CapaStatus.EFFECTIVENESS_CHECK, today);
         return CapaSummaryResponse.builder()
                 .countsByStatus(statusCounts)
                 .overdue(capaRepository.countByIsActiveTrueAndStatusNotAndDueDateBefore(CapaStatus.CLOSED, today))
                 .dueThisWeek(capaRepository.countByIsActiveTrueAndStatusNotAndDueDateBetween(CapaStatus.CLOSED, today, today.plusDays(7)))
+                .overdueEffectiveness(overdueEffectiveness)
+                .alertCount((long) getAlerts().size())
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CapaAlertResponse> getAlerts() {
+        LocalDate today = LocalDate.now();
+        List<CapaAlertResponse> overdue = capaRepository
+                .findByIsActiveTrueAndStatusNotAndDueDateBefore(CapaStatus.CLOSED, today)
+                .stream()
+                .map(capa -> toAlert(capa, "OVERDUE", "HIGH", "CAPA is overdue"))
+                .toList();
+        List<CapaAlertResponse> dueSoon = capaRepository
+                .findByIsActiveTrueAndStatusNotAndDueDateBetween(CapaStatus.CLOSED, today, today.plusDays(7))
+                .stream()
+                .filter(capa -> !capa.getDueDate().isBefore(today))
+                .map(capa -> toAlert(capa, "DUE_SOON", "MEDIUM", "CAPA due within 7 days"))
+                .toList();
+        List<CapaAlertResponse> effectiveness = capaRepository
+                .findByIsActiveTrueAndStatusAndEffectivenessReviewDateBefore(CapaStatus.EFFECTIVENESS_CHECK, today)
+                .stream()
+                .map(capa -> toAlert(capa, "EFFECTIVENESS_OVERDUE", "HIGH", "CAPA effectiveness review overdue"))
+                .toList();
+        return java.util.stream.Stream.of(overdue, dueSoon, effectiveness).flatMap(List::stream).toList();
     }
 
     private String nextCapaNumber() {
@@ -512,6 +539,21 @@ public class CapaServiceImpl implements CapaService {
                 .build();
     }
 
+    private CapaAlertResponse toAlert(Capa capa, String type, String severity, String message) {
+        long daysUntilDue = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), capa.getDueDate());
+        return CapaAlertResponse.builder()
+                .capaId(capa.getId())
+                .capaNumber(capa.getCapaNumber())
+                .title(capa.getTitle())
+                .owner(capa.getOwner())
+                .alertType(type)
+                .severity(severity)
+                .dueDate(capa.getDueDate())
+                .daysUntilDue(daysUntilDue)
+                .message(message)
+                .build();
+    }
+
     private String trimRequired(String value, String message) {
         if (!StringUtils.hasText(value)) {
             throw new BusinessConflictException(message);
@@ -521,5 +563,12 @@ public class CapaServiceImpl implements CapaService {
 
     private String blankToNull(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private String requireMinLength(String value, int min, String fieldName) {
+        if (value != null && value.length() < min) {
+            throw new BusinessConflictException(fieldName + " must be at least " + min + " characters (ALCOA+ requirement)");
+        }
+        return value;
     }
 }

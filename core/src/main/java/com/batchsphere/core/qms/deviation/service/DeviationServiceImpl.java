@@ -9,6 +9,8 @@ import com.batchsphere.core.compliance.esign.service.ESignatureService;
 import com.batchsphere.core.exception.BusinessConflictException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.qms.deviation.dto.CreateDeviationRequest;
+import com.batchsphere.core.qms.deviation.entity.DeviationSourceModule;
+import com.batchsphere.core.qms.deviation.entity.DeviationType;
 import com.batchsphere.core.qms.deviation.dto.DeviationResponse;
 import com.batchsphere.core.qms.deviation.dto.DeviationStatusUpdateRequest;
 import com.batchsphere.core.qms.deviation.dto.DeviationSummaryResponse;
@@ -252,6 +254,9 @@ public class DeviationServiceImpl implements DeviationService {
             if (!StringUtils.hasText(deviation.getRootCause())) {
                 throw new BusinessConflictException("Root cause is required before closing deviation");
             }
+            if (deviation.getRootCause() != null && deviation.getRootCause().trim().length() < 20) {
+                throw new BusinessConflictException("Root cause must be at least 20 characters (ALCOA+ requirement)");
+            }
             if (!StringUtils.hasText(deviation.getImpactAssessment())) {
                 throw new BusinessConflictException("Impact assessment is required before closing deviation");
             }
@@ -298,5 +303,42 @@ public class DeviationServiceImpl implements DeviationService {
 
     private String blankToNull(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    @Override
+    @Transactional
+    public DeviationResponse createAutoDeviation(UUID sourceEntityId, String sourceReference, String title, String actor) {
+        LocalDateTime now = LocalDateTime.now();
+        Deviation deviation = Deviation.builder()
+                .id(UUID.randomUUID())
+                .deviationNumber(nextDeviationNumber())
+                .title(title)
+                .description("Auto-created on rejection of " + sourceReference + ". Investigate root cause and take corrective action.")
+                .deviationType(DeviationType.MATERIAL)
+                .severity(DeviationSeverity.MAJOR)
+                .status(DeviationStatus.OPEN)
+                .sourceModule(DeviationSourceModule.GRN)
+                .sourceEntityId(sourceEntityId)
+                .sourceReference(sourceReference)
+                .department("Quality Control")
+                .detectedBy(actor)
+                .detectedAt(now)
+                .isActive(true)
+                .createdBy(actor)
+                .createdAt(now)
+                .build();
+        Deviation saved = deviationRepository.save(deviation);
+        auditEventService.record(
+                "QMS_DEVIATION",
+                saved.getId(),
+                AuditEventType.CREATE,
+                "status",
+                null,
+                DeviationStatus.OPEN.name(),
+                "Auto-created deviation for GRN rejection: " + sourceReference,
+                actor,
+                "QMS_DEVIATION"
+        );
+        return toResponse(saved);
     }
 }

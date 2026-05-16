@@ -82,6 +82,8 @@ export type CapaSummary = {
   countsByStatus: Record<CapaStatus, number>;
   overdue: number;
   dueThisWeek: number;
+  alertCount: number;
+  overdueEffectiveness: number;
 };
 
 export type CapaPage = PageResponse<Capa>;
@@ -135,4 +137,16 @@ export type CapaEffectivenessReviewRequest = {
   username: string;
   password: string;
   meaning?: string;
+};
+
+export type CapaAlert = {
+  capaId: string;
+  capaNumber: string;
+  title: string;
+  owner: string;
+  alertType: "OVERDUE" | "DUE_SOON" | "EFFECTIVENESS_OVERDUE";
+  severity: "HIGH" | "MEDIUM" | "LOW";
+  dueDate: string;
+  daysUntilDue: number;
+  message: string;
 };

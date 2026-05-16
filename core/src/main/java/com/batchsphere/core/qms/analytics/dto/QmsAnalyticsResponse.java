@@ -21,6 +21,12 @@ public class QmsAnalyticsResponse {
     Long avgCapaClosureDays;
     AgingBuckets capaAging;
 
+    long openChangeControls;
+    long pendingCCApprovals;
+    long overdueEffectivenessChecks;
+    long documentsAwaitingReview;
+    long overdueTrainingAssignments;
+
     @Value
     @Builder
     public static class MonthlyCount {

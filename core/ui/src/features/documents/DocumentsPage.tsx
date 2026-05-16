@@ -7,8 +7,10 @@ import {
   createDocumentRevision,
   distributeDocumentRevision,
   fetchDocumentDistributions,
+  fetchDocumentReport,
   fetchDocumentRevisionFile,
   fetchDocuments,
+  fetchDocumentsDueForReview,
   fetchManagedUsers,
   fetchMyDocumentAcknowledgements,
   submitDocumentRevision
@@ -21,6 +23,7 @@ import type {
   ControlledDocumentType,
   DocumentApproval,
   DocumentDistribution,
+  DocumentReviewStatus,
   DocumentRevision
 } from "../../types/document-control";
 
@@ -56,6 +59,7 @@ export function DocumentsPage() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<ControlledDocumentType | "ALL">("ALL");
   const [statusFilter, setStatusFilter] = useState<ControlledDocumentStatus | "ALL">("ALL");
+  const [dueForReviewTab, setDueForReviewTab] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [documentForm, setDocumentForm] = useState(initialDocumentForm);
@@ -67,12 +71,21 @@ export function DocumentsPage() {
   const [acknowledgementComments, setAcknowledgementComments] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [showAllAck, setShowAllAck] = useState(false);
+  const [isReportDownloading, setIsReportDownloading] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["documents", typeFilter, statusFilter, search],
-    queryFn: () => fetchDocuments({ type: typeFilter, status: statusFilter, search })
+    queryFn: () => fetchDocuments({ type: typeFilter, status: statusFilter, search }),
+    enabled: !dueForReviewTab
   });
-  const documents = data?.content ?? [];
+
+  const { data: dueForReviewData, isLoading: dueLoading } = useQuery({
+    queryKey: ["documents-due-for-review"],
+    queryFn: fetchDocumentsDueForReview,
+    enabled: dueForReviewTab
+  });
+
+  const documents = dueForReviewTab ? (dueForReviewData?.content ?? []) : (data?.content ?? []);
   const selected = useMemo(
     () => documents.find((document) => document.id === selectedId) ?? documents[0] ?? null,
     [documents, selectedId]
@@ -197,7 +210,26 @@ export function DocumentsPage() {
     onError: (mutationError) => setActionError(mutationError instanceof Error ? mutationError.message : "Failed to acknowledge document")
   });
 
+  const listLoading = dueForReviewTab ? dueLoading : isLoading;
   const errorMessage = error instanceof Error ? error.message : null;
+
+  async function handleDownloadReport(document: ControlledDocument) {
+    setIsReportDownloading(true);
+    setActionError(null);
+    try {
+      const blob = await fetchDocumentReport(document.id);
+      const url = URL.createObjectURL(blob);
+      const anchor = window.document.createElement("a");
+      anchor.href = url;
+      anchor.download = `controlled-document-${document.documentNumber}.pdf`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (downloadError) {
+      setActionError(downloadError instanceof Error ? downloadError.message : "Failed to download report");
+    } finally {
+      setIsReportDownloading(false);
+    }
+  }
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-violet-50/60">
@@ -220,18 +252,30 @@ export function DocumentsPage() {
               {documentTypes.map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
             </select>
           </div>
-          <div className="border-b border-violet-100 p-3">
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ControlledDocumentStatus | "ALL")} className="w-full rounded-xl border border-violet-100 bg-violet-50 px-2 py-2 text-xs text-slate-700">
+          <div className="border-b border-violet-100 p-3 space-y-2">
+            <select
+              value={statusFilter}
+              onChange={(event) => { setStatusFilter(event.target.value as ControlledDocumentStatus | "ALL"); setDueForReviewTab(false); }}
+              disabled={dueForReviewTab}
+              className="w-full rounded-xl border border-violet-100 bg-violet-50 px-2 py-2 text-xs text-slate-700 disabled:opacity-50"
+            >
               {documentStatuses.map((value) => <option key={value} value={value}>{formatLabel(value)}</option>)}
             </select>
+            <button
+              type="button"
+              onClick={() => setDueForReviewTab((v) => !v)}
+              className={`w-full rounded-xl px-3 py-2 text-xs font-bold transition ${dueForReviewTab ? "bg-amber-500 text-white" : "border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"}`}
+            >
+              {dueForReviewTab ? "← All Documents" : "Due for Review"}
+            </button>
           </div>
           <div className="flex-1 overflow-y-auto">
-            {isLoading ? <div className="p-5 text-sm text-slate-500">Loading documents...</div> : null}
+            {listLoading ? <div className="p-5 text-sm text-slate-500">Loading documents...</div> : null}
             {errorMessage ? <div className="p-5 text-sm text-red-500">{errorMessage}</div> : null}
             {documents.map((document) => (
               <DocumentRow key={document.id} document={document} selected={selected?.id === document.id} onClick={() => setSelectedId(document.id)} />
             ))}
-            {!isLoading && documents.length === 0 ? <div className="p-5 text-sm text-slate-500">No controlled documents found.</div> : null}
+            {!listLoading && documents.length === 0 ? <div className="p-5 text-sm text-slate-500">{dueForReviewTab ? "No documents due for review." : "No controlled documents found."}</div> : null}
           </div>
         </aside>
 
@@ -247,6 +291,14 @@ export function DocumentsPage() {
                   </div>
                   <p className="mt-1 text-sm text-slate-500">{selected.title} · {formatLabel(selected.documentType)} · {selected.department}</p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => void handleDownloadReport(selected)}
+                  disabled={isReportDownloading}
+                  className="rounded-lg border border-violet-200 bg-white px-4 py-2 text-xs font-bold text-violet-700 hover:bg-violet-50 disabled:opacity-50"
+                >
+                  {isReportDownloading ? "Preparing..." : "Download PDF"}
+                </button>
               </section>
 
               {actionError ? <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">{actionError}</div> : null}
@@ -305,7 +357,13 @@ export function DocumentsPage() {
                     <Info label="Category" value={selected.category ?? "-"} />
                     <Info label="Review cycle" value={`${selected.reviewCycleMonths} months`} />
                     <Info label="Effective date" value={selected.effectiveDate ?? "-"} />
-                    <Info label="Next review" value={selected.nextReviewDate ?? "-"} />
+                    <div className="mb-3">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Next review</div>
+                      <div className="mt-0.5 flex items-center gap-2">
+                        <span className="text-sm font-semibold text-slate-700">{selected.nextReviewDate ?? "-"}</span>
+                        <ReviewStatusBadge status={selected.reviewStatus} />
+                      </div>
+                    </div>
                     <Info label="Linked material" value={selected.linkedMaterialCode ?? "-"} />
                     <Info label="Linked MoA" value={selected.linkedMoaCode ?? "-"} />
                   </Panel>
@@ -458,7 +516,16 @@ function DocumentRow({ document, selected, onClick }: { document: ControlledDocu
           {document.currentRevision ? <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold text-violet-700">{document.currentRevision.revision}</span> : null}
         </div>
         <div className="mt-0.5 truncate text-xs text-slate-500">{document.title}</div>
-        <div className="mt-1 flex items-center gap-2"><StatusPill status={document.status} compact /><span className="truncate text-[10px] text-slate-400">{formatLabel(document.documentType)}</span></div>
+        <div className="mt-1 flex items-center gap-2">
+          <StatusPill status={document.status} compact />
+          <span className="truncate text-[10px] text-slate-400">{formatLabel(document.documentType)}</span>
+        </div>
+        {document.nextReviewDate ? (
+          <div className="mt-1 flex items-center gap-1.5">
+            <ReviewStatusBadge status={document.reviewStatus} />
+            <span className="text-[10px] text-slate-400">Review: {document.nextReviewDate}</span>
+          </div>
+        ) : null}
       </div>
     </button>
   );
@@ -564,6 +631,13 @@ function StatusPill({ status, compact = false }: { status: ControlledDocumentSta
   return <span className={`inline-flex rounded-full font-bold ${className} ${compact ? "px-2 py-0.5 text-[10px]" : "px-3 py-1 text-xs"}`}>{formatLabel(status)}</span>;
 }
 
+function ReviewStatusBadge({ status }: { status: DocumentReviewStatus | null | undefined }) {
+  if (!status || status === "CURRENT") return null;
+  const className = status === "OVERDUE" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700";
+  const label = status === "OVERDUE" ? "Overdue" : "Due Soon";
+  return <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${className}`}>{label}</span>;
+}
+
 function fieldClass(extra = "") {
   return `w-full rounded-xl border border-violet-100 bg-white px-3 py-2 text-sm text-slate-700 outline-none focus:border-violet-400 ${extra}`;
 }
@@ -575,4 +649,3 @@ function formatLabel(value: string) {
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
-

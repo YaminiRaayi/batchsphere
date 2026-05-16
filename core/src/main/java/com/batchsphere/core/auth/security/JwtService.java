@@ -18,6 +18,7 @@ public class JwtService {
 
     private static final String TOKEN_USE_ACCESS = "access";
     private static final String TOKEN_USE_REFRESH = "refresh";
+    private static final String TOKEN_USE_MFA_CHALLENGE = "mfa_challenge";
 
     private static final Base64.Encoder URL_ENCODER = Base64.getUrlEncoder().withoutPadding();
     private static final Base64.Decoder URL_DECODER = Base64.getUrlDecoder();
@@ -27,16 +28,19 @@ public class JwtService {
     private final byte[] secret;
     private final long accessExpirationSeconds;
     private final long refreshExpirationSeconds;
+    private final long mfaChallengeExpirationSeconds;
 
     public JwtService(
             @Value("${app.auth.jwt.secret}") String secret,
             @Value("${app.auth.jwt.expiration-seconds:3600}") long accessExpirationSeconds,
-            @Value("${app.auth.jwt.refresh-expiration-seconds:604800}") long refreshExpirationSeconds
+            @Value("${app.auth.jwt.refresh-expiration-seconds:604800}") long refreshExpirationSeconds,
+            @Value("${app.auth.jwt.mfa-challenge-expiration-seconds:300}") long mfaChallengeExpirationSeconds
     ) {
         this.objectMapper = new ObjectMapper();
         this.secret = secret.getBytes(StandardCharsets.UTF_8);
         this.accessExpirationSeconds = accessExpirationSeconds;
         this.refreshExpirationSeconds = refreshExpirationSeconds;
+        this.mfaChallengeExpirationSeconds = mfaChallengeExpirationSeconds;
     }
 
     public String generateAccessToken(AuthenticatedUser user) {
@@ -45,6 +49,10 @@ public class JwtService {
 
     public String generateRefreshToken(AuthenticatedUser user) {
         return generateToken(user, TOKEN_USE_REFRESH, refreshExpirationSeconds);
+    }
+
+    public String generateMfaChallengeToken(AuthenticatedUser user) {
+        return generateToken(user, TOKEN_USE_MFA_CHALLENGE, mfaChallengeExpirationSeconds);
     }
 
     public String generateToken(AuthenticatedUser user, String tokenUse, long expirationSeconds) {
@@ -70,6 +78,10 @@ public class JwtService {
 
     public boolean isRefreshTokenValid(String token, AuthenticatedUser user) {
         return isTokenValid(token, user, TOKEN_USE_REFRESH);
+    }
+
+    public boolean isMfaChallengeTokenValid(String token, AuthenticatedUser user) {
+        return isTokenValid(token, user, TOKEN_USE_MFA_CHALLENGE);
     }
 
     public boolean isTokenValid(String token, AuthenticatedUser user, String expectedTokenUse) {

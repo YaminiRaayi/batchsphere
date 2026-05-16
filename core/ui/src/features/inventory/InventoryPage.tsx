@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   adjustInventory,
+  downloadCsvExport,
   fetchBatches,
   fetchInventory,
   fetchInventoryTransactions,
@@ -328,6 +329,9 @@ export function InventoryPage() {
                 if (label === "Adjust") {
                   setIsAdjustOpen(true);
                   setAdjustError(null);
+                }
+                if (label === "Export") {
+                  void downloadCsvExport("/api/inventory?size=10000", "inventory.csv");
                 }
               }}
               className="flex items-center gap-2 rounded-xl border border-sky-200 bg-white px-4 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-50"

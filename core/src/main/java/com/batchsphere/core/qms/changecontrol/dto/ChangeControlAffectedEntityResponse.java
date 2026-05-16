@@ -14,5 +14,8 @@ public class ChangeControlAffectedEntityResponse {
     String entityReference;
     UUID entityId;
     String notes;
+    String entityDisplayName;
+    String entityNumber;
+    String navigationPath;
     LocalDateTime createdAt;
 }

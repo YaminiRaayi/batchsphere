@@ -10,4 +10,6 @@ import java.util.UUID;
 public interface InventoryTransactionRepository extends JpaRepository<InventoryTransaction, UUID> {
 
     Page<InventoryTransaction> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    java.util.List<InventoryTransaction> findByBatchIdOrderByCreatedAtAsc(UUID batchId);
 }

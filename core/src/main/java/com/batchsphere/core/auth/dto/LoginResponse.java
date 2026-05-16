@@ -9,6 +9,8 @@ public record LoginResponse(
         String tokenType,
         long expiresInSeconds,
         long refreshExpiresInSeconds,
-        AuthUserResponse user
+        AuthUserResponse user,
+        Boolean mfaRequired,
+        String mfaChallengeToken
 ) {
 }

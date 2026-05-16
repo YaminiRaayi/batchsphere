@@ -3,6 +3,7 @@ package com.batchsphere.core.compliance.esign.service;
 import com.batchsphere.core.auth.entity.User;
 import com.batchsphere.core.auth.repository.UserRepository;
 import com.batchsphere.core.auth.service.AuthenticatedActorService;
+import com.batchsphere.core.compliance.delegation.service.ApprovalDelegationService;
 import com.batchsphere.core.compliance.esign.dto.CreateESignatureRequest;
 import com.batchsphere.core.compliance.esign.dto.ESignatureRequest;
 import com.batchsphere.core.compliance.esign.dto.ESignatureRecordResponse;
@@ -28,6 +29,7 @@ public class ESignatureServiceImpl implements ESignatureService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticatedActorService authenticatedActorService;
+    private final ApprovalDelegationService approvalDelegationService;
 
     @Override
     public ESignatureRecordResponse sign(CreateESignatureRequest request) {
@@ -50,22 +52,36 @@ public class ESignatureServiceImpl implements ESignatureService {
                                          String actor,
                                          ESignatureRequest request,
                                          String reason) {
-        String signer = StringUtils.hasText(request != null ? request.getUsername() : null)
+        String credentialUsername = StringUtils.hasText(request != null ? request.getUsername() : null)
                 ? request.getUsername().trim()
                 : actor;
+        String representedUsername = StringUtils.hasText(request != null ? request.getDelegatedByUsername() : null)
+                ? request.getDelegatedByUsername().trim()
+                : credentialUsername;
         ESignatureVerificationMethod method = StringUtils.hasText(request != null ? request.getPassword() : null)
                 ? ESignatureVerificationMethod.PASSWORD
                 : ESignatureVerificationMethod.SESSION_CONFIRMATION;
 
-        User user = userRepository.findByUsername(signer).orElse(null);
+        if (!credentialUsername.equalsIgnoreCase(actor)) {
+            throw new BusinessConflictException("Electronic signature credential user must match the authenticated user");
+        }
+
+        User credentialUser = userRepository.findByUsername(credentialUsername).orElse(null);
         if (method == ESignatureVerificationMethod.PASSWORD) {
-            if (user == null || !Boolean.TRUE.equals(user.getIsActive())
-                    || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            if (credentialUser == null || !Boolean.TRUE.equals(credentialUser.getIsActive())
+                    || !passwordEncoder.matches(request.getPassword(), credentialUser.getPasswordHash())) {
                 throw new BusinessConflictException("Electronic signature password verification failed");
             }
-            if (!signer.equalsIgnoreCase(actor)) {
-                throw new BusinessConflictException("Electronic signature signer must match the authenticated user");
-            }
+        }
+
+        User representedUser = credentialUser;
+        String signatureReason = StringUtils.hasText(reason) ? reason.trim() : null;
+        if (!representedUsername.equalsIgnoreCase(actor)) {
+            approvalDelegationService.assertActiveDelegation(representedUsername, actor, entityType, action);
+            representedUser = userRepository.findByUsername(representedUsername)
+                    .orElseThrow(() -> new BusinessConflictException("Delegated signer user not found"));
+            String delegationNote = "Delegated approval by " + actor + " for " + representedUsername;
+            signatureReason = signatureReason == null ? delegationNote : signatureReason + " | " + delegationNote;
         }
 
         ESignatureRecord record = eSignatureRecordRepository.save(ESignatureRecord.builder()
@@ -76,12 +92,12 @@ public class ESignatureServiceImpl implements ESignatureService {
                 .meaning(StringUtils.hasText(request != null ? request.getMeaning() : null)
                         ? request.getMeaning().trim()
                         : defaultMeaning)
-                .signerUsername(signer)
-                .signerRole(user != null && user.getRole() != null ? user.getRole().name() : null)
+                .signerUsername(representedUsername)
+                .signerRole(representedUser != null && representedUser.getRole() != null ? representedUser.getRole().name() : null)
                 .signedAt(LocalDateTime.now())
                 .verificationMethod(method)
                 .verificationStatus(ESignatureVerificationStatus.VERIFIED)
-                .reason(StringUtils.hasText(reason) ? reason.trim() : null)
+                .reason(signatureReason)
                 .isActive(true)
                 .build());
         return toResponse(record);

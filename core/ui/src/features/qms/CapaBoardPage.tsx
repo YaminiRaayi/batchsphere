@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { approveCapaAction, deleteCapaAttachment, fetchCapaAttachmentFile, fetchCapaAttachments, fetchCapaReassignmentHistory, fetchCapaSummary, fetchCapas, fetchEmployees, reassignCapa, rejectCapaAction, reviewCapaEffectiveness, scheduleCapaEffectivenessReview, submitCapaForApproval, updateCapaStatus, uploadCapaAttachment } from "../../lib/api";
+import { approveCapaAction, deleteCapaAttachment, downloadCsvExport, downloadPdfReport, fetchCapaAlerts, fetchCapaAttachmentFile, fetchCapaAttachments, fetchCapaReassignmentHistory, fetchCapaSummary, fetchCapas, fetchEmployees, reassignCapa, rejectCapaAction, reviewCapaEffectiveness, scheduleCapaEffectivenessReview, submitCapaForApproval, updateCapaStatus, uploadCapaAttachment } from "../../lib/api";
 import type { Capa, CapaApprovalStatus, CapaAttachmentStage, CapaEffectivenessOutcome, CapaStatus } from "../../types/capa";
 import { useAuthStore } from "../../stores/authStore";
 import { formatDateTime, formatLabel, severityClass } from "./deviationUi";
 import { capaStatusClass, capaStatuses, dueState } from "./capaUi";
+import { AuditTimeline } from "../../components/AuditTimeline";
 
 export function CapaBoardPage() {
   const queryClient = useQueryClient();
@@ -40,6 +41,7 @@ export function CapaBoardPage() {
     enabled: Boolean(selected?.id)
   });
   const { data: summary } = useQuery({ queryKey: ["capa-summary"], queryFn: fetchCapaSummary });
+  const { data: alerts = [] } = useQuery({ queryKey: ["capa-alerts"], queryFn: fetchCapaAlerts });
   const { data: employees = [] } = useQuery({ queryKey: ["employees"], queryFn: () => fetchEmployees(), staleTime: 300_000 });
   const { data: reassignmentHistory = [] } = useQuery({
     queryKey: ["capa-reassignments", selected?.id],
@@ -61,7 +63,8 @@ export function CapaBoardPage() {
     setActionError(null);
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["capas"] }),
-      queryClient.invalidateQueries({ queryKey: ["capa-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["capa-summary"] }),
+      queryClient.invalidateQueries({ queryKey: ["capa-alerts"] })
     ]);
   };
 
@@ -178,8 +181,18 @@ export function CapaBoardPage() {
         {overdueEffectivenessCount > 0 ? (
           <Stat value={overdueEffectivenessCount} label="Overdue effectiveness" className="text-orange-500" />
         ) : null}
+        {(summary?.alertCount ?? alerts.length) > 0 ? (
+          <Stat value={summary?.alertCount ?? alerts.length} label="Active alerts" className="text-rose-600" />
+        ) : null}
         <Stat value={summary?.countsByStatus.CLOSED ?? 0} label="Closed" className="text-green-600" />
         <div className="ml-auto flex gap-2">
+          <button
+            type="button"
+            onClick={() => void downloadCsvExport("/api/capas?size=10000", "capas.csv")}
+            className="rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50"
+          >
+            Export CSV
+          </button>
           <select value={approvalFilter} onChange={(event) => setApprovalFilter(event.target.value)} className="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-800">
             <option value="ALL">All approvals</option>
             <option value="PENDING_APPROVAL">Pending approval</option>
@@ -198,6 +211,26 @@ export function CapaBoardPage() {
 
       {isLoading ? <div className="p-6 text-sm text-slate-500">Loading CAPAs...</div> : null}
       {errorMessage ? <div className="p-6 text-sm text-red-500">{errorMessage}</div> : null}
+
+      {alerts.length > 0 ? (
+        <div className="border-b border-amber-100 bg-rose-50 px-6 py-3">
+          <div className="mb-2 text-xs font-bold uppercase text-rose-700">CAPA Escalation Alerts</div>
+          <div className="flex gap-2 overflow-x-auto">
+            {alerts.slice(0, 8).map((alert) => (
+              <button
+                key={`${alert.alertType}-${alert.capaId}`}
+                type="button"
+                onClick={() => setSelected(capas.find((capa) => capa.id === alert.capaId) ?? null)}
+                className="min-w-64 rounded-lg border border-rose-200 bg-white px-3 py-2 text-left text-xs shadow-sm hover:bg-rose-50"
+              >
+                <div className="font-mono font-bold text-rose-700">{alert.capaNumber}</div>
+                <div className="mt-1 font-semibold text-slate-800">{alert.message}</div>
+                <div className="mt-1 text-slate-500">{alert.owner} · due {alert.dueDate}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="flex-1 overflow-x-auto p-5">
         <div className="flex h-full min-w-max gap-4">
@@ -232,7 +265,16 @@ export function CapaBoardPage() {
                   <ApprovalPill approvalStatus={selected.approvalStatus} />
                 </div>
               </div>
-              <button type="button" onClick={() => setSelected(null)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600">Close</button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { void downloadPdfReport(`/api/capas/${selected.id}/report`, `capa-${selected.capaNumber}.pdf`); }}
+                  className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100"
+                >
+                  PDF
+                </button>
+                <button type="button" onClick={() => setSelected(null)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600">Close</button>
+              </div>
             </div>
 
             <div className="mt-5 space-y-3 text-sm">
@@ -425,6 +467,13 @@ export function CapaBoardPage() {
                     Move to {formatLabel(status)}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
+              <div className="text-xs font-bold text-slate-700">Audit Timeline</div>
+              <div className="mt-3">
+                <AuditTimeline entityType="QMS_CAPA" entityId={selected.id} />
               </div>
             </div>
           </div>

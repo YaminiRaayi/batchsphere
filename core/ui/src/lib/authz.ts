@@ -41,11 +41,19 @@ export function canAccessNavPath(user: AuthUser | null, path: string) {
     return hasAnyRole(user, ["SUPER_ADMIN", "QC_ANALYST", "QC_MANAGER"]);
   }
 
+  if (path.startsWith("/lims")) {
+    return hasAnyRole(user, ["SUPER_ADMIN", "QC_ANALYST", "QC_MANAGER"]);
+  }
+
   if (path.startsWith("/vendor-qualifications")) {
     return hasAnyRole(user, ["SUPER_ADMIN", "PROCUREMENT"]);
   }
 
-  if (path.startsWith("/admin/users") || path.startsWith("/hrms")) {
+  if (path.startsWith("/supplier-quality-agreements")) {
+    return hasAnyRole(user, ["SUPER_ADMIN", "PROCUREMENT", "QC_MANAGER"]);
+  }
+
+  if (path.startsWith("/admin/users") || path.startsWith("/admin/security-audit") || path.startsWith("/hrms")) {
     return hasAnyRole(user, ["SUPER_ADMIN"]);
   }
 

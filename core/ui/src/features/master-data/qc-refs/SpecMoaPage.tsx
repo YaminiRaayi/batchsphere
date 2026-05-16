@@ -16,6 +16,7 @@ import {
   fetchSpecMaterialLinks,
   fetchSpecParameters,
   fetchSpecReviewQueue,
+  fetchDocuments,
   fetchSpecs,
   linkMaterialSpec,
   obsoleteMoa,
@@ -30,6 +31,7 @@ import {
   updateSpecParameter
 } from "../../../lib/api";
 import { useAppShellStore } from "../../../stores/appShellStore";
+import type { ControlledDocument } from "../../../types/document-control";
 import type { Material } from "../../../types/material";
 import type {
   CreateMoaRequest,
@@ -177,6 +179,7 @@ function emptyMoaForm(userName: string): CreateMoaRequest {
     sampleSolutionStabilityCondition: "",
     validationStatus: "NOT_VALIDATED",
     reviewRoute: "QC_ONLY",
+    sopDocumentId: undefined,
     createdBy: userName
   };
 }
@@ -193,6 +196,7 @@ function emptyParameterForm(): SpecParameterRequest {
     compendialChapterRef: "",
     unit: "",
     isMandatory: true,
+    requiresInstrument: false,
     sequence: 1,
     notes: ""
   };
@@ -303,6 +307,7 @@ function createDraftRow(sequence: number): SpecParameterDraftRow {
     compendialChapterRef: "",
     unit: "",
     isMandatory: true,
+    requiresInstrument: false,
     sequence,
     notes: ""
   };
@@ -357,6 +362,7 @@ export default function SpecMoaPage({ initialTab }: SpecMoaPageProps) {
   const [materialToLink, setMaterialToLink] = useState("");
   const [linkNotes, setLinkNotes] = useState("");
   const [rejectReason, setRejectReason] = useState("");
+  const [effectiveDocs, setEffectiveDocs] = useState<ControlledDocument[]>([]);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -375,12 +381,13 @@ export default function SpecMoaPage({ initialTab }: SpecMoaPageProps) {
     try {
       setIsLoading(true);
       setError(null);
-      const [loadedSpecs, loadedMoas, materialPage, specReviewQueue, moaReviewQueue] = await Promise.all([
+      const [loadedSpecs, loadedMoas, materialPage, specReviewQueue, moaReviewQueue, effectiveDocPage] = await Promise.all([
         fetchSpecs(),
         fetchMoas(),
         fetchMaterials(0, 200),
         fetchSpecReviewQueue(),
-        fetchMoaReviewQueue()
+        fetchMoaReviewQueue(),
+        fetchDocuments({ status: "EFFECTIVE", size: 200 })
       ]);
       const parameterEntries = await Promise.all(
         loadedSpecs.map(async (spec) => [spec.id, await fetchSpecParameters(spec.id)] as const)
@@ -393,6 +400,7 @@ export default function SpecMoaPage({ initialTab }: SpecMoaPageProps) {
       setSpecs(loadedSpecs);
       setMoas(loadedMoas);
       setMaterials(materialPage.content);
+      setEffectiveDocs(effectiveDocPage.content);
       setParameterMap(nextParameterMap);
       setMaterialLinkMap(nextMaterialLinkMap);
       setSpecReviewQueue(specReviewQueue);
@@ -560,6 +568,7 @@ export default function SpecMoaPage({ initialTab }: SpecMoaPageProps) {
             sampleSolutionStabilityCondition: moa.sampleSolutionStabilityCondition ?? "",
             validationStatus: moa.validationStatus,
             reviewRoute: moa.reviewRoute,
+            sopDocumentId: moa.sopDocumentId ?? undefined,
             createdBy: currentUserName
           }
         : emptyMoaForm(currentUserName)
@@ -586,6 +595,7 @@ export default function SpecMoaPage({ initialTab }: SpecMoaPageProps) {
             compendialChapterRef: parameter.compendialChapterRef ?? "",
             unit: parameter.unit ?? "",
             isMandatory: parameter.isMandatory,
+            requiresInstrument: parameter.requiresInstrument ?? false,
             sequence: parameter.sequence,
             notes: parameter.notes ?? ""
           }
@@ -1409,6 +1419,13 @@ export default function SpecMoaPage({ initialTab }: SpecMoaPageProps) {
                     <MetaCell label="Validated By">{selectedMoa.approvedBy ?? "—"}</MetaCell>
                     <MetaCell label="Validated On">{fmtDate(selectedMoa.approvedAt)}</MetaCell>
                     <MetaCell label="Reference SOP">{selectedMoa.referenceAttachment ?? "—"}</MetaCell>
+                    {selectedMoa.sopDocumentId ? (
+                      <MetaCell label="Linked SOP Document">
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-violet-100 px-2 py-0.5 font-mono text-xs font-semibold text-violet-800">
+                          {selectedMoa.sopDocumentNumber}
+                        </span>
+                      </MetaCell>
+                    ) : null}
                   </div>
                 </div>
 
@@ -1907,6 +1924,22 @@ export default function SpecMoaPage({ initialTab }: SpecMoaPageProps) {
                       <input type="file" onChange={(e) => setMoaForm({ ...moaForm, referenceAttachment: selectedFileName(e) || moaForm.referenceAttachment })} className="mt-2 block w-full text-xs text-slate-500 file:mr-3 file:rounded-lg file:border-0 file:bg-[#ede9fe] file:px-3 file:py-2 file:text-xs file:font-semibold file:text-[#6d28d9]" />
                       <div className="mt-1 text-[10px] text-slate-400">Current backend stores the selected filename/path reference.</div>
                     </label>
+                    <label className="md:col-span-2">
+                      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Linked SOP Document</span>
+                      <select
+                        value={moaForm.sopDocumentId ?? ""}
+                        onChange={(e) => setMoaForm({ ...moaForm, sopDocumentId: e.target.value || undefined })}
+                        className={fieldClassName()}
+                      >
+                        <option value="">— No linked SOP —</option>
+                        {effectiveDocs.map((doc) => (
+                          <option key={doc.id} value={doc.id}>
+                            {doc.documentNumber} · {doc.title}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="mt-1 text-[10px] text-slate-400">Only EFFECTIVE controlled documents shown. Validated on save.</div>
+                    </label>
                   </div>
                 </div>
 
@@ -2146,6 +2179,13 @@ export default function SpecMoaPage({ initialTab }: SpecMoaPageProps) {
                     <select value={String(parameterForm.isMandatory)} onChange={(e) => setParameterForm({ ...parameterForm, isMandatory: e.target.value === "true" })} className={fieldClassName()}>
                       <option value="true">Required</option>
                       <option value="false">Optional</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">Requires Instrument</span>
+                    <select value={String(parameterForm.requiresInstrument ?? false)} onChange={(e) => setParameterForm({ ...parameterForm, requiresInstrument: e.target.value === "true" })} className={fieldClassName()}>
+                      <option value="false">No</option>
+                      <option value="true">Yes</option>
                     </select>
                   </label>
                 </div>
