@@ -24,6 +24,7 @@ import com.batchsphere.core.transactions.sampling.dto.SamplingStartRequest;
 import com.batchsphere.core.transactions.sampling.dto.StartQcReviewRequest;
 import com.batchsphere.core.transactions.sampling.dto.SamplingSummaryResponse;
 import com.batchsphere.core.transactions.sampling.dto.UpdateSamplingPlanRequest;
+import com.batchsphere.core.transactions.sampling.entity.QcInvestigationType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
@@ -56,6 +57,7 @@ public interface SamplingService {
     QcTestResultResponse recordWorksheetResult(UUID samplingRequestId, UUID testResultId, RecordQcTestResultRequest request);
     QcTestResultResponse amendWorksheetResult(UUID samplingRequestId, UUID testResultId, AmendQcTestResultRequest request);
     List<QcInvestigationResponse> getInvestigations(UUID samplingRequestId);
+    List<QcInvestigationResponse> getInvestigationQueue(Boolean includeClosed, QcInvestigationType type, String actor);
     QcInvestigationResponse openInvestigation(UUID samplingRequestId, OpenQcInvestigationRequest request);
     QcInvestigationResponse escalateInvestigationToPhaseTwo(UUID samplingRequestId, UUID investigationId, EscalateQcInvestigationRequest request);
     QcInvestigationResponse completePhase1(UUID samplingRequestId, UUID investigationId, CompletePhase1Request request);

@@ -7,6 +7,7 @@ import com.batchsphere.core.compliance.audit.service.AuditEventService;
 import com.batchsphere.core.compliance.esign.dto.ESignatureRequest;
 import com.batchsphere.core.compliance.esign.service.ESignatureService;
 import com.batchsphere.core.exception.BusinessConflictException;
+import com.batchsphere.core.exception.CsvImportException;
 import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.masterdata.material.entity.Material;
 import com.batchsphere.core.masterdata.material.repository.MaterialRepository;
@@ -31,6 +32,7 @@ import com.batchsphere.core.transactions.sampling.dto.CreateSamplingPlanRequest;
 import com.batchsphere.core.transactions.sampling.dto.CompletePhase1Request;
 import com.batchsphere.core.transactions.sampling.dto.CompletePhase2Request;
 import com.batchsphere.core.transactions.sampling.dto.CompleteQaInvestigationReviewRequest;
+import com.batchsphere.core.transactions.sampling.dto.CsvImportErrorResponse;
 import com.batchsphere.core.transactions.sampling.dto.DestroyRetainedSampleRequest;
 import com.batchsphere.core.transactions.sampling.dto.EscalateQcInvestigationRequest;
 import com.batchsphere.core.transactions.sampling.dto.ExecuteResampleRequest;
@@ -590,6 +592,17 @@ public class SamplingServiceImpl implements SamplingService {
     public List<QcInvestigationResponse> getInvestigations(UUID samplingRequestId) {
         getSamplingRequest(samplingRequestId);
         return qcInvestigationRepository.findBySamplingRequestIdAndIsActiveTrueOrderByCreatedAtAsc(samplingRequestId)
+                .stream()
+                .map(this::toQcInvestigationResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<QcInvestigationResponse> getInvestigationQueue(Boolean includeClosed, QcInvestigationType type, String actor) {
+        boolean showClosed = Boolean.TRUE.equals(includeClosed);
+        String normalizedActor = actor == null || actor.isBlank() ? null : actor.trim();
+        return qcInvestigationRepository.findFiltered(showClosed, OPEN_INVESTIGATION_STATUSES, type, normalizedActor)
                 .stream()
                 .map(this::toQcInvestigationResponse)
                 .toList();
@@ -2224,7 +2237,7 @@ public class SamplingServiceImpl implements SamplingService {
         }
 
         List<Map<String, String>> csvRows = parseCsv(file);
-        List<Map.Entry<Integer, String>> errors = new ArrayList<>();
+        List<CsvImportErrorResponse> errors = new ArrayList<>();
 
         for (int i = 0; i < csvRows.size(); i++) {
             Map<String, String> cols = csvRows.get(i);
@@ -2233,7 +2246,7 @@ public class SamplingServiceImpl implements SamplingService {
 
             QcTestResultResponse target = byName.get(paramName.toLowerCase());
             if (target == null) {
-                errors.add(Map.entry(i + 2, "Unknown parameter: " + paramName));
+                errors.add(new CsvImportErrorResponse(i + 2, paramName, "Parameter not found in spec"));
                 continue;
             }
 
@@ -2241,14 +2254,20 @@ public class SamplingServiceImpl implements SamplingService {
             String rv = cols.getOrDefault("result_value", "").trim();
             if (!rv.isEmpty()) {
                 try { req.setResultValue(new BigDecimal(rv)); }
-                catch (NumberFormatException e) { errors.add(Map.entry(i + 2, "Invalid result_value for: " + paramName)); continue; }
+                catch (NumberFormatException e) {
+                    errors.add(new CsvImportErrorResponse(i + 2, paramName, "Invalid result_value"));
+                    continue;
+                }
             }
             String rt = cols.getOrDefault("result_text", "").trim();
             if (!rt.isEmpty()) req.setResultText(rt);
             String eqId = cols.getOrDefault("equipment_id", "").trim();
             if (!eqId.isEmpty()) {
                 try { req.setEquipmentId(UUID.fromString(eqId)); }
-                catch (IllegalArgumentException e) { errors.add(Map.entry(i + 2, "Invalid equipment_id for: " + paramName)); continue; }
+                catch (IllegalArgumentException e) {
+                    errors.add(new CsvImportErrorResponse(i + 2, paramName, "Invalid equipment_id"));
+                    continue;
+                }
             }
             String rem = cols.getOrDefault("remarks", "").trim();
             if (!rem.isEmpty()) req.setRemarks(rem);
@@ -2256,16 +2275,12 @@ public class SamplingServiceImpl implements SamplingService {
             try {
                 qcTestResultService.recordResult(target.getId(), req, actor);
             } catch (Exception e) {
-                errors.add(Map.entry(i + 2, e.getMessage()));
+                errors.add(new CsvImportErrorResponse(i + 2, paramName, e.getMessage()));
             }
         }
 
         if (!errors.isEmpty()) {
-            StringBuilder sb = new StringBuilder("CSV import failed. Errors:\n");
-            for (Map.Entry<Integer, String> err : errors) {
-                sb.append("  Row ").append(err.getKey()).append(": ").append(err.getValue()).append("\n");
-            }
-            throw new BusinessConflictException(sb.toString());
+            throw new CsvImportException(errors);
         }
 
         return getWorksheet(samplingRequestId);
@@ -2275,8 +2290,20 @@ public class SamplingServiceImpl implements SamplingService {
         List<Map<String, String>> rows = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             String headerLine = reader.readLine();
-            if (headerLine == null) return rows;
+            if (headerLine == null || headerLine.isBlank()) {
+                throw new CsvImportException(List.of(new CsvImportErrorResponse(1, null, "CSV must include header row")));
+            }
             String[] headers = splitCsv(headerLine);
+            boolean hasParameterName = false;
+            for (String header : headers) {
+                if ("parameter_name".equals(header.trim().toLowerCase())) {
+                    hasParameterName = true;
+                    break;
+                }
+            }
+            if (!hasParameterName) {
+                throw new CsvImportException(List.of(new CsvImportErrorResponse(1, null, "CSV must include header row")));
+            }
 
             String line;
             while ((line = reader.readLine()) != null) {

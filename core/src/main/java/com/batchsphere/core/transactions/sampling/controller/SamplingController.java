@@ -26,6 +26,7 @@ import com.batchsphere.core.transactions.sampling.dto.StartQcReviewRequest;
 import com.batchsphere.core.transactions.sampling.dto.SamplingSummaryResponse;
 import com.batchsphere.core.transactions.sampling.dto.UpdateSamplingPlanRequest;
 import com.batchsphere.core.transactions.sampling.service.SamplingService;
+import com.batchsphere.core.transactions.sampling.entity.QcInvestigationType;
 import com.batchsphere.core.auth.service.AuthenticatedActorService;
 import com.batchsphere.core.report.PdfReportService;
 import jakarta.validation.Valid;
@@ -174,6 +175,14 @@ public class SamplingController {
     @GetMapping("/{id}/investigations")
     public ResponseEntity<java.util.List<QcInvestigationResponse>> getInvestigations(@PathVariable UUID id) {
         return ResponseEntity.ok(samplingService.getInvestigations(id));
+    }
+
+    @GetMapping("/investigation-queue")
+    public ResponseEntity<java.util.List<QcInvestigationResponse>> getInvestigationQueue(
+            @RequestParam(required = false) Boolean includeClosed,
+            @RequestParam(required = false) QcInvestigationType type,
+            @RequestParam(required = false) String actor) {
+        return ResponseEntity.ok(samplingService.getInvestigationQueue(includeClosed, type, actor));
     }
 
     @PostMapping("/{id}/investigations")

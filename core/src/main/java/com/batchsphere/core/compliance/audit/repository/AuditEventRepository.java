@@ -7,5 +7,5 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AuditEventRepository extends JpaRepository<AuditEvent, UUID> {
-    List<AuditEvent> findByEntityTypeAndEntityIdAndIsActiveTrueOrderByEventAtDesc(String entityType, UUID entityId);
+    List<AuditEvent> findByEntityTypeAndEntityIdAndIsActiveTrueOrderByEventAtAsc(String entityType, UUID entityId);
 }

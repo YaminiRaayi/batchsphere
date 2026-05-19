@@ -86,6 +86,9 @@ public class QcTestResult {
     @Column(name = "instrument_ref", length = 50)
     private String instrumentRef;
 
+    @Column(name = "reagent_lot_id")
+    private UUID reagentLotId;
+
     @Column(name = "remarks", length = 500)
     private String remarks;
 

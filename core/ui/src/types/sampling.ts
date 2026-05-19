@@ -225,12 +225,14 @@ export type QcWorksheetRow = {
   unitApplied: string | null;
   criteriaDisplay: string;
   mandatory: boolean;
+  requiresInstrument: boolean;
   sequence: number;
   enteredAt: string | null;
   remarks: string | null;
   isLocked: boolean;
   equipmentId: string | null;
   instrumentRef: string | null;
+  reagentLotId: string | null;
 };
 
 export type RecordQcWorksheetResultRequest = {
@@ -238,6 +240,7 @@ export type RecordQcWorksheetResultRequest = {
   resultText?: string;
   moaIdUsed?: string;
   equipmentId?: string;
+  reagentLotId?: string;
   remarks?: string;
 };
 

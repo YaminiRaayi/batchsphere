@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -29,6 +30,13 @@ ErrorResponse errorResponse = new ErrorResponse("Validation Failed",errors, Loca
                 LocalDateTime.now()
         );
         return new ResponseEntity<>(response, HttpStatus.PAYLOAD_TOO_LARGE);
+    }
+
+    @ExceptionHandler(CsvImportException.class)
+    public ResponseEntity<Map<String, Object>> handleCsvImport(CsvImportException ex) {
+        return new ResponseEntity<>(
+                Map.of("message", ex.getMessage(), "errors", ex.getErrors(), "timestamp", LocalDateTime.now()),
+                HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(RuntimeException.class)

@@ -7,6 +7,7 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 public class QpBatchReleaseDTO {
@@ -159,5 +160,24 @@ public class QpBatchReleaseDTO {
     private String certificationStatement;
     private LocalDateTime certifiedAt;
     private UUID eSignatureId;
+    private String coaNumber;
+    private String analystSignedBy;
+    private LocalDateTime analystSignedAt;
+    private String coaIssuedBy;
+    private LocalDateTime coaIssuedAt;
+    private List<CoaResultRow> testResults;
+  }
+
+  @Data
+  @Builder
+  @NoArgsConstructor
+  @AllArgsConstructor
+  public static class CoaResultRow {
+    private String parameterName;
+    private String criteriaDisplay;
+    private String result;
+    private String unit;
+    private String passFail;
+    private String instrumentRef;
   }
 }

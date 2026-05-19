@@ -10,12 +10,14 @@ import com.lowagie.text.Paragraph;
 import com.lowagie.text.Phrase;
 import com.lowagie.text.Rectangle;
 import com.lowagie.text.pdf.PdfPCell;
+import com.lowagie.text.pdf.PdfContentByte;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfPageEventHelper;
 import com.lowagie.text.pdf.PdfWriter;
 import com.batchsphere.core.qms.deviation.dto.DeviationResponse;
 import com.batchsphere.core.qms.capa.dto.CapaResponse;
 import com.batchsphere.core.qms.batchrelease.dto.QpBatchReleaseDTO.BatchCertificateResponse;
+import com.batchsphere.core.qms.batchrelease.dto.QpBatchReleaseDTO.CoaResultRow;
 import com.batchsphere.core.qms.apqr.dto.ApqrDTO.ApqrResponse;
 import com.batchsphere.core.qms.document.dto.ControlledDocumentResponse;
 import com.batchsphere.core.qms.document.dto.DocumentApprovalResponse;
@@ -29,6 +31,7 @@ import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class PdfReportService {
@@ -56,6 +59,7 @@ public class PdfReportService {
         Document doc = new Document(PageSize.A4, 40, 40, 60, 50);
         try {
             PdfWriter writer = PdfWriter.getInstance(doc, out);
+            addDocumentMetadata(doc, "Deviation Closure Report", d.getDeviationNumber(), generatedBy);
             writer.setPageEvent(new FooterEvent("Confidential GMP Record | Deviation " + d.getDeviationNumber()));
             doc.open();
 
@@ -94,6 +98,7 @@ public class PdfReportService {
             addRow(doc, "Created At", d.getCreatedAt() != null ? d.getCreatedAt().format(DT_FMT) : "—");
             addRow(doc, "Last Updated By", d.getUpdatedBy());
             addRow(doc, "Last Updated At", d.getUpdatedAt() != null ? d.getUpdatedAt().format(DT_FMT) : "—");
+            addAuditReference(doc, "QMS_DEVIATION", d.getId());
 
             doc.close();
         } catch (Exception e) {
@@ -109,6 +114,7 @@ public class PdfReportService {
         Document doc = new Document(PageSize.A4, 40, 40, 60, 50);
         try {
             PdfWriter writer = PdfWriter.getInstance(doc, out);
+            addDocumentMetadata(doc, "CAPA Closure Report", c.getCapaNumber(), generatedBy);
             writer.setPageEvent(new FooterEvent("Confidential GMP Record | CAPA " + c.getCapaNumber()));
             doc.open();
 
@@ -135,6 +141,7 @@ public class PdfReportService {
             addSection(doc, "RECORD INFORMATION");
             addRow(doc, "Created By", c.getCreatedBy());
             addRow(doc, "Created At", c.getCreatedAt() != null ? c.getCreatedAt().format(DT_FMT) : "—");
+            addAuditReference(doc, "QMS_CAPA", c.getId());
 
             doc.close();
         } catch (Exception e) {
@@ -150,6 +157,7 @@ public class PdfReportService {
         Document doc = new Document(PageSize.A4, 40, 40, 60, 50);
         try {
             PdfWriter writer = PdfWriter.getInstance(doc, out);
+            addDocumentMetadata(doc, "Batch Release Certificate", r.getReleaseNumber(), generatedBy);
             writer.setPageEvent(new FooterEvent("Confidential GMP Record | Release " + r.getReleaseNumber()));
             doc.open();
 
@@ -178,6 +186,44 @@ public class PdfReportService {
             if (r.getCertificationStatement() != null) {
                 addTextBlockLabelled(doc, "Certification Statement", r.getCertificationStatement());
             }
+            addAuditReference(doc, "QP_BATCH_RELEASE", r.getId());
+
+            doc.close();
+        } catch (Exception e) {
+            throw new RuntimeException("PDF generation failed: " + e.getMessage(), e);
+        }
+        return out.toByteArray();
+    }
+
+    public byte[] generateCoa(BatchCertificateResponse r, String generatedBy, boolean preview, String watermark) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Document doc = new Document(PageSize.A4, 40, 40, 60, 50);
+        try {
+            PdfWriter writer = PdfWriter.getInstance(doc, out);
+            addDocumentMetadata(doc, "Certificate of Analysis", preview ? "PREVIEW" : nvl(r.getCoaNumber()), generatedBy);
+            writer.setPageEvent(new FooterEvent("Confidential GMP Record | CoA " + nvl(r.getCoaNumber()), watermark));
+            doc.open();
+
+            addHeader(doc, "CERTIFICATE OF ANALYSIS", preview ? "PREVIEW" : nvl(r.getCoaNumber()));
+            addMeta(doc, generatedBy);
+
+            addSection(doc, "BATCH INFORMATION");
+            addRow(doc, "CoA Number", preview ? "Preview - not issued" : r.getCoaNumber());
+            addRow(doc, "Release Number", r.getReleaseNumber());
+            addRow(doc, "Lot Number", r.getLotNumber());
+            addRow(doc, "Product Name", r.getProductName());
+            addRow(doc, "Batch Size", r.getBatchSize() != null ? r.getBatchSize() + " " + nvl(r.getBatchUom()) : "—");
+            addRow(doc, "Manufacture Date", r.getManufactureDate() != null ? r.getManufactureDate().format(D_FMT) : "—");
+            addRow(doc, "Expiry Date", r.getExpiryDate() != null ? r.getExpiryDate().format(D_FMT) : "—");
+
+            addSection(doc, "TEST RESULTS");
+            addCoaResultTable(doc, r.getTestResults());
+
+            addSection(doc, "SIGNATURES");
+            addRow(doc, "Analyst Sign-off", nvl(r.getAnalystSignedBy()) + " at " + fmtDateTime(r.getAnalystSignedAt()));
+            addRow(doc, "QC Manager Issue", nvl(r.getCoaIssuedBy()) + " at " + fmtDateTime(r.getCoaIssuedAt()));
+            addRow(doc, "QP Certification", nvl(r.getQpName()) + " at " + fmtDateTime(r.getCertifiedAt()));
+            addAuditReference(doc, "QP_BATCH_RELEASE", r.getId());
 
             doc.close();
         } catch (Exception e) {
@@ -193,6 +239,7 @@ public class PdfReportService {
         Document doc = new Document(PageSize.A4, 40, 40, 60, 50);
         try {
             PdfWriter writer = PdfWriter.getInstance(doc, out);
+            addDocumentMetadata(doc, "Annual Product Quality Review", a.getApqrNumber(), generatedBy);
             writer.setPageEvent(new FooterEvent("Confidential GMP Record | APQR " + a.getApqrNumber()));
             doc.open();
 
@@ -231,6 +278,7 @@ public class PdfReportService {
             addSection(doc, "CONCLUSIONS");
             addTextBlockLabelled(doc, "Trends Identified", a.getTrendsIdentified());
             addTextBlockLabelled(doc, "Recommendations", a.getRecommendations());
+            addAuditReference(doc, "APQR", a.getId());
 
             doc.close();
         } catch (Exception e) {
@@ -248,6 +296,7 @@ public class PdfReportService {
         Document doc = new Document(PageSize.A4, 40, 40, 60, 50);
         try {
             PdfWriter writer = PdfWriter.getInstance(doc, out);
+            addDocumentMetadata(doc, "Controlled Document Report", d.getDocumentNumber(), generatedBy);
             writer.setPageEvent(new FooterEvent("Confidential GMP Record | Document " + d.getDocumentNumber()));
             doc.open();
 
@@ -304,6 +353,7 @@ public class PdfReportService {
             addRow(doc, "Created At", fmtDateTime(d.getCreatedAt()));
             addRow(doc, "Last Updated By", d.getUpdatedBy());
             addRow(doc, "Last Updated At", fmtDateTime(d.getUpdatedAt()));
+            addAuditReference(doc, "CONTROLLED_DOCUMENT", d.getId());
 
             doc.close();
         } catch (Exception e) {
@@ -320,6 +370,7 @@ public class PdfReportService {
         try {
             PdfWriter writer = PdfWriter.getInstance(doc, out);
             String refNum = s.getId() != null ? s.getId().toString().substring(0, 8).toUpperCase() : "UNKNOWN";
+            addDocumentMetadata(doc, "Lot Release Package", refNum, generatedBy);
             writer.setPageEvent(new FooterEvent("Confidential GMP Record | Sampling " + refNum));
             doc.open();
 
@@ -355,6 +406,7 @@ public class PdfReportService {
             addRow(doc, "Created At", s.getCreatedAt() != null ? s.getCreatedAt().format(DT_FMT) : "—");
             addRow(doc, "Last Updated By", nvl(s.getUpdatedBy()));
             addRow(doc, "Last Updated At", s.getUpdatedAt() != null ? s.getUpdatedAt().format(DT_FMT) : "—");
+            addAuditReference(doc, "SAMPLING_REQUEST", s.getId());
 
             doc.close();
         } catch (Exception e) {
@@ -364,6 +416,15 @@ public class PdfReportService {
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
+
+    private void addDocumentMetadata(Document doc, String title, String recordNumber, String generatedBy) {
+        doc.addTitle(title + " - " + nvl(recordNumber));
+        doc.addSubject("GMP controlled report generated from BatchSphere");
+        doc.addAuthor(nvl(generatedBy));
+        doc.addCreator("BatchSphere LIMS/QMS");
+        doc.addKeywords("GMP,ALCOA++,audit trail,e-signature," + nvl(recordNumber));
+        doc.addCreationDate();
+    }
 
     private void addHeader(Document doc, String title, String docNumber) throws Exception {
         PdfPTable header = new PdfPTable(2);
@@ -466,6 +527,16 @@ public class PdfReportService {
         addTextBlock(doc, text);
     }
 
+    private void addAuditReference(Document doc, String entityType, UUID entityId) throws Exception {
+        if (entityId == null) {
+            return;
+        }
+        addSection(doc, "AUDIT TRAIL REFERENCE");
+        addRow(doc, "Entity Type", entityType);
+        addRow(doc, "Record ID", entityId.toString());
+        addRow(doc, "Audit Endpoint", "/api/audit-events?entityType=" + entityType + "&entityId=" + entityId);
+    }
+
     private void addApprovalTable(Document doc, List<DocumentApprovalResponse> approvals) throws Exception {
         if (approvals == null || approvals.isEmpty()) {
             return;
@@ -503,6 +574,35 @@ public class PdfReportService {
         table.addCell(cell);
     }
 
+    private void addCoaResultTable(Document doc, List<CoaResultRow> rows) throws Exception {
+        PdfPTable table = new PdfPTable(6);
+        table.setWidthPercentage(100);
+        table.setWidths(new float[]{2f, 2f, 1.2f, 0.8f, 0.9f, 1.2f});
+        addTableHeader(table, "Parameter");
+        addTableHeader(table, "Specification");
+        addTableHeader(table, "Result");
+        addTableHeader(table, "Unit");
+        addTableHeader(table, "Status");
+        addTableHeader(table, "Instrument");
+        if (rows == null || rows.isEmpty()) {
+            PdfPCell cell = new PdfPCell(new Phrase("No mandatory QC worksheet results found.", VALUE_FONT));
+            cell.setColspan(6);
+            cell.setBorderColor(BORDER_COLOR);
+            cell.setPadding(5);
+            table.addCell(cell);
+        } else {
+            for (CoaResultRow row : rows) {
+                addTableCell(table, row.getParameterName());
+                addTableCell(table, row.getCriteriaDisplay());
+                addTableCell(table, row.getResult());
+                addTableCell(table, row.getUnit());
+                addTableCell(table, row.getPassFail());
+                addTableCell(table, row.getInstrumentRef());
+            }
+        }
+        doc.add(table);
+    }
+
     private String fmt(Object o) {
         if (o == null) return "—";
         return o.toString().replace("_", " ");
@@ -520,11 +620,30 @@ public class PdfReportService {
 
     private static class FooterEvent extends PdfPageEventHelper {
         private final String label;
-        FooterEvent(String label) { this.label = label; }
+        private final String watermark;
+        FooterEvent(String label) {
+            this.label = label;
+            this.watermark = null;
+        }
+        FooterEvent(String label, String watermark) {
+            this.label = label;
+            this.watermark = watermark;
+        }
 
         @Override
         public void onEndPage(PdfWriter writer, Document document) {
             try {
+                if (watermark != null && !watermark.isBlank()) {
+                    PdfContentByte canvas = writer.getDirectContentUnder();
+                    Phrase phrase = new Phrase(watermark, FontFactory.getFont(FontFactory.HELVETICA_BOLD, 34, new Color(220, 38, 38)));
+                    com.lowagie.text.pdf.ColumnText.showTextAligned(
+                            canvas,
+                            Element.ALIGN_CENTER,
+                            phrase,
+                            document.getPageSize().getWidth() / 2,
+                            document.getPageSize().getHeight() / 2,
+                            35);
+                }
                 PdfPTable footer = new PdfPTable(2);
                 footer.setTotalWidth(document.getPageSize().getWidth() - 80);
                 footer.setLockedWidth(true);

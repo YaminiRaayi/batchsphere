@@ -408,6 +408,16 @@ class GrnControllerIntegrationTest {
                 .toList();
         assertEquals(1, documents.size());
         assertTrue(documents.stream().allMatch(document -> !document.getIsActive()));
+
+        MvcResult auditResult = mockMvc.perform(get("/api/audit-events")
+                        .header("Authorization", "Bearer " + token)
+                        .param("entityType", "GRN")
+                        .param("entityId", grnId.toString()))
+                .andReturn();
+        assertEquals(200, auditResult.getResponse().getStatus(), auditResult.getResponse().getContentAsString());
+        JsonNode auditEvents = objectMapper.readTree(auditResult.getResponse().getContentAsString());
+        assertTrue(auditEvents.findValues("fieldName").stream().anyMatch(node -> "isActive".equals(node.asText())));
+        assertTrue(auditEvents.findValues("newValue").stream().anyMatch(node -> "false".equals(node.asText())));
     }
 
     @Test
@@ -523,14 +533,16 @@ class GrnControllerIntegrationTest {
 
         assertEquals(200, updateResult.getResponse().getStatus(), updateResult.getResponse().getContentAsString());
         List<GrnItem> allItems = grnItemRepository.findByGrnIdOrderByLineNumber(grnId);
-        assertEquals(1, allItems.size());
+        assertEquals(2, allItems.size());
         assertEquals(1, allItems.stream().filter(GrnItem::getIsActive).count());
-        assertTrue(allItems.stream().noneMatch(item -> item.getId().equals(originalItem.getId())));
+        assertTrue(allItems.stream().anyMatch(item -> item.getId().equals(originalItem.getId()) && !item.getIsActive()));
 
         List<GrnDocument> documents = grnDocumentRepository.findAll().stream()
                 .filter(document -> document.getGrnId().equals(grnId))
                 .toList();
-        assertEquals(0, documents.size());
+        assertEquals(1, documents.size());
+        assertTrue(documents.stream().noneMatch(GrnDocument::getIsActive));
+        assertTrue(documents.stream().allMatch(document -> "admin".equals(document.getUpdatedBy()) && document.getUpdatedAt() != null));
     }
 
     @Test

@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
@@ -106,6 +107,18 @@ class ApqrControllerIntegrationTest {
         assertEquals(200, closeResult.getResponse().getStatus(), closeResult.getResponse().getContentAsString());
         JsonNode closed = objectMapper.readTree(closeResult.getResponse().getContentAsString());
         assertEquals("CLOSED", closed.get("status").asText());
+
+        MvcResult auditResult = mockMvc.perform(get("/api/audit-events")
+                        .header("Authorization", "Bearer " + token)
+                        .param("entityType", "APQR")
+                        .param("entityId", apqrId))
+                .andReturn();
+        assertEquals(200, auditResult.getResponse().getStatus(), auditResult.getResponse().getContentAsString());
+        JsonNode auditEvents = objectMapper.readTree(auditResult.getResponse().getContentAsString());
+        assertTrue(auditEvents.findValues("newValue").stream().anyMatch(node -> "UNDER_REVIEW".equals(node.asText())));
+        assertTrue(auditEvents.findValues("newValue").stream().anyMatch(node -> "APPROVED".equals(node.asText())));
+        assertTrue(auditEvents.findValues("newValue").stream().anyMatch(node -> "CLOSED".equals(node.asText())));
+        assertTrue(auditEvents.findValues("eventType").stream().anyMatch(node -> "E_SIGNATURE".equals(node.asText())));
     }
 
     private String loginAsAdmin() throws Exception {

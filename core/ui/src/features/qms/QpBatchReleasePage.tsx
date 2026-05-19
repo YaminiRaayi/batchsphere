@@ -343,9 +343,23 @@ export function QpBatchReleasePage() {
                       >
                         Download CoA PDF
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => { void downloadPdfReport(`/api/qp-batch-releases/${selected.id}/coa/reprint`, `${selected.coaNumber ?? "coa"}-reprint.pdf`); }}
+                        className="ml-2 mt-2 rounded-lg border border-amber-200 px-3 py-1.5 text-[11px] font-semibold text-amber-700 hover:bg-amber-50"
+                      >
+                        Reprint
+                      </button>
                     </div>
                   ) : (
                     <div className="mt-3 space-y-3">
+                      <button
+                        type="button"
+                        onClick={() => { void downloadPdfReport(`/api/qp-batch-releases/${selected.id}/coa/preview`, `coa-preview-${selected.releaseNumber}.pdf`); }}
+                        className="rounded-lg border border-violet-200 px-3 py-1.5 text-[11px] font-semibold text-violet-700 hover:bg-violet-50"
+                      >
+                        Preview PDF
+                      </button>
                       {!selected.analystSignedBy ? (
                         <div className="rounded-lg border border-violet-100 bg-violet-50 p-3">
                           <p className="mb-2 text-[11px] font-semibold text-violet-700">Step 1 — Analyst E-Signature</p>

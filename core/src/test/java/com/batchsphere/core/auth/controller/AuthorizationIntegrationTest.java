@@ -7,8 +7,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
@@ -19,11 +23,13 @@ import org.springframework.web.context.WebApplicationContext;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @ActiveProfiles("test")
@@ -49,7 +55,9 @@ class AuthorizationIntegrationTest {
 
         ensureUser("warehouse_user", UserRole.WAREHOUSE_OP);
         ensureUser("qc_user", UserRole.QC_ANALYST);
+        ensureUser("qc_manager_user", UserRole.QC_MANAGER);
         ensureUser("proc_user", UserRole.PROCUREMENT);
+        ensureUser("viewer_user", UserRole.VIEWER);
     }
 
     @Test
@@ -107,6 +115,65 @@ class AuthorizationIntegrationTest {
                   "batchNumber": "BATCH-001"
                 }
                 """));
+    }
+
+    @ParameterizedTest(name = "{0} {1} denies {2}")
+    @MethodSource("wrongRoleMatrix")
+    void protectedApiGroupsRejectWrongRoles(HttpMethod method, String path, String username) throws Exception {
+        String token = login(username);
+
+        assertEquals(403, perform(method, path, token), method + " " + path + " should deny " + username);
+    }
+
+    private static Stream<Arguments> wrongRoleMatrix() {
+        String id = "00000000-0000-0000-0000-000000000001";
+        return Stream.of(
+                Arguments.of(HttpMethod.GET, "/api/auth/users", "qc_user"),
+                Arguments.of(HttpMethod.GET, "/api/approval-delegations", "warehouse_user"),
+                Arguments.of(HttpMethod.GET, "/api/e-signatures", "warehouse_user"),
+                Arguments.of(HttpMethod.GET, "/api/employees", "warehouse_user"),
+                Arguments.of(HttpMethod.PUT, "/api/employees/" + id, "qc_manager_user"),
+                Arguments.of(HttpMethod.GET, "/api/training/assignments", "qc_user"),
+                Arguments.of(HttpMethod.POST, "/api/training/requirements", "qc_manager_user"),
+                Arguments.of(HttpMethod.GET, "/api/grns/items/" + id + "/containers", "proc_user"),
+                Arguments.of(HttpMethod.GET, "/api/batches", "proc_user"),
+                Arguments.of(HttpMethod.GET, "/api/materials", "viewer_user"),
+                Arguments.of(HttpMethod.GET, "/api/supplier-quality-agreements", "warehouse_user"),
+                Arguments.of(HttpMethod.GET, "/api/suppliers", "qc_user"),
+                Arguments.of(HttpMethod.GET, "/api/specs", "warehouse_user"),
+                Arguments.of(HttpMethod.GET, "/api/moas", "warehouse_user"),
+                Arguments.of(HttpMethod.GET, "/api/wms/summary", "qc_user"),
+                Arguments.of(HttpMethod.GET, "/api/grns", "proc_user"),
+                Arguments.of(HttpMethod.POST, "/api/sampling-requests/" + id + "/qc-decision", "qc_user"),
+                Arguments.of(HttpMethod.GET, "/api/deviations", "warehouse_user"),
+                Arguments.of(HttpMethod.GET, "/api/qms/analytics", "qc_user"),
+                Arguments.of(HttpMethod.GET, "/api/complaints", "warehouse_user"),
+                Arguments.of(HttpMethod.GET, "/api/risk-assessments", "warehouse_user"),
+                Arguments.of(HttpMethod.GET, "/api/apqr", "warehouse_user"),
+                Arguments.of(HttpMethod.POST, "/api/qp-batch-releases/" + id + "/coa/issue", "qc_user"),
+                Arguments.of(HttpMethod.GET, "/api/qp-batch-releases", "warehouse_user"),
+                Arguments.of(HttpMethod.GET, "/api/compliance/alcoa-readiness/summary", "qc_user"),
+                Arguments.of(HttpMethod.GET, "/api/compliance/alcoa-readiness/gaps", "qc_user"),
+                Arguments.of(HttpMethod.GET, "/api/compliance/alcoa-readiness/export", "qc_user"),
+                Arguments.of(HttpMethod.POST, "/api/lims/em-results/" + id + "/dismiss", "qc_user"),
+                Arguments.of(HttpMethod.GET, "/api/lims/reagents", "warehouse_user"),
+                Arguments.of(HttpMethod.POST, "/api/equipment", "qc_user"),
+                Arguments.of(HttpMethod.POST, "/api/retention-samples", "qc_user"),
+                Arguments.of(HttpMethod.GET, "/api/sampling-requests", "warehouse_user"),
+                Arguments.of(HttpMethod.POST, "/api/vendors", "warehouse_user"),
+                Arguments.of(HttpMethod.GET, "/api/business-units", "proc_user"),
+                Arguments.of(HttpMethod.POST, "/api/materials", "proc_user"),
+                Arguments.of(HttpMethod.GET, "/api/audit-events", "viewer_user")
+        );
+    }
+
+    private int perform(HttpMethod method, String path, String token) throws Exception {
+        MvcResult result = mockMvc.perform(request(method, path)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andReturn();
+        return result.getResponse().getStatus();
     }
 
     private int performGet(String path, String token) throws Exception {

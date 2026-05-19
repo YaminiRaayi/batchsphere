@@ -190,6 +190,32 @@ import type {
   RejectBatchRequest
 } from "../types/qp-batch-release";
 import type { LotTraceabilityResponse } from "../types/traceability";
+import type { CreateReagentLotRequest, CreateReagentRequest, Reagent, ReagentLot, UpdateReagentLotRequest } from "../types/reagent";
+import type {
+  CreateReferenceStandardLotRequest,
+  CreateReferenceStandardRequest,
+  ReferenceStandard,
+  ReferenceStandardLot,
+  UpdateReferenceStandardLotRequest
+} from "../types/reference-standard";
+import type {
+  CreateStabilityStudyRequest,
+  RecordStabilityResultRequest,
+  StabilityStudyDetail,
+  StabilityStudySummary,
+  StabilityTimepoint,
+  TrendSeries,
+  UpdateStabilityStatusRequest
+} from "../types/stability";
+import type { CreateInstrumentUsageLogRequest, InstrumentUsageLog } from "../types/logbook";
+import type {
+  CreateMonitoringPointRequest,
+  DismissBreachRequest,
+  EmResult,
+  LinkBreachDeviationRequest,
+  MonitoringPoint,
+  RecordEmResultRequest
+} from "../types/environmental-monitoring";
 import { useAuthStore } from "../stores/authStore";
 import { useAppShellStore } from "../stores/appShellStore";
 
@@ -1888,6 +1914,15 @@ export async function fetchSamplingInvestigations(samplingRequestId: string) {
   return requestJson<QcInvestigation[]>(`/api/sampling-requests/${samplingRequestId}/investigations`);
 }
 
+export async function fetchQcInvestigationQueue(filters: { includeClosed?: boolean; type?: "OOS" | "OOT" | "GENERAL"; actor?: string } = {}) {
+  const params = new URLSearchParams();
+  if (filters.includeClosed) params.set("includeClosed", "true");
+  if (filters.type) params.set("type", filters.type);
+  if (filters.actor) params.set("actor", filters.actor);
+  const q = params.toString();
+  return requestJson<QcInvestigation[]>(`/api/sampling-requests/investigation-queue${q ? `?${q}` : ""}`);
+}
+
 export async function recordSamplingWorksheetResult(
   samplingRequestId: string,
   testResultId: string,
@@ -2026,6 +2061,47 @@ export type SecurityAuditEvent = {
   details: string | null;
   occurredAt: string;
 };
+
+export type AlcoaReadinessSummary = {
+  missingMetadataCount: number;
+  inactiveOrSoftDeletedCount: number;
+  openInvestigations: number;
+  openOosInvestigations: number;
+  openOotInvestigations: number;
+  ootResults: number;
+  openEmBreaches: number;
+  unsignedCriticalActions: number;
+  calibrationOverdue: number;
+  qualificationOverdue: number;
+  trainingOverdue: number;
+  retentionDueDisposal: number;
+  reagentLotsExpiring: number;
+  referenceStandardLotsExpiring: number;
+  auditEventsMissingReasonOrValues: number;
+  readinessScore: number;
+};
+
+export type AlcoaReadinessGap = {
+  category: string;
+  severity: "CRITICAL" | "HIGH" | "MEDIUM" | string;
+  title: string | null;
+  status: string | null;
+  entityType: string | null;
+  recordId: string;
+  recordCode: string | null;
+  owner: string | null;
+  dueDate: string | null;
+  observedAt: string | null;
+  route: string;
+};
+
+export async function fetchAlcoaReadinessSummary() {
+  return requestJson<AlcoaReadinessSummary>("/api/compliance/alcoa-readiness/summary");
+}
+
+export async function fetchAlcoaReadinessGaps() {
+  return requestJson<AlcoaReadinessGap[]>("/api/compliance/alcoa-readiness/gaps");
+}
 
 export async function fetchSecurityAuditEvents(params?: {
   username?: string;
@@ -2307,4 +2383,143 @@ export async function retrieveRetentionSample(id: string, payload: RetrieveReten
 
 export async function disposeRetentionSample(id: string, payload: DisposeRetentionSampleRequest) {
   return requestMutation<RetentionSample>(`/api/retention-samples/${id}/dispose`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function fetchReagents() {
+  return requestJson<Reagent[]>("/api/lims/reagents");
+}
+
+export async function createReagent(payload: CreateReagentRequest) {
+  return requestMutation<Reagent>("/api/lims/reagents", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function fetchReagentLots(reagentId: string) {
+  return requestJson<ReagentLot[]>(`/api/lims/reagents/${reagentId}/lots`);
+}
+
+export async function createReagentLot(reagentId: string, payload: CreateReagentLotRequest) {
+  return requestMutation<ReagentLot>(`/api/lims/reagents/${reagentId}/lots`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function updateReagentLot(reagentId: string, lotId: string, payload: UpdateReagentLotRequest) {
+  return requestMutation<ReagentLot>(`/api/lims/reagents/${reagentId}/lots/${lotId}`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+export async function fetchExpiringReagentLots(alertDays = 30) {
+  return requestJson<ReagentLot[]>(`/api/lims/reagents/expiring?alertDays=${alertDays}`);
+}
+
+export async function fetchAvailableReagentLots() {
+  return requestJson<ReagentLot[]>("/api/lims/reagents/lots/available");
+}
+
+export async function fetchReferenceStandards() {
+  return requestJson<ReferenceStandard[]>("/api/lims/reference-standards");
+}
+
+export async function createReferenceStandard(payload: CreateReferenceStandardRequest) {
+  return requestMutation<ReferenceStandard>("/api/lims/reference-standards", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function fetchReferenceStandardLots(standardId: string) {
+  return requestJson<ReferenceStandardLot[]>(`/api/lims/reference-standards/${standardId}/lots`);
+}
+
+export async function createReferenceStandardLot(standardId: string, payload: CreateReferenceStandardLotRequest) {
+  return requestMutation<ReferenceStandardLot>(`/api/lims/reference-standards/${standardId}/lots`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function updateReferenceStandardLot(standardId: string, lotId: string, payload: UpdateReferenceStandardLotRequest) {
+  return requestMutation<ReferenceStandardLot>(`/api/lims/reference-standards/${standardId}/lots/${lotId}`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+export async function fetchExpiringReferenceStandardLots(alertDays = 30) {
+  return requestJson<ReferenceStandardLot[]>(`/api/lims/reference-standards/expiring?alertDays=${alertDays}`);
+}
+
+export async function fetchStabilityStudies() {
+  return requestJson<StabilityStudySummary[]>("/api/lims/stability");
+}
+
+export async function createStabilityStudy(payload: CreateStabilityStudyRequest) {
+  return requestMutation<StabilityStudyDetail>("/api/lims/stability", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function fetchStabilityStudy(id: string) {
+  return requestJson<StabilityStudyDetail>(`/api/lims/stability/${id}`);
+}
+
+export async function pullStabilityTimepoint(studyId: string, timepointId: string, pulledBy: string) {
+  return requestMutation<StabilityTimepoint>(`/api/lims/stability/${studyId}/timepoints/${timepointId}/pull`, {
+    method: "PUT",
+    body: JSON.stringify({ pulledBy })
+  });
+}
+
+export async function recordStabilityResult(studyId: string, timepointId: string, payload: RecordStabilityResultRequest) {
+  return requestMutation<import("../types/stability").StabilityResult>(`/api/lims/stability/${studyId}/timepoints/${timepointId}/results`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchStabilityTrend(id: string) {
+  return requestJson<TrendSeries[]>(`/api/lims/stability/${id}/trend`);
+}
+
+export async function updateStabilityStatus(id: string, payload: UpdateStabilityStatusRequest) {
+  return requestMutation<StabilityStudySummary>(`/api/lims/stability/${id}/status`, {
+    method: "PUT",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function fetchEquipmentLogbook(equipmentId: string) {
+  return requestJson<InstrumentUsageLog[]>(`/api/lims/equipment/${equipmentId}/logbook`);
+}
+
+export async function createInstrumentLogEntry(payload: CreateInstrumentUsageLogRequest) {
+  return requestMutation<InstrumentUsageLog>("/api/lims/logbook", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function fetchAllInstrumentLogbook(filter: { usedBy?: string } = {}) {
+  const params = new URLSearchParams();
+  if (filter.usedBy) params.set("usedBy", filter.usedBy);
+  const q = params.toString();
+  return requestJson<InstrumentUsageLog[]>(`/api/lims/logbook${q ? `?${q}` : ""}`);
+}
+
+export async function fetchEmMonitoringPoints() {
+  return requestJson<MonitoringPoint[]>("/api/lims/em-monitoring-points");
+}
+
+export async function createEmMonitoringPoint(payload: CreateMonitoringPointRequest) {
+  return requestMutation<MonitoringPoint>("/api/lims/em-monitoring-points", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function recordEmResult(payload: RecordEmResultRequest) {
+  return requestMutation<EmResult>("/api/lims/em-results", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export async function fetchEmResults(pointId?: string) {
+  const q = pointId ? `?pointId=${pointId}` : "";
+  return requestJson<EmResult[]>(`/api/lims/em-results${q}`);
+}
+
+export async function fetchEmBreaches() {
+  return requestJson<EmResult[]>("/api/lims/em-results/breaches");
+}
+
+export async function linkEmBreachDeviation(resultId: string, payload: LinkBreachDeviationRequest) {
+  return requestMutation<EmResult>(`/api/lims/em-results/${resultId}/link-deviation`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function dismissEmBreach(resultId: string, payload: DismissBreachRequest) {
+  return requestMutation<EmResult>(`/api/lims/em-results/${resultId}/dismiss`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
 }

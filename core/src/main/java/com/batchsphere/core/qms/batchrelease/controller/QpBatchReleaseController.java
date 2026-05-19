@@ -105,11 +105,33 @@ public class QpBatchReleaseController {
   @GetMapping(value = "/{id}/coa/pdf", produces = "application/pdf")
   public ResponseEntity<byte[]> coaPdf(@PathVariable UUID id) {
     String actor = authenticatedActorService.currentActor();
-    byte[] pdf = batchReleaseService.getCoaPdf(id, actor);
+    byte[] pdf = batchReleaseService.getCoaPdf(id, actor, false, false);
     CoaResponse coa = batchReleaseService.getCoaDetails(id);
     return ResponseEntity.ok()
         .header(HttpHeaders.CONTENT_DISPOSITION,
             "attachment; filename=\"coa-" + (coa.getCoaNumber() != null ? coa.getCoaNumber() : id) + ".pdf\"")
+        .contentType(MediaType.APPLICATION_PDF)
+        .body(pdf);
+  }
+
+  @GetMapping(value = "/{id}/coa/preview", produces = "application/pdf")
+  public ResponseEntity<byte[]> coaPreviewPdf(@PathVariable UUID id) {
+    String actor = authenticatedActorService.currentActor();
+    byte[] pdf = batchReleaseService.getCoaPdf(id, actor, true, false);
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"coa-preview-" + id + ".pdf\"")
+        .contentType(MediaType.APPLICATION_PDF)
+        .body(pdf);
+  }
+
+  @GetMapping(value = "/{id}/coa/reprint", produces = "application/pdf")
+  public ResponseEntity<byte[]> coaReprintPdf(@PathVariable UUID id) {
+    String actor = authenticatedActorService.currentActor();
+    byte[] pdf = batchReleaseService.getCoaPdf(id, actor, false, true);
+    CoaResponse coa = batchReleaseService.getCoaDetails(id);
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=\"coa-reprint-" + (coa.getCoaNumber() != null ? coa.getCoaNumber() : id) + ".pdf\"")
         .contentType(MediaType.APPLICATION_PDF)
         .body(pdf);
   }

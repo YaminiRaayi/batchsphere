@@ -27,8 +27,13 @@ import com.batchsphere.core.transactions.grn.repository.GrnRepository;
 import com.batchsphere.core.transactions.sampling.entity.QcDispositionStatus;
 import com.batchsphere.core.transactions.sampling.entity.QcInvestigationStatus;
 import com.batchsphere.core.transactions.sampling.entity.QcInvestigationType;
+import com.batchsphere.core.transactions.sampling.entity.QcTestResultStatus;
+import com.batchsphere.core.transactions.sampling.entity.SamplingRequest;
+import com.batchsphere.core.transactions.sampling.dto.QcTestResultResponse;
 import com.batchsphere.core.transactions.sampling.repository.QcDispositionRepository;
 import com.batchsphere.core.transactions.sampling.repository.QcInvestigationRepository;
+import com.batchsphere.core.transactions.sampling.repository.SamplingRequestRepository;
+import com.batchsphere.core.transactions.sampling.service.QcWorksheetService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -37,6 +42,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.time.Year;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -53,6 +61,8 @@ public class QpBatchReleaseServiceImpl implements QpBatchReleaseService {
   private final GrnDocumentRepository grnDocumentRepository;
   private final QcDispositionRepository qcDispositionRepository;
   private final QcInvestigationRepository qcInvestigationRepository;
+  private final SamplingRequestRepository samplingRequestRepository;
+  private final QcWorksheetService qcWorksheetService;
   private final DeviationRepository deviationRepository;
   private final AuthenticatedActorService actorService;
   private final ESignatureService eSignatureService;
@@ -222,6 +232,12 @@ public class QpBatchReleaseServiceImpl implements QpBatchReleaseService {
         .certificationStatement(release.getQpCertificationStatement())
         .certifiedAt(release.getCertifiedAt())
         .eSignatureId(release.getCertificationESignatureId())
+        .coaNumber(release.getCoaNumber())
+        .analystSignedBy(release.getAnalystSignedBy())
+        .analystSignedAt(release.getAnalystSignedAt())
+        .coaIssuedBy(release.getCoaIssuedBy())
+        .coaIssuedAt(release.getCoaIssuedAt())
+        .testResults(buildCoaResultRows(release))
         .build();
   }
 
@@ -344,10 +360,13 @@ public class QpBatchReleaseServiceImpl implements QpBatchReleaseService {
       throw new BusinessConflictException("CoA can only be issued for CERTIFIED batch releases");
     }
     if (release.getAnalystSignedBy() == null) {
-      throw new BusinessConflictException("Analyst must sign CoA before manager can issue it");
+      throw new BusinessConflictException("Analyst sign-off required before CoA issuance");
     }
     if (Boolean.TRUE.equals(release.getCoaLocked())) {
-      throw new BusinessConflictException("CoA has already been issued and is locked");
+      throw new BusinessConflictException("CoA already issued");
+    }
+    if (!allMandatoryResultsPass(release)) {
+      throw new BusinessConflictException("All mandatory results must pass before CoA issuance");
     }
 
     ESignatureRequest sig = new ESignatureRequest();
@@ -357,7 +376,7 @@ public class QpBatchReleaseServiceImpl implements QpBatchReleaseService {
     eSignatureService.sign(ENTITY_TYPE, release.getId(), "COA_ISSUE",
         "QC Manager issues CoA", actor, sig, null);
 
-    String coaNumber = "COA-" + String.format("%06d",
+    String coaNumber = "COA-" + Year.now(ZoneOffset.UTC) + "-" + String.format("%05d",
         batchReleaseRepository.nextCoaSequenceValue());
     release.setCoaNumber(coaNumber);
     release.setCoaIssuedBy(actor);
@@ -382,13 +401,59 @@ public class QpBatchReleaseServiceImpl implements QpBatchReleaseService {
 
   @Override
   @Transactional(readOnly = true)
-  public byte[] getCoaPdf(UUID id, String actor) {
+  public byte[] getCoaPdf(UUID id, String actor, boolean preview, boolean reprint) {
     QpBatchRelease release = findActive(id);
-    if (release.getCoaNumber() == null) {
+    if (!preview && release.getCoaNumber() == null) {
       throw new BusinessConflictException("CoA has not been issued yet");
     }
     BatchCertificateResponse cert = getBatchCertificate(id);
-    return pdfReportService.generateBatchCertificate(cert, actor);
+    String watermark = reprint
+        ? "REPRINT - Originally issued "
+            + (release.getCoaIssuedAt() != null ? release.getCoaIssuedAt() : "unknown date")
+            + " by " + (release.getCoaIssuedBy() != null ? release.getCoaIssuedBy() : "unknown")
+        : (preview ? "PREVIEW - NOT ISSUED" : null);
+    if (reprint) {
+      auditEventService.record(ENTITY_TYPE, release.getId(), AuditEventType.WORKFLOW_ACTION,
+          "coaReprint", null, release.getCoaNumber(), "CoA reprint generated", actor, "COA_REPRINT");
+    }
+    return pdfReportService.generateCoa(cert, actor, preview, watermark);
+  }
+
+  private boolean allMandatoryResultsPass(QpBatchRelease release) {
+    return buildCoaResultRows(release).stream()
+        .allMatch(row -> "PASS".equalsIgnoreCase(row.getPassFail()));
+  }
+
+  private List<CoaResultRow> buildCoaResultRows(QpBatchRelease release) {
+    List<CoaResultRow> rows = new ArrayList<>();
+    if (release.getGrnId() == null) {
+      return rows;
+    }
+    for (SamplingRequest request : samplingRequestRepository.findByGrnIdAndIsActiveTrue(release.getGrnId())) {
+      List<QcTestResultResponse> worksheet;
+      try {
+        worksheet = qcWorksheetService.getWorksheet(request.getId());
+      } catch (RuntimeException ignored) {
+        continue;
+      }
+      for (QcTestResultResponse row : worksheet) {
+        if (!Boolean.TRUE.equals(row.getMandatory())) {
+          continue;
+        }
+        String result = row.getResultValue() != null
+            ? row.getResultValue().stripTrailingZeros().toPlainString()
+            : row.getResultText();
+        rows.add(CoaResultRow.builder()
+            .parameterName(row.getParameterName())
+            .criteriaDisplay(row.getCriteriaDisplay())
+            .result(result != null ? result : "-")
+            .unit(row.getUnitApplied())
+            .passFail(row.getStatus() == QcTestResultStatus.PASS ? "PASS" : row.getStatus().name())
+            .instrumentRef(row.getInstrumentRef())
+            .build());
+      }
+    }
+    return rows;
   }
 
   private CoaResponse toCoaResponse(QpBatchRelease r) {

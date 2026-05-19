@@ -49,7 +49,7 @@ public class AuditEventServiceImpl implements AuditEventService {
 
     @Override
     public List<AuditEventResponse> getEvents(String entityType, UUID entityId) {
-        return auditEventRepository.findByEntityTypeAndEntityIdAndIsActiveTrueOrderByEventAtDesc(entityType, entityId)
+        return auditEventRepository.findByEntityTypeAndEntityIdAndIsActiveTrueOrderByEventAtAsc(entityType, entityId)
                 .stream()
                 .map(this::toResponse)
                 .toList();

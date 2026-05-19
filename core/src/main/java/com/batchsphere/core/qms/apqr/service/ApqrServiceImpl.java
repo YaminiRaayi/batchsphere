@@ -1,6 +1,8 @@
 package com.batchsphere.core.qms.apqr.service;
 
 import com.batchsphere.core.auth.service.AuthenticatedActorService;
+import com.batchsphere.core.compliance.audit.entity.AuditEventType;
+import com.batchsphere.core.compliance.audit.service.AuditEventService;
 import com.batchsphere.core.compliance.esign.dto.ESignatureRecordResponse;
 import com.batchsphere.core.compliance.esign.dto.ESignatureRequest;
 import com.batchsphere.core.compliance.esign.service.ESignatureService;
@@ -41,6 +43,7 @@ public class ApqrServiceImpl implements ApqrService {
   private final MaterialRepository materialRepository;
   private final AuthenticatedActorService actorService;
   private final ESignatureService eSignatureService;
+  private final AuditEventService auditEventService;
   private final GrnItemRepository grnItemRepository;
   private final QcTestResultRepository qcTestResultRepository;
   private final QcInvestigationRepository qcInvestigationRepository;
@@ -78,6 +81,8 @@ public class ApqrServiceImpl implements ApqrService {
         .build();
 
     apqr = apqrRepository.save(apqr);
+    auditEventService.record("APQR", apqr.getId(), AuditEventType.CREATE, "status",
+        null, ApqrStatus.DRAFT.name(), apqr.getApqrNumber(), actor, "APQR");
     return toResponse(apqr);
   }
 
@@ -129,6 +134,7 @@ public class ApqrServiceImpl implements ApqrService {
     apqr.setOpenCapaCount(capaRepository.findByIsActiveTrueAndStatusNotIn(Set.of(CapaStatus.CLOSED, CapaStatus.CANCELLED)).size());
     apqr.setChangeControlCount(toInt(changeControlRepository.countByIsActiveTrueAndCreatedAtBetween(start, end)));
     apqr.setComplaintCount(toInt(complaintRepository.countByProductNameForApqr(apqr.getProductName(), apqr.getPeriodStart(), apqr.getPeriodEnd())));
+    ApqrStatus oldStatus = apqr.getStatus();
     apqr.setStatus(ApqrStatus.UNDER_REVIEW);
 
     String actor = actorService.currentActor();
@@ -136,6 +142,8 @@ public class ApqrServiceImpl implements ApqrService {
     apqr.setPreparedAt(LocalDateTime.now());
 
     apqr = apqrRepository.save(apqr);
+    auditEventService.record("APQR", apqr.getId(), AuditEventType.STATUS_CHANGE, "status",
+        oldStatus.name(), ApqrStatus.UNDER_REVIEW.name(), "APQR compiled", actor, "APQR");
     return toResponse(apqr);
   }
 
@@ -158,6 +166,8 @@ public class ApqrServiceImpl implements ApqrService {
     apqr.setUpdatedAt(LocalDateTime.now());
 
     apqr = apqrRepository.save(apqr);
+    auditEventService.record("APQR", apqr.getId(), AuditEventType.UPDATE, "conclusions",
+        null, "UPDATED", "APQR conclusions updated", actor, "APQR");
     return toResponse(apqr);
   }
 
@@ -189,11 +199,16 @@ public class ApqrServiceImpl implements ApqrService {
     apqr.setApprovedBy(actor);
     apqr.setApprovedAt(LocalDateTime.now());
     apqr.setApprovalESignatureId(signature.getId());
+    ApqrStatus oldStatus = apqr.getStatus();
     apqr.setStatus(ApqrStatus.APPROVED);
     apqr.setUpdatedBy(actor);
     apqr.setUpdatedAt(LocalDateTime.now());
 
     apqr = apqrRepository.save(apqr);
+    auditEventService.record("APQR", apqr.getId(), AuditEventType.E_SIGNATURE, "approvalESignatureId",
+        null, signature.getId().toString(), request.getReason(), actor, "APQR");
+    auditEventService.record("APQR", apqr.getId(), AuditEventType.STATUS_CHANGE, "status",
+        oldStatus.name(), ApqrStatus.APPROVED.name(), request.getReason(), actor, "APQR");
     return toResponse(apqr);
   }
 
@@ -207,12 +222,15 @@ public class ApqrServiceImpl implements ApqrService {
       throw new IllegalStateException("Can only close APPROVED APQR");
     }
 
+    ApqrStatus oldStatus = apqr.getStatus();
     apqr.setStatus(ApqrStatus.CLOSED);
     String actor = actorService.currentActor();
     apqr.setUpdatedBy(actor);
     apqr.setUpdatedAt(LocalDateTime.now());
 
     apqr = apqrRepository.save(apqr);
+    auditEventService.record("APQR", apqr.getId(), AuditEventType.STATUS_CHANGE, "status",
+        oldStatus.name(), ApqrStatus.CLOSED.name(), "APQR closed", actor, "APQR");
     return toResponse(apqr);
   }
 

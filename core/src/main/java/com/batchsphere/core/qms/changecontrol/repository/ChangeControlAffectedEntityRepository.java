@@ -8,6 +8,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ChangeControlAffectedEntityRepository extends JpaRepository<ChangeControlAffectedEntity, UUID> {
-    List<ChangeControlAffectedEntity> findByChangeControlIdOrderByCreatedAtAsc(UUID changeControlId);
-    Optional<ChangeControlAffectedEntity> findByIdAndChangeControlId(UUID id, UUID changeControlId);
+    List<ChangeControlAffectedEntity> findByChangeControlIdAndIsActiveTrueOrderByCreatedAtAsc(UUID changeControlId);
+    Optional<ChangeControlAffectedEntity> findByIdAndChangeControlIdAndIsActiveTrue(UUID id, UUID changeControlId);
 }

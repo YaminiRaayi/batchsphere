@@ -149,6 +149,8 @@ public class GrnServiceImpl implements GrnService {
         Grn savedGrn = grnRepository.save(grn);
         List<GrnItem> savedItems = createItems(savedGrn.getId(), request.getItems(), actor);
 
+        auditEventService.record("GRN", savedGrn.getId(), AuditEventType.CREATE, "status",
+                null, GrnStatus.DRAFT.name(), "GRN created", actor, "GRN");
         return toResponse(savedGrn, savedItems);
     }
 
@@ -268,9 +270,12 @@ public class GrnServiceImpl implements GrnService {
         existing.setUpdatedAt(LocalDateTime.now());
 
         Grn savedGrn = grnRepository.save(existing);
-        replaceExistingDraftItems(existingItems);
+        replaceExistingDraftItems(existingItems, actor);
         List<GrnItem> savedItems = createItems(existing.getId(), request.getItems(), actor);
 
+        auditEventService.record("GRN", savedGrn.getId(), AuditEventType.UPDATE, "draftItems",
+                String.valueOf(existingItems.size()), String.valueOf(savedItems.size()),
+                "Draft GRN item replacement retained superseded rows as inactive", actor, "GRN");
         return toResponse(savedGrn, savedItems);
     }
 
@@ -293,6 +298,8 @@ public class GrnServiceImpl implements GrnService {
         grn.setUpdatedAt(LocalDateTime.now());
 
         Grn savedGrn = grnRepository.save(grn);
+        auditEventService.record("GRN", savedGrn.getId(), AuditEventType.STATUS_CHANGE, "status",
+                GrnStatus.DRAFT.name(), GrnStatus.RECEIVED.name(), "GRN received", actor, "GRN");
         return toResponse(savedGrn, items);
     }
 
@@ -417,6 +424,8 @@ public class GrnServiceImpl implements GrnService {
                 .build();
         materialLabelRepository.save(label);
 
+        auditEventService.record("GRN_CONTAINER", savedContainer.getId(), AuditEventType.WORKFLOW_ACTION, "labelStatus",
+                null, LabelStatus.APPLIED.name(), "Sampling label applied", actor, "GRN_SAMPLING_LABEL");
         return toContainerResponse(savedContainer);
     }
 
@@ -447,7 +456,10 @@ public class GrnServiceImpl implements GrnService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        return toDocumentResponse(grnDocumentRepository.save(document));
+        GrnDocument savedDocument = grnDocumentRepository.save(document);
+        auditEventService.record("GRN_DOCUMENT", savedDocument.getId(), AuditEventType.CREATE, "documentType",
+                null, savedDocument.getDocumentType(), savedDocument.getDocumentName(), actor, "GRN_DOCUMENT");
+        return toDocumentResponse(savedDocument);
     }
 
     @Override
@@ -457,6 +469,7 @@ public class GrnServiceImpl implements GrnService {
         Grn grn = getActiveGrn(id);
         ensureDraft(grn, "Only draft GRNs can be cancelled");
 
+        GrnStatus oldStatus = grn.getStatus();
         grn.setStatus(GrnStatus.CANCELLED);
         String normalizedReason = reason == null ? "" : reason.trim();
         if (!normalizedReason.isEmpty()) {
@@ -470,6 +483,8 @@ public class GrnServiceImpl implements GrnService {
         grn.setUpdatedAt(LocalDateTime.now());
 
         Grn savedGrn = grnRepository.save(grn);
+        auditEventService.record("GRN", savedGrn.getId(), AuditEventType.STATUS_CHANGE, "status",
+                oldStatus.name(), GrnStatus.CANCELLED.name(), normalizedReason, actor, "GRN");
         List<GrnItem> items = grnItemRepository.findByGrnIdAndIsActiveTrueOrderByLineNumber(id);
         return toResponse(savedGrn, items);
     }
@@ -487,6 +502,8 @@ public class GrnServiceImpl implements GrnService {
         grn.setUpdatedBy(actor);
         grn.setUpdatedAt(LocalDateTime.now());
         grnRepository.save(grn);
+        auditEventService.record("GRN", grn.getId(), AuditEventType.UPDATE, "isActive",
+                "true", "false", "Draft GRN deactivated", actor, "GRN");
 
         List<GrnItem> items = grnItemRepository.findByGrnIdAndIsActiveTrueOrderByLineNumber(id);
         LocalDateTime now = LocalDateTime.now();
@@ -498,8 +515,11 @@ public class GrnServiceImpl implements GrnService {
         grnItemRepository.saveAll(items);
 
         List<GrnDocument> documents = grnDocumentRepository.findByGrnIdAndIsActiveTrueOrderByCreatedAtDesc(id);
+        LocalDateTime documentDeactivatedAt = LocalDateTime.now();
         for (GrnDocument document : documents) {
             document.setIsActive(false);
+            document.setUpdatedBy(actor);
+            document.setUpdatedAt(documentDeactivatedAt);
         }
         grnDocumentRepository.saveAll(documents);
     }
@@ -568,15 +588,8 @@ public class GrnServiceImpl implements GrnService {
         deactivateDocumentsForItems(items);
     }
 
-    private void replaceExistingDraftItems(List<GrnItem> items) {
-        List<UUID> itemIds = items.stream().map(GrnItem::getId).toList();
-        if (!itemIds.isEmpty()) {
-            List<GrnDocument> documents = grnDocumentRepository.findByGrnItemIdIn(itemIds);
-            grnDocumentRepository.deleteAll(documents);
-            grnDocumentRepository.flush();
-        }
-        grnItemRepository.deleteAll(items);
-        grnItemRepository.flush();
+    private void replaceExistingDraftItems(List<GrnItem> items, String updatedBy) {
+        deactivateExistingItems(items, updatedBy);
     }
 
     private void validateHeader(UUID supplierId, UUID vendorId, UUID vendorBusinessUnitId) {
@@ -815,8 +828,11 @@ public class GrnServiceImpl implements GrnService {
         }
 
         List<GrnDocument> documents = grnDocumentRepository.findByGrnItemIdInAndIsActiveTrue(itemIds);
+        LocalDateTime now = LocalDateTime.now();
         for (GrnDocument document : documents) {
             document.setIsActive(false);
+            document.setUpdatedBy(items.get(0).getUpdatedBy());
+            document.setUpdatedAt(now);
         }
         grnDocumentRepository.saveAll(documents);
     }

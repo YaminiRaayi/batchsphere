@@ -14,6 +14,7 @@ import {
   executeSamplingRetest,
   createSamplingPlan,
   fetchActiveInstruments,
+  fetchAvailableReagentLots,
   fetchBatches,
   fetchGrnItemContainers,
   fetchMaterials,
@@ -44,6 +45,7 @@ import type { GrnContainer } from "../../types/grn";
 import type { Pallet } from "../../types/location";
 import type { Material } from "../../types/material";
 import type { Moa } from "../../types/moa";
+import type { ReagentLot } from "../../types/reagent";
 import type { SamplingTool } from "../../types/sampling-tool";
 import type { Spec, SpecParameter } from "../../types/spec";
 import type {
@@ -246,6 +248,7 @@ export function SamplingPage() {
   const [worksheet, setWorksheet]             = useState<QcWorksheetRow[]>([]);
   const [worksheetInputs, setWorksheetInputs] = useState<Record<string, RecordQcWorksheetResultRequest>>({});
   const [activeInstruments, setActiveInstruments] = useState<Equipment[]>([]);
+  const [availableReagentLots, setAvailableReagentLots] = useState<ReagentLot[]>([]);
   const [cycles, setCycles]                   = useState<SamplingRequest[]>([]);
   const [investigations, setInvestigations]   = useState<QcInvestigation[]>([]);
   const [investigationForm, setInvestigationForm] = useState<OpenQcInvestigationRequest>({ qcTestResultId: "", reason: "", initialAssessment: "", investigationType: "OOS" });
@@ -276,7 +279,7 @@ export function SamplingPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const [requestPage, summaryData, materialPage, batchPage, palletPage, specData, moaData, toolData, instrumentData] =
+        const [requestPage, summaryData, materialPage, batchPage, palletPage, specData, moaData, toolData, instrumentData, reagentLotData] =
           await Promise.all([
             fetchSamplingRequests(),
             fetchSamplingSummary(),
@@ -286,7 +289,8 @@ export function SamplingPage() {
             fetchSpecs(),
             fetchMoas(),
             fetchSamplingTools(),
-            fetchActiveInstruments()
+            fetchActiveInstruments(),
+            fetchAvailableReagentLots()
           ]);
         const specParameterEntries = await Promise.all(
           specData.map(async (spec) => [spec.id, await fetchSpecParameters(spec.id)] as const)
@@ -301,6 +305,7 @@ export function SamplingPage() {
           setMoas(moaData);
           setSamplingTools(toolData);
           setActiveInstruments(instrumentData);
+          setAvailableReagentLots(reagentLotData);
           setSpecParametersBySpecId(Object.fromEntries(specParameterEntries));
         }
       } catch (loadError) {
@@ -436,6 +441,7 @@ export function SamplingPage() {
           resultText: row.resultText ?? undefined,
           moaIdUsed: row.moaIdUsed ?? row.specMoaId ?? undefined,
           equipmentId: row.equipmentId ?? undefined,
+          reagentLotId: row.reagentLotId ?? undefined,
           remarks: row.remarks ?? undefined
         }])));
       } catch {
@@ -765,6 +771,7 @@ export function SamplingPage() {
           resultText: savedRow.resultText ?? undefined,
           moaIdUsed: savedRow.moaIdUsed ?? savedRow.specMoaId ?? undefined,
           equipmentId: savedRow.equipmentId ?? undefined,
+          reagentLotId: savedRow.reagentLotId ?? undefined,
           remarks: savedRow.remarks ?? undefined
         }
       }));
@@ -1951,15 +1958,16 @@ export function SamplingPage() {
                                 try {
                                   const fd = new FormData();
                                   fd.append("file", f);
-                                  const token = (useAuthStore.getState() as { token: string | null }).token;
+                                  const token = useAuthStore.getState().accessToken;
                                   const res = await fetch(`/api/sampling-requests/${selectedRequest.id}/worksheet/import-csv`, {
                                     method: "POST",
                                     headers: token ? { Authorization: `Bearer ${token}` } : {},
                                     body: fd
                                   });
                                   if (!res.ok) {
-                                    const err = await res.json() as { message?: string };
-                                    throw new Error(err.message ?? "CSV import failed");
+                                    const err = await res.json() as { message?: string; errors?: Array<{ row: number; parameterName?: string; error: string }> };
+                                    const details = err.errors?.map((item) => `Row ${item.row}${item.parameterName ? ` (${item.parameterName})` : ""}: ${item.error}`).join("; ");
+                                    throw new Error(details ?? err.message ?? "CSV import failed");
                                   }
                                   const updated = await res.json() as QcWorksheetRow[];
                                   setWorksheet(updated);
@@ -1968,6 +1976,7 @@ export function SamplingPage() {
                                     resultText: row.resultText ?? undefined,
                                     moaIdUsed: row.moaIdUsed ?? row.specMoaId ?? undefined,
                                     equipmentId: row.equipmentId ?? undefined,
+                                    reagentLotId: row.reagentLotId ?? undefined,
                                     remarks: row.remarks ?? undefined
                                   }])));
                                   setSuccessMessage("CSV imported successfully.");
@@ -1985,7 +1994,7 @@ export function SamplingPage() {
                     </div>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="min-w-[1180px] w-full text-xs">
+                    <table className="min-w-[1320px] w-full text-xs">
                       <thead>
                         <tr className="border-b border-green-100 bg-green-50/40">
                           <th className="px-3 py-2 text-left">#</th>
@@ -1994,6 +2003,7 @@ export function SamplingPage() {
                           <th className="px-3 py-2 text-left">MOA</th>
                           <th className="px-3 py-2 text-left">Criteria</th>
                           <th className="px-3 py-2 text-left">Instrument</th>
+                          <th className="px-3 py-2 text-left">Reagent Lot</th>
                           <th className="px-3 py-2 text-left">Result</th>
                           <th className="px-3 py-2 text-left">Remarks</th>
                           <th className="px-3 py-2 text-left">Status</th>
@@ -2002,18 +2012,21 @@ export function SamplingPage() {
                       </thead>
                       <tbody>
                         {worksheet.length === 0 ? (
-                          <tr><td colSpan={10} className="px-4 py-4 text-center text-slate-400">Worksheet will appear after QC receipt.</td></tr>
+                          <tr><td colSpan={11} className="px-4 py-4 text-center text-slate-400">Worksheet will appear after QC receipt.</td></tr>
                         ) : worksheet.map((row) => {
                           const input = worksheetInputs[row.id] ?? {};
                           const textBased = ["PASS_FAIL", "COMPLIES", "TEXT"].includes(row.criteriaTypeApplied);
                           const locked = row.isLocked;
                           const canEdit = !locked && selectedRequest.requestStatus === "UNDER_REVIEW" && !isSubmitting;
+                          const today = new Date().toISOString().slice(0, 10);
+                          const showInstrument = row.requiresInstrument || Boolean(input.equipmentId) || Boolean(row.equipmentId);
                           return (
                             <tr key={row.id} className="border-b border-green-50 align-top">
                               <td className="px-3 py-3 font-mono text-slate-500">{row.sequence}</td>
                               <td className="px-3 py-3">
                                 <div className="flex items-center gap-1 font-semibold text-slate-800">
                                   {row.parameterName}
+                                  {row.requiresInstrument && <span title="Instrument required" className="text-rose-500">*</span>}
                                   {locked && <span title="Data locked — amendment requires e-signature" className="ml-1 text-amber-500">&#128274;</span>}
                                 </div>
                                 {row.mandatory ? <div className="text-[10px] text-rose-500">Mandatory</div> : <div className="text-[10px] text-slate-400">Optional</div>}
@@ -2024,6 +2037,8 @@ export function SamplingPage() {
                               <td className="px-3 py-3">
                                 {locked ? (
                                   <span className="font-mono text-[11px] text-slate-500">{row.instrumentRef ?? "—"}</span>
+                                ) : !showInstrument ? (
+                                  <span className="text-[11px] text-slate-400">Not required</span>
                                 ) : (
                                   <select
                                     value={input.equipmentId ?? ""}
@@ -2031,9 +2046,33 @@ export function SamplingPage() {
                                     className={`${fieldCls} min-w-[140px]`}
                                     disabled={!canEdit}
                                   >
+                                    <option value="">{row.requiresInstrument ? "Select instrument" : "None"}</option>
+                                    {activeInstruments.map((eq) => {
+                                      const expired = Boolean(eq.nextCalibrationDue && eq.nextCalibrationDue < today);
+                                      return (
+                                        <option key={eq.id} value={eq.id} disabled={expired}>
+                                          {expired ? "EXPIRED - " : ""}{eq.equipmentId} — {eq.name}{eq.nextCalibrationDue ? ` (cal due ${eq.nextCalibrationDue})` : ""}
+                                        </option>
+                                      );
+                                    })}
+                                  </select>
+                                )}
+                              </td>
+                              <td className="px-3 py-3">
+                                {locked ? (
+                                  <span className="font-mono text-[11px] text-slate-500">{row.reagentLotId ? "Linked" : "—"}</span>
+                                ) : (
+                                  <select
+                                    value={input.reagentLotId ?? ""}
+                                    onChange={(e) => setWorksheetInputs((current) => ({ ...current, [row.id]: { ...current[row.id], reagentLotId: e.target.value || undefined } }))}
+                                    className={`${fieldCls} min-w-[160px]`}
+                                    disabled={!canEdit}
+                                  >
                                     <option value="">None</option>
-                                    {activeInstruments.map((eq) => (
-                                      <option key={eq.id} value={eq.id}>{eq.equipmentId} — {eq.name}</option>
+                                    {availableReagentLots.map((lot) => (
+                                      <option key={lot.id} value={lot.id}>
+                                        {lot.reagentName ?? lot.reagentCode} · {lot.lotNumber} · exp {lot.expiryDate}
+                                      </option>
                                     ))}
                                   </select>
                                 )}

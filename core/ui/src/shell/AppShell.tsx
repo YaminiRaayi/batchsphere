@@ -85,16 +85,8 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Quality",
+    label: "QMS",
     items: [
-      {
-        to: "/qc/sampling",
-        label: "Sampling & QC",
-        abbr: "QC",
-        color: "#0D9488",
-        lightBg: "#F0FDFA",
-        dimBorder: "#99F6E4",
-      },
       {
         to: "/qms/deviations",
         label: "Deviations",
@@ -175,6 +167,67 @@ const NAV_GROUPS: NavGroup[] = [
         lightBg: "#F5F3FF",
         dimBorder: "#DDD6FE"
       },
+    ],
+  },
+  {
+    label: "LIMS",
+    items: [
+      {
+        to: "/lims/dashboard",
+        label: "Dashboard",
+        abbr: "LD",
+        color: "#0D9488",
+        lightBg: "#F0FDFA",
+        dimBorder: "#99F6E4"
+      },
+      {
+        to: "/lims/sampling",
+        label: "QC Sampling",
+        abbr: "QC",
+        color: "#0D9488",
+        lightBg: "#F0FDFA",
+        dimBorder: "#99F6E4"
+      },
+      {
+        to: "/lims/worksheets",
+        label: "Worksheets",
+        abbr: "WS",
+        color: "#2563EB",
+        lightBg: "#EFF6FF",
+        dimBorder: "#BFDBFE"
+      },
+      {
+        to: "/lims/oos-investigations",
+        label: "OOS Investigations",
+        abbr: "OI",
+        color: "#DC2626",
+        lightBg: "#FEF2F2",
+        dimBorder: "#FECACA"
+      },
+      {
+        to: "/lims/specifications",
+        label: "Specifications",
+        abbr: "SP",
+        color: "#475569",
+        lightBg: "#F1F5F9",
+        dimBorder: "#CBD5E1"
+      },
+      {
+        to: "/lims/methods",
+        label: "Methods / MoA",
+        abbr: "MO",
+        color: "#475569",
+        lightBg: "#F1F5F9",
+        dimBorder: "#CBD5E1"
+      },
+      {
+        to: "/lims/sampling-tools",
+        label: "Sampling Tools",
+        abbr: "ST",
+        color: "#475569",
+        lightBg: "#F1F5F9",
+        dimBorder: "#CBD5E1"
+      },
       {
         to: "/lims/equipment",
         label: "Equipment",
@@ -184,12 +237,76 @@ const NAV_GROUPS: NavGroup[] = [
         dimBorder: "#A5F3FC"
       },
       {
+        to: "/lims/reagents",
+        label: "Reagents",
+        abbr: "RG",
+        color: "#0D9488",
+        lightBg: "#F0FDFA",
+        dimBorder: "#99F6E4"
+      },
+      {
+        to: "/lims/reference-standards",
+        label: "Reference Standards",
+        abbr: "RS",
+        color: "#0E7490",
+        lightBg: "#ECFEFF",
+        dimBorder: "#A5F3FC"
+      },
+      {
+        to: "/lims/logbook",
+        label: "Instrument Logbook",
+        abbr: "LB",
+        color: "#0891B2",
+        lightBg: "#ECFEFF",
+        dimBorder: "#A5F3FC"
+      },
+      {
+        to: "/lims/stability",
+        label: "Stability",
+        abbr: "ST",
+        color: "#7C3AED",
+        lightBg: "#F5F3FF",
+        dimBorder: "#DDD6FE"
+      },
+      {
+        to: "/lims/env-monitoring",
+        label: "Env Monitoring",
+        abbr: "EM",
+        color: "#16A34A",
+        lightBg: "#F0FDF4",
+        dimBorder: "#BBF7D0"
+      },
+      {
         to: "/lims/retention-samples",
         label: "Retention Samples",
         abbr: "RS",
         color: "#0F766E",
         lightBg: "#F0FDFA",
         dimBorder: "#99F6E4"
+      },
+      {
+        to: "/lims/coa",
+        label: "CoA / Lab Certificates",
+        abbr: "CO",
+        color: "#0F766E",
+        lightBg: "#F0FDFA",
+        dimBorder: "#99F6E4"
+      },
+      {
+        to: "/lims/reports",
+        label: "Lab Reports",
+        abbr: "LR",
+        color: "#2563EB",
+        lightBg: "#EFF6FF",
+        dimBorder: "#BFDBFE"
+      },
+      {
+        to: "/lims/compliance",
+        label: "Lab Compliance",
+        abbr: "LC",
+        color: "#7C3AED",
+        lightBg: "#F5F3FF",
+        dimBorder: "#DDD6FE"
       },
     ],
   },

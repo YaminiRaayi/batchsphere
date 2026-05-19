@@ -10,6 +10,9 @@ import com.batchsphere.core.exception.ResourceNotFoundException;
 import com.batchsphere.core.lims.equipment.entity.Equipment;
 import com.batchsphere.core.lims.equipment.entity.EquipmentStatus;
 import com.batchsphere.core.lims.equipment.repository.EquipmentRepository;
+import com.batchsphere.core.lims.reagent.entity.LabReagentLot;
+import com.batchsphere.core.lims.reagent.repository.LabReagentLotRepository;
+import com.batchsphere.core.lims.logbook.service.InstrumentLogbookService;
 import com.batchsphere.core.masterdata.spec.entity.SpecParameter;
 import com.batchsphere.core.masterdata.spec.entity.SpecParameterCriteriaType;
 import com.batchsphere.core.masterdata.spec.repository.SpecParameterRepository;
@@ -18,9 +21,11 @@ import com.batchsphere.core.transactions.sampling.dto.QcTestResultResponse;
 import com.batchsphere.core.transactions.sampling.dto.RecordQcTestResultRequest;
 import com.batchsphere.core.transactions.sampling.entity.QcDisposition;
 import com.batchsphere.core.transactions.sampling.entity.QcDispositionStatus;
+import com.batchsphere.core.transactions.sampling.entity.QcInvestigationStatus;
 import com.batchsphere.core.transactions.sampling.entity.QcTestResult;
 import com.batchsphere.core.transactions.sampling.entity.QcTestResultStatus;
 import com.batchsphere.core.transactions.sampling.repository.QcDispositionRepository;
+import com.batchsphere.core.transactions.sampling.repository.QcInvestigationRepository;
 import com.batchsphere.core.transactions.sampling.repository.QcTestResultRepository;
 import com.batchsphere.core.transactions.sampling.repository.SampleRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +38,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -45,8 +51,11 @@ public class QcTestResultServiceImpl implements QcTestResultService {
     private final QcWorksheetService qcWorksheetService;
     private final AuditEventService auditEventService;
     private final ESignatureService eSignatureService;
+    private final QcInvestigationRepository qcInvestigationRepository;
     private final SampleRepository sampleRepository;
     private final EquipmentRepository equipmentRepository;
+    private final LabReagentLotRepository reagentLotRepository;
+    private final InstrumentLogbookService instrumentLogbookService;
 
     @Override
     @Transactional
@@ -62,6 +71,10 @@ public class QcTestResultServiceImpl implements QcTestResultService {
                 .orElseThrow(() -> new ResourceNotFoundException("QC disposition not found for sample worksheet"));
         if (disposition.getStatus() != QcDispositionStatus.UNDER_REVIEW) {
             throw new BusinessConflictException("QC results can only be recorded when disposition is UNDER_REVIEW");
+        }
+
+        if (Boolean.TRUE.equals(parameter.getRequiresInstrument()) && request.getEquipmentId() == null) {
+            throw new BusinessConflictException("Instrument required for parameter: " + parameter.getParameterName());
         }
 
         if (request.getEquipmentId() != null) {
@@ -80,6 +93,24 @@ public class QcTestResultServiceImpl implements QcTestResultService {
             row.setInstrumentRef(eq.getEquipmentId());
         }
 
+        if (request.getReagentLotId() != null) {
+            LabReagentLot lot = reagentLotRepository.findById(request.getReagentLotId())
+                    .filter(item -> Boolean.TRUE.equals(item.getIsActive()))
+                    .orElseThrow(() -> new ResourceNotFoundException("Reagent lot not found: " + request.getReagentLotId()));
+            if (!"ACTIVE".equalsIgnoreCase(lot.getStatus())) {
+                throw new BusinessConflictException("Reagent lot " + lot.getLotNumber() + " is not ACTIVE");
+            }
+            if (lot.getExpiryDate() != null && lot.getExpiryDate().isBefore(LocalDate.now())) {
+                throw new BusinessConflictException("Reagent lot " + lot.getLotNumber() + " expired on " + lot.getExpiryDate());
+            }
+            if (lot.getQuantityReceived().subtract(lot.getQuantityUsed()).compareTo(BigDecimal.ZERO) < 0) {
+                throw new BusinessConflictException("Quantity remaining cannot be negative");
+            }
+            row.setReagentLotId(lot.getId());
+        } else {
+            row.setReagentLotId(null);
+        }
+
         QcTestResultStatus previousStatus = row.getStatus();
         row.setMoaIdUsed(request.getMoaIdUsed() != null ? request.getMoaIdUsed() : row.getMoaIdUsed());
         row.setResultValue(request.getResultValue());
@@ -90,9 +121,17 @@ public class QcTestResultServiceImpl implements QcTestResultService {
         row.setUpdatedAt(LocalDateTime.now());
 
         ValidationOutcome outcome = validate(parameter, row);
+        UUID samplingRequestId = disposition.getSamplingRequestId();
+        if (isFailingStatus(previousStatus) && outcome.status() == QcTestResultStatus.PASS
+                && !hasClosedInvestigation(samplingRequestId)) {
+            throw new BusinessConflictException("Failing/OOS result cannot be cleared through standard edit before completed investigation and audit trail");
+        }
         row.setStatus(outcome.status());
         row.setPassFailFlag(outcome.passFlag());
         qcTestResultRepository.save(row);
+        if (row.getEquipmentId() != null) {
+            instrumentLogbookService.logAutoUsage(row.getEquipmentId(), disposition.getSamplingRequestId(), parameter.getParameterName(), actor);
+        }
         qcWorksheetService.markWorksheetInProgress(row.getSampleId(), actor);
         auditEventService.record(
                 "QC_TEST_RESULT",
@@ -125,18 +164,30 @@ public class QcTestResultServiceImpl implements QcTestResultService {
         signatureRequest.setUsername(request.getESignatureUsername());
         signatureRequest.setPassword(request.getESignaturePassword());
         signatureRequest.setMeaning("QC result data amendment");
-        eSignatureService.sign("QC_TEST_RESULT", row.getId(), "DATA_AMENDMENT",
+        var signature = eSignatureService.sign("QC_TEST_RESULT", row.getId(), "DATA_AMENDMENT",
                 "Authorized data amendment: " + request.getJustification(), actor, signatureRequest,
                 request.getJustification());
 
+        SpecParameter parameter = specParameterRepository.findById(row.getSpecParameterId())
+                .orElseThrow(() -> new ResourceNotFoundException("Spec parameter not found with id: " + row.getSpecParameterId()));
+        QcTestResultStatus previousStatus = row.getStatus();
         if (request.getResultValue() != null) row.setResultValue(request.getResultValue());
         if (StringUtils.hasText(request.getResultText())) row.setResultText(request.getResultText().trim());
         if (StringUtils.hasText(request.getRemarks())) row.setRemarks(request.getRemarks().trim());
+        ValidationOutcome outcome = validate(parameter, row);
+        row.setStatus(outcome.status());
+        row.setPassFailFlag(outcome.passFlag());
         row.setEnteredAt(LocalDateTime.now());
         row.setUpdatedBy(actor);
         row.setUpdatedAt(LocalDateTime.now());
         qcTestResultRepository.save(row);
 
+        auditEventService.record("QC_TEST_RESULT", row.getId(), AuditEventType.E_SIGNATURE,
+                "amendmentESignatureId", null, signature.getId().toString(),
+                "QC result amendment electronically signed", actor, "DATA_AMENDMENT");
+        auditEventService.record("QC_TEST_RESULT", row.getId(), AuditEventType.UPDATE,
+                "status", previousStatus != null ? previousStatus.name() : null, row.getStatus().name(),
+                "Signed amendment recalculated result status", actor, "DATA_AMENDMENT");
         auditEventService.record("QC_TEST_RESULT", row.getId(), AuditEventType.WORKFLOW_ACTION,
                 "isLocked", "true", "true",
                 "DATA_AMENDMENT: " + request.getJustification(), actor, "DATA_AMENDMENT");
@@ -210,6 +261,19 @@ public class QcTestResultServiceImpl implements QcTestResultService {
 
     private String normalize(String value) {
         return value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private boolean isFailingStatus(QcTestResultStatus status) {
+        return status == QcTestResultStatus.FAIL || status == QcTestResultStatus.OOS || status == QcTestResultStatus.INCONCLUSIVE;
+    }
+
+    private boolean hasClosedInvestigation(UUID samplingRequestId) {
+        return qcInvestigationRepository.existsBySamplingRequestIdAndStatusInAndIsActiveTrue(
+                samplingRequestId,
+                Set.of(QcInvestigationStatus.CLOSED_INVALID,
+                        QcInvestigationStatus.CLOSED_CONFIRMED,
+                        QcInvestigationStatus.CLOSED_RESAMPLE,
+                        QcInvestigationStatus.CLOSED_RETEST));
     }
 
     private enum NumericMode {

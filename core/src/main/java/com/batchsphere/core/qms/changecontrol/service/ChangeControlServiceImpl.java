@@ -290,6 +290,7 @@ public class ChangeControlServiceImpl implements ChangeControlService {
                 .entityNumber(resolved[0])
                 .entityDisplayName(resolved[1])
                 .createdAt(LocalDateTime.now())
+                .isActive(true)
                 .build();
         ChangeControlAffectedEntity saved = affectedEntityRepository.save(entity);
         auditEventService.record("QMS_CHANGE_CONTROL", id, AuditEventType.UPDATE, "affectedEntity",
@@ -320,11 +321,14 @@ public class ChangeControlServiceImpl implements ChangeControlService {
     public void removeAffectedEntity(UUID id, UUID entityId) {
         String actor = authenticatedActorService.currentActor();
         getActive(id);
-        ChangeControlAffectedEntity entity = affectedEntityRepository.findByIdAndChangeControlId(entityId, id)
+        ChangeControlAffectedEntity entity = affectedEntityRepository.findByIdAndChangeControlIdAndIsActiveTrue(entityId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Affected entity not found"));
-        affectedEntityRepository.delete(entity);
+        entity.setIsActive(false);
+        entity.setUpdatedBy(actor);
+        entity.setUpdatedAt(LocalDateTime.now());
+        affectedEntityRepository.save(entity);
         auditEventService.record("QMS_CHANGE_CONTROL", id, AuditEventType.UPDATE, "affectedEntity",
-                entity.getEntityType().name(), null, entity.getEntityReference(), actor, "QMS_CHANGE_CONTROL");
+                entity.getEntityType().name(), "REMOVED", entity.getEntityReference(), actor, "QMS_CHANGE_CONTROL");
     }
 
     @Override
@@ -388,7 +392,7 @@ public class ChangeControlServiceImpl implements ChangeControlService {
 
     private ChangeControlResponse toResponse(ChangeControl cc) {
         List<ChangeControlAffectedEntityResponse> entities = affectedEntityRepository
-                .findByChangeControlIdOrderByCreatedAtAsc(cc.getId())
+                .findByChangeControlIdAndIsActiveTrueOrderByCreatedAtAsc(cc.getId())
                 .stream().map(this::toEntityResponse).toList();
         List<ChangeControlTaskResponse> tasks = taskRepository
                 .findByChangeControlIdAndIsActiveTrueOrderByCreatedAtAsc(cc.getId())

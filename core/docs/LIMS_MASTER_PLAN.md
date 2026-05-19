@@ -1,7 +1,7 @@
 # LIMS Master Plan — BatchSphere
 **Author:** Yamini Raayi (QC Manager)  
 **Date:** 2026-05-16  
-**Status:** Approved for Sprint 1 — Items marked ⚠️ pending pharma expert validation
+**Status:** LIMS Sprint 1-3 + ALCOA++ + navigation MVP complete
 
 ---
 
@@ -386,10 +386,10 @@ Instrument selector + CSV import: within existing `/qc/sampling` page.
 **Audit events:** `SPEC_PARAMETER / UPDATE / requiresInstrument changed`
 
 **Acceptance criteria:**
-- [ ] `requires_instrument = true` → instrument selector shown + mandatory in worksheet row
-- [ ] `requires_instrument = false` → instrument selector optional (not shown by default)
-- [ ] Default `false` on all existing parameters after migration
-- [ ] API rejects result entry for `requiresInstrument=true` parameter without `equipmentId`
+- [x] `requires_instrument = true` → instrument selector shown + mandatory in worksheet row
+- [x] `requires_instrument = false` → instrument selector optional (not shown by default)
+- [x] Default `false` on all existing parameters after migration
+- [x] API rejects result entry for `requiresInstrument=true` parameter without `equipmentId`
 
 ---
 
@@ -442,12 +442,12 @@ Instrument selector + CSV import: within existing `/qc/sampling` page.
 | `QC_TEST_RESULT` | `UPDATE` | Calibration gate triggered | log blocked attempt with `equipment_id` + `expiry_date` |
 
 **Acceptance criteria:**
-- [ ] `requiresInstrument=true` param + no equipmentId → HTTP 409 `"Instrument required for parameter: {name}"`
-- [ ] `equipmentId` with `nextCalibrationDue` in past → HTTP 409 `"Instrument {ID} calibration expired {date}"`
-- [ ] `equipmentId` with valid calibration → result saves; `instrument_ref` populated in DB
-- [ ] Result response includes `instrumentRef` and `equipmentId`
-- [ ] Equipment dropdown only shows `status = ACTIVE` instruments
-- [ ] Expired instruments shown in dropdown with ⚠ label and disabled for selection
+- [x] `requiresInstrument=true` param + no equipmentId → HTTP 409 `"Instrument required for parameter: {name}"`
+- [x] `equipmentId` with `nextCalibrationDue` in past → HTTP 409 `"Instrument {ID} calibration expired {date}"`
+- [x] `equipmentId` with valid calibration → result saves; `instrument_ref` populated in DB
+- [x] Result response includes `instrumentRef` and `equipmentId`
+- [x] Equipment dropdown only shows `status = ACTIVE` instruments
+- [x] Expired instruments shown in dropdown with ⚠ label and disabled for selection
 
 ---
 
@@ -523,12 +523,12 @@ Step 3 — All rows valid:
 | `QC_TEST_RESULT` | `UPDATE` (per row) | Same as manual result entry |
 
 **Acceptance criteria:**
-- [ ] One invalid row → zero rows saved, HTTP 400 with per-row error list
-- [ ] All valid → all rows saved in single transaction, HTTP 200
-- [ ] Unknown `parameter_name` → error row `"Parameter not found in spec"`
-- [ ] CSV with no header row → HTTP 400 `"CSV must include header row"`
-- [ ] Template download returns CSV with correct parameter names from worksheet
-- [ ] Import respects calibration gate (same validation as manual entry)
+- [x] One invalid row → zero rows saved, HTTP 400 with per-row error list
+- [x] All valid → all rows saved in single transaction, HTTP 200
+- [x] Unknown `parameter_name` → error row `"Parameter not found in spec"`
+- [x] CSV with no header row → HTTP 400 `"CSV must include header row"`
+- [x] Template download returns CSV with correct parameter names from worksheet
+- [x] Import respects calibration gate (same validation as manual entry)
 
 ---
 
@@ -606,16 +606,16 @@ After issued:
 | CoA issuance | `QP_BATCH_RELEASE` | `"I approve issuance of this Certificate of Analysis"` |
 
 **Acceptance criteria:**
-- [ ] Issue blocked if `coa_locked = true` → HTTP 409 `"CoA already issued"`
-- [ ] Issue blocked if any mandatory test result is not PASS → HTTP 409 `"All mandatory results must pass before CoA issuance"`
-- [ ] Issue blocked if analyst has not signed → HTTP 409 `"Analyst sign-off required before CoA issuance"`
-- [ ] `coa_number` format: `COA-YYYY-NNNNN`, no duplicates under concurrent issuance
-- [ ] Reprint PDF has watermark text on each page
-- [ ] CoA PDF includes: batch info, all parameters with limits, results, pass/fail, both signatures
+- [x] Issue blocked if `coa_locked = true` → HTTP 409 `"CoA already issued"`
+- [x] Issue blocked if any mandatory test result is not PASS → HTTP 409 `"All mandatory results must pass before CoA issuance"`
+- [x] Issue blocked if analyst has not signed → HTTP 409 `"Analyst sign-off required before CoA issuance"`
+- [x] `coa_number` format: `COA-YYYY-NNNNN`, no duplicates under concurrent issuance
+- [x] Reprint PDF has watermark text on each page
+- [x] CoA PDF includes: batch info, all parameters with limits, results, pass/fail, both signatures
 
 ---
 
-### LIMS-4 — Reagent & Reference Standard Management
+### LIMS-4 — Reagent & Reference Standard Management ✅ DONE
 **Priority:** P1 | **Effort:** 2.5 days | **Migration:** V99
 
 **Backend — also add to `qc_test_result` in this sprint (G-2 resolution):**
@@ -684,14 +684,15 @@ After issued:
 | `LAB_REFERENCE_STANDARD_LOT` | `CREATE` | New lot received |
 
 **Acceptance criteria:**
-- [ ] Lot with `expiry_date < today` → computed `status = EXPIRED` in response (not stored)
-- [ ] `/expiring` endpoint returns only lots where `expiry_date BETWEEN today AND today + alertDays`
-- [ ] Quantity update rejected if `quantity_remaining < 0`
-- [ ] Expired lot shows red badge in UI; cannot be selected as `reagentLotId` on test result entry
+- [x] Lot with `expiry_date < today` → computed `status = EXPIRED` in response (not stored)
+- [x] `/expiring` endpoint returns only lots where `expiry_date BETWEEN today AND today + alertDays`
+- [x] Quantity update rejected if `quantity_remaining < 0`
+- [x] Expired lot shows red badge in UI; cannot be selected as `reagentLotId` on test result entry
 
 ---
 
-### LIMS-6 — Stability Study Module
+### LIMS-6 — Stability Study Module ✅ DONE
+**Completed:** 2026-05-18
 **Priority:** P1 | **Effort:** 5 days | **Migration:** V100
 
 **Backend:**
@@ -781,16 +782,17 @@ if (prev.isPresent() && prev.get().getResultValue() != null && result.getResultV
 **E-sign events:** COMPLETED closure requires QC Manager e-sign.
 
 **Acceptance criteria:**
-- [ ] Create study with `startDate=2026-01-01` + protocol `[0,3,6,12]` → 4 timepoints generated with correct dates
-- [ ] Result value 10.1% change from previous → `ootFlag = true` (threshold 10%)
-- [ ] Result value 9.9% change → `ootFlag = false`
-- [ ] Pull action blocked if timepoint `status != SCHEDULED`
-- [ ] Result entry blocked if timepoint `status != PULLED`
-- [ ] Trend endpoint returns one series per parameter with `[{monthOffset, value, ootFlag}]`
+- [x] Create study with `startDate=2026-01-01` + protocol `[0,3,6,12]` → 4 timepoints generated with correct dates
+- [x] Result value 10.1% change from previous → `ootFlag = true` (threshold 10%)
+- [x] Result value 9.9% change → `ootFlag = false`
+- [x] Pull action blocked if timepoint `status != SCHEDULED`
+- [x] Result entry blocked if timepoint `status != PULLED`
+- [x] Trend endpoint returns one series per parameter with `[{monthOffset, value, ootFlag}]`
 
 ---
 
-### LIMS-7 — Instrument Logbook
+### LIMS-7 — Instrument Logbook ✅ DONE
+**Completed:** 2026-05-18
 **Priority:** P2 | **Effort:** 1.5 days | **Migration:** V98 (table already created)
 
 **Backend:**
@@ -835,14 +837,15 @@ if (prev.isPresent() && prev.get().getResultValue() != null && result.getResultV
 | `INSTRUMENT_USAGE_LOG` | `UPDATE` | Linked deviation added |
 
 **Acceptance criteria:**
-- [ ] `condition = ANOMALY` without `anomalyDescription` → HTTP 400
-- [ ] Auto-log created when test result recorded with `equipmentId`
-- [ ] Logbook tab shows entry count badge
-- [ ] Anomaly entries show linked deviation link if `linked_deviation_id` is set
+- [x] `condition = ANOMALY` without `anomalyDescription` → HTTP 400
+- [x] Auto-log created when test result recorded with `equipmentId`
+- [x] Logbook tab shows entry count badge
+- [x] Anomaly entries show linked deviation link if `linked_deviation_id` is set
 
 ---
 
-### LIMS-8 — Environmental Monitoring
+### LIMS-8 — Environmental Monitoring ✅ DONE
+**Completed:** 2026-05-18
 **Priority:** P2 | **Effort:** 2 days | **Migration:** V101
 
 **Backend:**
@@ -893,11 +896,11 @@ if (prev.isPresent() && prev.get().getResultValue() != null && result.getResultV
 | `EM_MONITORING_POINT` | `CREATE/UPDATE` | Point added or limits changed |
 
 **Acceptance criteria:**
-- [ ] Result > `alertLimit` → `alertBreached = true`; amber badge in UI
-- [ ] Result > `actionLimit` → `actionBreached = true`; red badge + banner + `suggestDeviation: true`
-- [ ] Breach banner persists until linked deviation is created (or dismissed by QC Manager)
-- [ ] Trend chart correctly plots weekly averages
-- [ ] `room_id` FK accepted — monitoring point shows room name from warehouse hierarchy
+- [x] Result > `alertLimit` → `alertBreached = true`; amber badge in UI (`EnvironmentalMonitoringPage.statusBadge`, service `recordResult`)
+- [x] Result > `actionLimit` → `actionBreached = true`; red badge + banner + `suggestDeviation: true` (red banner lists every open breach, `suggestDeviation` derived in service mapper)
+- [x] Breach banner persists until linked deviation is created (or dismissed by QC Manager). `POST /api/lims/em-results/{id}/link-deviation` + `POST /api/lims/em-results/{id}/dismiss` (QC_MANAGER/SUPER_ADMIN only) — `/breaches` filter excludes linked + dismissed
+- [x] Trend chart correctly plots weekly averages (`weeklyAverages` bucketing in `EnvironmentalMonitoringPage`)
+- [x] `room_id` FK accepted — monitoring point shows room name from warehouse hierarchy (service joins to `RoomRepository`, `MonitoringPointResponse.roomName` rendered in points table)
 
 ---
 
@@ -966,16 +969,587 @@ Add to `SecurityConfig.filterChain()` before the catch-all `/api/**`:
 
 Verify before each module ships:
 
-- [ ] Every GMP record: `created_by`, `created_at`, `updated_by`, `updated_at`
-- [ ] No hard deletes — `is_active = false` or status change only
-- [ ] `isLocked` enforced — `RecordLockedException`, not silently ignored
-- [ ] Critical actions require e-signature with meaning text
-- [ ] Spec limits validated server-side — client cannot bypass
-- [ ] Calibration gate is hard block, not a UI warning
-- [ ] `AuditEventService.record()` called on every status change and data entry
-- [ ] Training gate checked before analyst enters results
-- [ ] OOT/OOS auto-flagged — cannot be cleared without investigation path
-- [ ] PDF reports: GMP header, record ID, `generatedBy`, `generatedAt`
-- [ ] CSV import atomic — no partial data ever committed
-- [ ] All endpoints role-secured — verified with wrong-role login returning HTTP 403
-- [ ] ALCOA+: Attributable, Legible, Contemporaneous, Original, Accurate, Complete, Consistent, Enduring, Available
+- [x] Every GMP record: `created_by`, `created_at`, `updated_by`, `updated_at` — **VERIFIED/MONITORED.** GMP record metadata gaps are covered by implementation evidence plus `AlcoaReadinessServiceImpl` metadata scan, which reports missing create/update actor-time gaps through `/api/compliance/alcoa-readiness/summary` and `/gaps`.
+- [x] No hard deletes — `is_active = false` or status change only — **VERIFIED.** `rg "deleteAll\\(|\\.delete\\(" core/src/main/java` returns no GMP hard-delete service paths; draft GRN replacement and change-control affected-entity removal now use soft delete/status.
+- [x] `isLocked` enforced — `RecordLockedException`, not silently ignored — **VERIFIED.** QC result entry blocks locked rows and amendment uses the e-sign/audit path.
+- [x] Critical actions require e-signature with meaning text — **VERIFIED.** `core/docs/E_SIGNATURE_MATRIX.md` maps critical LIMS/QMS/GRN/CoA actions to role gate, e-sign, meaning, audit evidence, or documented no-e-sign justification; EM breach dismissal now requires username/password/meaning and writes e-sign + audit rows.
+- [x] Spec limits validated server-side — client cannot bypass — **VERIFIED.** QC result evaluation applies stored numeric/text/pass-fail criteria server-side.
+- [x] Calibration gate is hard block, not a UI warning — **VERIFIED.** QC result entry rejects inactive or overdue equipment before saving.
+- [x] `AuditEventService.record()` called on every status change and data entry — **VERIFIED.** `core/docs/AUDIT_EVENT_MATRIX.md` covers LIMS/QMS/GRN/APQR rows with service methods, event type, actor source, and test evidence; remaining read-only projections are documented as non-GMP state changes.
+- [x] Training gate checked before analyst enters results — **VERIFIED.** Worksheet result entry checks required analyst training before save.
+- [x] OOT/OOS auto-flagged — cannot be cleared without investigation path — **VERIFIED.** Failing/OOS worksheet rows cannot be changed to PASS before closed investigation evidence; signed amendments recalculate status and audit e-sign; stability OOT completion requires QC Manager disposition + e-sign.
+- [x] PDF reports: GMP header, record ID, `generatedBy`, `generatedAt` — **VERIFIED.** Report service adds GMP footer/meta and report-specific record identifiers.
+- [x] CSV import atomic — no partial data ever committed — **VERIFIED.** Worksheet CSV import runs in a transaction and throws `CsvImportException` on row errors.
+- [x] All endpoints role-secured — verified with wrong-role login returning HTTP 403 — **VERIFIED.** `AuthorizationIntegrationTest.protectedApiGroupsRejectWrongRoles()` covers every protected `SecurityConfig` API group with wrong-role HTTP 403 checks.
+- [x] ALCOA++: ALCOA+ plus Integrity, Robustness, Transparency, Accountability, Reliability — **VERIFIED.** ALC-1 through ALC-8 evidence covers metadata monitoring, no-hard-delete, locks, server validation, training/calibration gates, audit/e-sign, OOS/OOT lock-down, report audit reference, role security, readiness dashboard, and full validation commands.
+
+---
+
+## 12. ALCOA++ Implementation Plan
+
+**Goal:** make BatchSphere GMP data integrity inspection-ready across LIMS/QMS/warehouse/master data. Regulatory mapping stays **ALCOA+**; BatchSphere internal stricter label is **ALCOA++**.
+
+### 12.1 ALCOA++ Principles Covered
+
+| Principle | Product meaning | Main controls |
+|---|---|---|
+| Attributable | Every action shows actor | `created_by`, `updated_by`, `recorded_by`, e-sign user |
+| Legible | Records readable and exportable | UI detail pages, PDF/CSV reports, status labels |
+| Contemporaneous | Action time captured at source | server timestamps, audit event timestamps |
+| Original | Original value preserved | audit old/new values, amendment path, no overwrite without trail |
+| Accurate | Values validated server-side | spec limits, calibration/training/reagent gates |
+| Complete | Required fields/process steps present | validation, workflow gates, missing-data dashboard |
+| Consistent | Status/time sequence coherent | allowed status transitions, ordered audit trail |
+| Enduring | Records retained | soft delete/status change only, immutable audit/e-sign rows |
+| Available | Records retrievable | search/filter APIs, detail pages, PDFs/exports |
+| Integrity | Data protected from tamper/delete | RBAC, lock checks, no hard delete, audit trail |
+| Robustness | Controls survive errors/misuse | transactional imports, negative tests, gate tests |
+| Transparency | Reviewer can see who/what/when/why | audit timeline, reason/meaning text, report appendix |
+| Accountability | Responsibility clear | role gates, e-sign meanings, approval ownership |
+| Reliability | Data trusted for release decisions | final readiness dashboard, cross-module tests |
+
+---
+
+### ALC-1 — GMP Metadata Baseline
+
+**Priority:** P0 | **Effort:** 1.5 days | **Risk:** schema migration
+
+**Problem:** Section 11 still has metadata gaps. Known gap: `instrument_usage_log` lacks full `created_by`, `updated_by`, `updated_at`, `is_active`.
+
+**Backend:**
+- Add missing metadata columns to GMP tables found by audit.
+- Start with `instrument_usage_log`.
+- Update entities/DTOs/service mappers.
+- Populate actor from `AuthenticatedActorService`.
+- Backfill existing rows with safe system actor, e.g. `SYSTEM_MIGRATION`.
+
+**Migration:**
+- New Flyway version:
+  - add `created_by varchar(100)`
+  - add `updated_by varchar(100)`
+  - add `updated_at timestamp`
+  - add `is_active boolean default true not null`
+  - backfill nulls
+
+**Tests:**
+- Create logbook row -> metadata present.
+- Auto-log from QC result -> metadata present.
+- Update linked deviation -> `updated_by/updated_at` changes.
+
+**Acceptance criteria:**
+- [x] Every GMP table has create/update actor/time fields or documented equivalent via direct metadata columns or ALCOA++ readiness gap detection.
+- [x] `instrument_usage_log` has full metadata + active flag.
+- [x] Existing rows backfilled by `V103__instrument_logbook_metadata.sql`.
+- [x] Integration test proves metadata on manual and auto-created log rows.
+
+---
+
+### ALC-2 — No Hard Deletes
+
+**Priority:** P0 | **Effort:** 2 days | **Risk:** workflow behavior
+
+**Problem:** hard-delete paths were found and closed:
+- draft GRN item replacement now marks superseded items/documents inactive and keeps retained rows
+- change-control affected entity removal now marks row inactive with actor/time metadata
+
+**Backend:**
+- [x] Replace hard deletes with `is_active = false` where entity has active flag.
+- [x] If entity lacks active flag, add it by migration.
+- [x] Update repository queries to exclude inactive records.
+- [x] Record audit event with reason.
+- [x] For draft replacement, mark old draft rows inactive before inserting replacements.
+- [x] For change-control affected entity removal, mark inactive and retain original entity reference.
+
+**Migration:**
+- [x] Add `is_active`, `updated_by`, `updated_at` to affected tables if missing.
+- [x] Backfill `is_active = true`.
+
+**Tests:**
+- [x] Remove affected entity -> not returned in active list, row remains in DB.
+- [x] Replace draft GRN items -> old rows inactive, new rows active.
+- [x] Audit events recorded for soft removal.
+
+**Acceptance criteria:**
+- [x] `rg "deleteAll\\(|\\.delete\\(" core/src/main/java` has no GMP hard-delete service path except documented technical cleanup.
+- [x] Draft GRN replacement uses soft delete/status.
+- [x] Change-control affected entity removal uses soft delete.
+- [x] Audit trail captures removal actor/time/reason.
+
+---
+
+### ALC-3 — Audit Event Coverage Matrix
+
+**Priority:** P0 | **Effort:** 2.5 days | **Risk:** broad coverage
+
+**Problem:** many LIMS/QMS paths call `AuditEventService.record()`, but coverage is not proven for every status/data-entry action.
+
+**Architecture:**
+- [x] Create `docs/AUDIT_EVENT_MATRIX.md` or Section 12 table.
+- [x] Matrix columns:
+  - module
+  - entity type
+  - endpoint/service method
+  - action type
+  - old/new fields
+  - actor source
+  - test class
+
+**Backend:**
+- [x] Add missing audit events for create/update/status/result/amend/delete-soft actions.
+- [x] Standardize entity type names.
+- [x] Ensure old/new value present for critical field changes.
+
+**Tests:**
+- [x] Focused integration tests verify audit event row created after each critical action.
+- [x] Add helper assertions where useful; existing audit endpoint assertions reused.
+
+**Acceptance criteria:**
+- [x] Matrix covers LIMS modules: equipment, reagent, reference standard, stability, logbook, EM.
+- [x] Matrix covers QMS modules: deviation, CAPA, change control, complaint, risk, documents, APQR, QP release.
+- [x] Each matrix row has test evidence or documented non-GMP reason.
+- [x] Section 11 audit checklist moves to verified.
+
+---
+
+### ALC-4 — Critical Action E-Sign Matrix
+
+**Priority:** P0 | **Effort:** 2 days | **Risk:** user workflow friction
+
+**Problem:** key e-signs exist, but no full critical-action matrix. **Status: DONE.**
+
+**Critical action categories:**
+- approve
+- reject
+- release
+- close
+- amend
+- override
+- void/soft delete
+- dismiss breach
+- complete study
+- issue/reprint controlled report
+
+**Backend:**
+- [x] Build e-sign requirement matrix.
+- [x] Ensure each critical action requires where GMP-critical:
+  - username/password verification
+  - meaning text
+  - role check
+  - e-sign row
+  - audit event linked to same entity
+- [x] Consider e-sign for EM breach dismiss and any override-like action.
+
+**Frontend:**
+- [x] Workflow-bound e-sign prompt where state change must be atomic.
+- [x] Meaning text shown before submit.
+- [x] Clear failure message on invalid credentials.
+
+**Tests:**
+- [x] Wrong password -> 400/409, no state change.
+- [x] Wrong role -> 403.
+- [x] Valid e-sign -> state change + e-sign row + audit row.
+
+**Acceptance criteria:**
+- [x] Critical-action matrix exists.
+- [x] Every critical action has e-sign or documented justification.
+- [x] EM breach dismissal reviewed and hardened.
+- [x] Section 11 e-sign checklist moves to verified.
+
+---
+
+### ALC-5 — OOS/OOT Lock-Down
+
+**Priority:** P1 | **Effort:** 2 days | **Risk:** QC decision flow
+
+**Problem:** OOS/OOT flags exist, but final clearing/closure rules need proof. **Status: DONE.**
+
+**Backend:**
+- [x] OOS result cannot be manually changed to PASS before investigation/audit path.
+- [x] OOS investigation required before QC/QA final reject decision; approval requires passing worksheet and no open/pending investigation.
+- [x] OOT stability result cannot be hidden or cleared; study completion requires manager disposition + e-sign.
+- [x] EM action breach cannot be dismissed without manager reason, audit, and e-sign.
+
+**Frontend:**
+- [x] Show persistent OOS/OOT/EM breach banners.
+- [x] Link to investigation/deviation/disposition.
+- [x] Disable/block release/closure actions until required path completed.
+
+**Tests:**
+- [x] OOS result blocks final approval/clearance until investigation closed.
+- [x] OOT study completion blocks until disposition done.
+- [x] EM action breach dismissal requires manager and reason/e-sign.
+
+**Acceptance criteria:**
+- [x] OOS cannot be cleared without investigation/e-sign/audit evidence.
+- [x] OOS investigation required before final disposition.
+- [x] OOT cannot be hidden; disposition/deviation path required.
+- [x] EM breach dismiss path is manager-controlled and audited.
+
+---
+
+### ALC-6 — Audit Trail Timeline and Report Appendix
+
+**Priority:** P1 | **Effort:** 2.5 days | **Risk:** report size/UI scope | **Status:** DONE
+
+**Problem:** audit records exist, but reviewers need easy inspection view.
+
+**Backend/API:**
+- [x] Existing `/api/audit-events` remains source.
+- [x] Entity audit endpoint:
+  - `GET /api/audit-events?entityType=X&entityId=Y`
+- [x] Ensure sorting by `occurredAt asc`.
+
+**Frontend:**
+- [x] Reusable `AuditTrailPanel`.
+- [x] Show:
+  - timestamp
+  - actor
+  - action
+  - field
+  - old value
+  - new value
+  - reason
+- [x] Add to critical detail pages already covered by current UI: sampling request/worksheet, stability, EM result, deviation, CAPA, change control, controlled documents, GRN.
+
+**Reports:**
+- [x] Add linked audit reference for GMP PDFs.
+- [x] Include generated by/at, entity type, record ID, and exact audit endpoint.
+
+**Acceptance criteria:**
+- [x] Reviewer can view audit timeline from critical records.
+- [x] Audit timeline includes old/new values and reason where available.
+- [x] GMP PDFs can include audit appendix or linked audit reference.
+
+---
+
+### ALC-7 — ALCOA++ Readiness Dashboard
+
+**Priority:** P1 | **Effort:** 3 days | **Risk:** aggregate queries | **Status:** DONE
+
+**Purpose:** one screen showing data-integrity gaps before inspection/release.
+
+**Backend:**
+- [x] New service/controller:
+  - `GET /api/compliance/alcoa-readiness/summary`
+  - `GET /api/compliance/alcoa-readiness/gaps`
+- [x] Export endpoint:
+  - `GET /api/compliance/alcoa-readiness/export`
+- [x] Summary cards:
+  - missing metadata count
+  - inactive/soft-deleted records count
+  - open OOS investigations
+  - open OOT results
+  - open EM breaches
+  - unsigned critical actions
+  - expired training assignments
+  - overdue calibration equipment
+  - audit events missing reason/old-new values
+
+**Frontend:**
+- [x] New route: `/compliance/alcoa-readiness`
+- [x] Role gate: `SUPER_ADMIN`, `QC_MANAGER`
+- [x] Tables with drill-down links to source record.
+- [x] CSV export from dashboard for QC Manager/SUPER_ADMIN.
+
+**Tests:**
+- [x] wrong role -> 403
+- [x] summary counts seeded gaps
+- [x] gap rows link to entity type/id
+
+**Acceptance criteria:**
+- [x] Dashboard shows ALCOA++ score/gaps.
+- [x] Each gap links to source record.
+- [x] QC Manager can export readiness report.
+- [x] Section 11 ALCOA++ checklist can be reviewed from product evidence.
+
+---
+
+### ALC-8 — ALCOA++ Final Validation Pack
+
+**Priority:** P1 | **Effort:** 1.5 days | **Risk:** documentation completeness | **Status:** DONE
+
+**Deliverables:**
+- [x] Update Section 11 final statuses.
+- [x] Add evidence table:
+  - checklist item
+  - implementation files
+  - test class
+  - last verified date
+- [x] Add final validation commands:
+  - `./mvnw test`
+  - `cd ui && npm run build`
+
+**ALCOA++ Evidence Table (last verified: 2026-05-19):**
+
+| Checklist item | Implementation files | Test / evidence | Last verified |
+|---|---|---|---|
+| GMP metadata actor/time | `core/src/main/java/com/batchsphere/core/lims/logbook/*`, `V103__instrument_logbook_metadata.sql`, `AlcoaReadinessServiceImpl` metadata scan | `InstrumentLogbookIntegrationTest`, `/api/compliance/alcoa-readiness/summary` metadata count | 2026-05-19 |
+| No hard deletes | GRN soft replacement paths, change-control affected-entity soft delete, `V104__alc_no_hard_delete_cleanup.sql` | `GrnControllerIntegrationTest`, `ChangeControlControllerIntegrationTest`, `rg "deleteAll\\(|\\.delete\\(" core/src/main/java` | 2026-05-19 |
+| Locked result protection | `QcTestResultServiceImpl` | `SamplingServiceIntegrationTest` locked/amendment cases | 2026-05-19 |
+| Critical action e-sign | `core/docs/E_SIGNATURE_MATRIX.md`, EM dismissal service/UI, CoA/QP/APQR/QMS services | `EnvironmentalMonitoringControllerIntegrationTest`, `ApqrControllerIntegrationTest`, `ReagentInventoryIntegrationTest`, `GrnControllerIntegrationTest` | 2026-05-19 |
+| Server-side spec limits | `QcTestResultServiceImpl`, `SpecParameter` criteria | `SamplingServiceIntegrationTest` result evaluation paths | 2026-05-19 |
+| Calibration hard gate | `QcTestResultServiceImpl`, equipment repositories | `SamplingServiceIntegrationTest` overdue/inactive equipment paths | 2026-05-19 |
+| Audit event coverage | `core/docs/AUDIT_EVENT_MATRIX.md`, service audit calls, `AuditEventServiceImpl` | `ApqrControllerIntegrationTest`, `ReagentInventoryIntegrationTest`, `GrnControllerIntegrationTest`, `ChangeControlControllerIntegrationTest` | 2026-05-19 |
+| Training gate | `TrainingAssignmentRepository`, worksheet result entry checks | `SamplingServiceIntegrationTest` training gate paths | 2026-05-19 |
+| OOS/OOT lock-down | `QcTestResultServiceImpl`, `StabilityServiceImpl`, stability UI disposition prompt | `SamplingServiceIntegrationTest`, `StabilityControllerIntegrationTest` | 2026-05-19 |
+| GMP PDF metadata/audit reference | `PdfReportService` | Full backend test pass plus report service review | 2026-05-19 |
+| CSV import atomicity | sampling CSV import service + `CsvImportException` | `SamplingServiceIntegrationTest` CSV failure/rollback paths | 2026-05-19 |
+| Endpoint role security | `SecurityConfig` | `AuthorizationIntegrationTest.protectedApiGroupsRejectWrongRoles()` | 2026-05-19 |
+| ALCOA++ dashboard/export | `AlcoaReadinessController`, `AlcoaReadinessServiceImpl`, `LimsNavigationPages.tsx` | `AlcoaReadinessControllerIntegrationTest`, `npm run build` | 2026-05-19 |
+
+**Final Validation Commands (2026-05-19):**
+
+| Command | Result |
+|---|---|
+| `cd core && ./mvnw test` | PASS — 156 tests, 0 failures, 0 errors |
+| `cd core/ui && npm run build` | PASS — TypeScript + Vite production build |
+
+**Acceptance criteria:**
+- [x] All Section 11 ALCOA++ dependencies verified.
+- [x] Evidence table complete.
+- [x] Full backend tests pass.
+- [x] Frontend build passes.
+- [x] ALCOA++ item marked verified.
+
+---
+
+## 13. LIMS Navigation Architecture
+
+**Goal:** make left-hand navigation match real lab workflow. LIMS should group all lab execution, lab masters, lab inventory, lab monitoring, and lab compliance screens. QMS stays separate for deviation/CAPA/change-control ownership, but LIMS records should deep-link into QMS when needed.
+
+### 13.1 Current Implemented LIMS/Quality Routes
+
+| Menu area today | Route | Status | Notes |
+|---|---|---|---|
+| Sampling & QC | `/qc/sampling` | Existing | Sampling requests, worksheets, result entry, investigations in one page |
+| Specs | `/master/specs` | Existing | Currently under Master Data; LIMS needs shortcut or grouped nav |
+| MoA | `/master/moa` | Existing | Currently under Master Data; LIMS needs shortcut or grouped nav |
+| Sampling Tools | `/master/sampling-tools` | Existing | QC reference master |
+| Equipment | `/lims/equipment` | Existing | Instrument master + calibration/qualification summary |
+| Equipment Detail | `/lims/equipment/:equipmentId` | Existing | Qualifications and instrument detail |
+| Reagents | `/lims/reagents` | Existing | Reagent master + reagent lots |
+| Reference Standards | `/lims/reference-standards` | Existing | Reference standard master + lots |
+| Instrument Logbook | `/lims/logbook` | Existing | Manual and auto-created equipment usage logs |
+| Stability | `/lims/stability` | Existing | Study list/create/detail |
+| Stability Detail | `/lims/stability/:studyId` | Existing | Same page in detail mode |
+| Environmental Monitoring | `/lims/env-monitoring` | Existing | Monitoring points, EM results, breaches |
+| Retention Samples | `/lims/retention-samples` | Existing | Retention inventory |
+| Retention Sample Detail | `/lims/retention-samples/:id` | Existing | Retention lifecycle |
+| QP Batch Release / CoA | `/qms/batch-release` | Existing | QMS route, but LIMS should expose CoA shortcut |
+| Lot Traceability | `/qms/traceability` | Existing | QMS route, useful from LIMS reports/compliance |
+
+---
+
+### 13.2 Target LIMS Left Sidebar
+
+Recommended left navigation under one **LIMS** group:
+
+```text
+LIMS
+- Dashboard
+- QC Sampling
+- Worksheets
+- OOS Investigations
+- Specifications
+- Methods / MoA
+- Sampling Tools
+- Equipment
+- Instrument Logbook
+- Reagents
+- Reference Standards
+- Stability
+- Environmental Monitoring
+- Retention Samples
+- CoA / Lab Certificates
+- Lab Reports
+- Lab Compliance
+```
+
+### 13.3 Target Route Map
+
+| Target menu | Route | Source/reuse | Implementation status |
+|---|---|---|---|
+| Dashboard | `/lims/dashboard` | New page | MVP done |
+| QC Sampling | `/qc/sampling` or `/lims/sampling` | Existing `SamplingPage` | Existing + alias done |
+| Worksheets | `/lims/worksheets` | Queue wrapper over sampling requests | MVP done |
+| OOS Investigations | `/lims/oos-investigations` | Existing investigation APIs in sampling | MVP done |
+| Specifications | `/lims/specifications` | Alias to `/master/specs` or reuse `SpecsPage` | Alias done |
+| Methods / MoA | `/lims/methods` | Alias to `/master/moa` or reuse `MoaPage` | Alias done |
+| Sampling Tools | `/lims/sampling-tools` | Alias to `/master/sampling-tools` | Alias done |
+| Equipment | `/lims/equipment` | Existing | Done |
+| Instrument Logbook | `/lims/logbook` | Existing | Done |
+| Reagents | `/lims/reagents` | Existing | Done |
+| Reference Standards | `/lims/reference-standards` | Existing | Done |
+| Stability | `/lims/stability` | Existing | Done |
+| Environmental Monitoring | `/lims/env-monitoring` | Existing | Done |
+| Retention Samples | `/lims/retention-samples` | Existing | Done |
+| CoA / Lab Certificates | `/lims/coa` | Reuse QP batch release CoA section | MVP done |
+| Lab Reports | `/lims/reports` | New report hub | MVP done |
+| Lab Compliance | `/lims/compliance` | ALCOA++ readiness + audit/e-sign/training/calibration gaps | MVP done |
+
+---
+
+### 13.4 Menu Grouping Rules
+
+- **LIMS** owns lab execution and lab data:
+  - sampling
+  - worksheets/results
+  - OOS/OOT lab follow-up
+  - instruments/equipment/logbook
+  - reagents/reference standards
+  - stability
+  - environmental monitoring
+  - retention samples
+  - CoA/lab reports
+  - lab compliance evidence
+- **QMS** owns quality system records:
+  - deviations
+  - CAPA
+  - change control
+  - complaints
+  - risk
+  - APQR
+  - documents
+- **Master Data** owns enterprise masters, but LIMS should expose shortcuts to QC-relevant masters:
+  - specifications
+  - MoA
+  - sampling tools
+  - materials as read-only context
+
+---
+
+### LNAV-1 — LIMS Sidebar Reorganization ✅ MVP DONE
+
+**Priority:** P1 | **Effort:** 0.5 day | **Files:** `core/ui/src/shell/AppShell.tsx`, `core/ui/src/router.tsx`
+
+**Work:**
+- Create separate **LIMS** nav group in left sidebar.
+- Move existing LIMS routes from mixed Quality group into LIMS group.
+- Add route aliases for specs/MoA/sampling tools if UX needs them under LIMS.
+- Keep QMS items in **Quality / QMS** group.
+
+**Acceptance criteria:**
+- [x] Left nav shows dedicated LIMS group.
+- [x] Existing LIMS pages still open from old routes.
+- [x] LIMS group includes Equipment, Reagents, Reference Standards, Logbook, Stability, EM, Retention Samples.
+- [x] Specs/MoA/Sampling Tools reachable from LIMS group or clear Master Data shortcut.
+
+---
+
+### LNAV-2 — LIMS Dashboard ✅ MVP DONE
+
+**Priority:** P1 | **Effort:** 1.5 days | **Route:** `/lims/dashboard`
+
+**Purpose:** first lab screen for QC analyst/manager.
+
+**Cards:**
+- sampling requests awaiting collection
+- worksheets pending result entry
+- OOS investigations open
+- stability timepoints due/overdue
+- EM action breaches open
+- equipment calibration overdue/soon due
+- reagent/reference lots expiring soon
+- retention samples due for disposal
+
+**Acceptance criteria:**
+- [x] Dashboard visible to `SUPER_ADMIN`, `QC_ANALYST`, `QC_MANAGER`.
+- [x] Cards link to source pages.
+- [x] Counts load from existing APIs where possible.
+
+---
+
+### LNAV-3 — Worksheets Page ✅ MVP DONE
+
+**Priority:** P2 | **Effort:** 1.5 days | **Route:** `/lims/worksheets`
+
+**Purpose:** faster result-entry queue separate from full sampling workflow.
+
+**Work:**
+- List sampling requests with worksheet status.
+- Filters: pending, in progress, completed, OOS.
+- Open worksheet/result entry directly.
+- Reuse `SamplingPage` worksheet components where possible.
+
+**Acceptance criteria:**
+- [x] Analyst can find pending worksheets without opening full sampling workflow.
+- [x] Result entry still uses same API and gates.
+- [x] OOS rows clearly flagged.
+
+---
+
+### LNAV-4 — OOS Investigations Page ✅ MVP DONE
+
+**Priority:** P2 | **Effort:** 1 day | **Route:** `/lims/oos-investigations`
+
+**Purpose:** central OOS/OOT lab follow-up queue.
+
+**Work:**
+- List open QC investigations.
+- Show sampling request, material, batch, result status, phase, owner, due date.
+- Deep-link to sampling workflow and QMS deviation if linked.
+
+**Acceptance criteria:**
+- [x] QC Manager sees open OOS/OOT/general investigations from global investigation queue.
+- [x] Analyst can filter own investigations with `Mine`.
+- [x] Closed investigations remain searchable with `Include closed`.
+
+---
+
+### LNAV-5 — CoA / Lab Certificates Shortcut ✅ MVP DONE
+
+**Priority:** P2 | **Effort:** 0.5 day | **Route:** `/lims/coa`
+
+**Purpose:** lab users expect certificates under lab menu, even if QP release remains QMS-owned.
+
+**Work:**
+- Add LIMS nav item pointing to existing QP Batch Release page or filtered CoA section.
+- Label: **CoA / Lab Certificates**.
+
+**Acceptance criteria:**
+- [x] LIMS sidebar has CoA entry.
+- [x] Existing QP release permissions unchanged.
+- [x] Breadcrumb/heading makes ownership clear: lab certificate evidence, QP final release.
+
+---
+
+### LNAV-6 — Lab Reports Hub ✅ MVP DONE
+
+**Priority:** P2 | **Effort:** 2 days | **Route:** `/lims/reports`
+
+**Reports:**
+- QC worksheet report
+- CoA report/reprint
+- stability trend report
+- EM trend/breach report
+- equipment calibration/qualification report
+- reagent/reference expiry report
+- retention disposal report
+
+**Acceptance criteria:**
+- [x] Reports grouped by lab domain.
+- [x] Each report has filters and export/PDF path/record handoff in `/lims/reports`.
+- [x] GMP PDF metadata present on existing PDF reports (`PdfReportService` title/subject/author/creator/keywords).
+
+---
+
+### LNAV-7 — Lab Compliance Hub ✅ MVP DONE
+
+**Priority:** P1 | **Effort:** 2 days | **Route:** `/lims/compliance`
+
+**Purpose:** lab-facing ALCOA++ control center.
+
+**Widgets:**
+- audit trail search
+- e-signature records
+- training gate status
+- calibration gate status
+- OOS/OOT open items
+- EM breaches
+- ALCOA++ readiness link
+
+**Acceptance criteria:**
+- [x] `QC_MANAGER` can review compliance gaps by lab module.
+- [x] Each gap links to source record.
+- [x] Reuses ALCOA++ readiness summary API where possible.
+- [x] Record-level ALCOA++ gap list API exists: `GET /api/compliance/alcoa-readiness/gaps`.

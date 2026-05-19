@@ -21,6 +21,9 @@ public interface TrainingAssignmentRepository extends JpaRepository<TrainingAssi
 
     long countByIsActiveTrueAndStatusNotAndDueDateBefore(TrainingAssignmentStatus status, LocalDate dueDate);
 
+    List<TrainingAssignment> findByIsActiveTrueAndStatusNotAndDueDateBeforeOrderByDueDateAsc(
+            TrainingAssignmentStatus status, LocalDate dueDate);
+
     boolean existsByAssignedUsernameAndTrainingTitleAndIsActiveTrue(String assignedUsername, String trainingTitle);
 
     boolean existsByAssignedUsernameAndTrainingTitleAndStatusAndIsActiveTrue(String assignedUsername, String trainingTitle, TrainingAssignmentStatus status);

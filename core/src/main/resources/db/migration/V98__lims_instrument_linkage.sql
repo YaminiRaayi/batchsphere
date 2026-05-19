@@ -4,12 +4,14 @@ ALTER TABLE spec_parameter
 
 -- LIMS-A: instrument linkage on qc_test_result
 ALTER TABLE qc_test_result
-    ADD COLUMN equipment_id   UUID REFERENCES equipment(id),
+    ADD COLUMN equipment_id UUID REFERENCES equipment(id);
+
+ALTER TABLE qc_test_result
     ADD COLUMN instrument_ref VARCHAR(50);
 
 -- LIMS-A: instrument usage log
 CREATE TABLE instrument_usage_log (
-    id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id                   UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     equipment_id         UUID NOT NULL REFERENCES equipment(id),
     used_by              VARCHAR(100) NOT NULL,
     used_at              TIMESTAMP NOT NULL,

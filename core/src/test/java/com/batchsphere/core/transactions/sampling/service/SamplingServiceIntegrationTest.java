@@ -806,7 +806,7 @@ class SamplingServiceIntegrationTest {
         assertNotNull(approved.getQcDisposition());
         assertEquals(QcDispositionStatus.APPROVED, approved.getQcDisposition().getStatus());
         List<AuditEvent> requestAuditEvents =
-                auditEventRepository.findByEntityTypeAndEntityIdAndIsActiveTrueOrderByEventAtDesc("SAMPLING_REQUEST", samplingRequest.getId());
+                auditEventRepository.findByEntityTypeAndEntityIdAndIsActiveTrueOrderByEventAtAsc("SAMPLING_REQUEST", samplingRequest.getId());
         assertTrue(requestAuditEvents.stream().anyMatch(event -> event.getEventType() == AuditEventType.STATUS_CHANGE));
         assertTrue(requestAuditEvents.stream().anyMatch(event -> event.getEventType() == AuditEventType.E_SIGNATURE));
         List<ESignatureRecord> signatures =
@@ -1067,6 +1067,61 @@ class SamplingServiceIntegrationTest {
         assertNotNull(approved.getQcDisposition());
         assertEquals(QcDispositionStatus.APPROVED, approved.getQcDisposition().getStatus());
         assertEquals(SampleStatus.APPROVED, approved.getSample().getSampleStatus());
+    }
+
+    @Test
+    void failingWorksheetResultCannotBeClearedBeforeInvestigationClosure() {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        SamplingWorkflowFixture fixture = createWorkflowFixture(
+                suffix,
+                SamplingMethod.HUNDRED_PERCENT,
+                "CRITICAL",
+                false,
+                1,
+                new BigDecimal("10.000")
+        );
+
+        CreateSamplingPlanRequest request = new CreateSamplingPlanRequest();
+        request.setSamplingMethod(SamplingMethod.HUNDRED_PERCENT);
+        request.setSampleType(SampleType.COMPOSITE);
+        request.setSpecId(fixture.spec().getId());
+        request.setMoaId(fixture.moa().getId());
+        request.setTotalContainers(1);
+        request.setContainersToSample(1);
+        request.setIndividualSampleQuantity(new BigDecimal("1.000"));
+        request.setCompositeSampleQuantity(new BigDecimal("1.000"));
+        request.setSamplingLocation("QC Booth");
+        request.setAnalystEmployeeCode("EMP-CLR");
+        request.setSamplingToolId(fixture.tool().getId());
+        request.setPhotosensitiveHandlingRequired(false);
+        request.setHygroscopicHandlingRequired(false);
+        request.setCoaBasedRelease(false);
+        request.setRationale("OOS clear guard");
+        request.setContainerSamples(List.of(sampleRequest(fixture.containers().get(0).getId(), "1.000")));
+        request.setCreatedBy("tester");
+
+        samplingService.createSamplingPlan(fixture.samplingRequest().getId(), request);
+        SamplingStartRequest startRequest = new SamplingStartRequest();
+        startRequest.setUpdatedBy("tester");
+        samplingService.startSampling(fixture.samplingRequest().getId(), startRequest);
+        SamplingCompletionRequest completionRequest = new SamplingCompletionRequest();
+        completionRequest.setUpdatedBy("tester");
+        samplingService.completeSampling(fixture.samplingRequest().getId(), completionRequest);
+        SamplingHandoffRequest handoffRequest = new SamplingHandoffRequest();
+        handoffRequest.setUpdatedBy("tester");
+        samplingService.handoffToQc(fixture.samplingRequest().getId(), handoffRequest);
+        receiveAndStartQcReview(fixture.samplingRequest().getId(), "EMP-CLR");
+
+        UUID rowId = getFirstWorksheetRowId(fixture.samplingRequest().getId());
+        RecordQcTestResultRequest fail = new RecordQcTestResultRequest();
+        fail.setResultValue(new BigDecimal("80.0000"));
+        samplingService.recordWorksheetResult(fixture.samplingRequest().getId(), rowId, fail);
+
+        RecordQcTestResultRequest pass = new RecordQcTestResultRequest();
+        pass.setResultValue(new BigDecimal("99.0000"));
+        BusinessConflictException blocked = assertThrows(BusinessConflictException.class,
+                () -> samplingService.recordWorksheetResult(fixture.samplingRequest().getId(), rowId, pass));
+        assertTrue(blocked.getMessage().contains("Failing/OOS result cannot be cleared"));
     }
 
     @Test

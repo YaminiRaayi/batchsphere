@@ -84,6 +84,39 @@ const RetentionSamplePage = lazy(() =>
 const RetentionSampleDetailPage = lazy(() =>
   import("./features/lims/RetentionSampleDetailPage").then((module) => ({ default: module.RetentionSampleDetailPage }))
 );
+const ReagentInventoryPage = lazy(() =>
+  import("./features/lims/ReagentInventoryPage").then((module) => ({ default: module.ReagentInventoryPage }))
+);
+const ReferenceStandardsPage = lazy(() =>
+  import("./features/lims/ReferenceStandardsPage").then((module) => ({ default: module.ReferenceStandardsPage }))
+);
+const StabilityPage = lazy(() =>
+  import("./features/lims/StabilityPage").then((module) => ({ default: module.StabilityPage }))
+);
+const EnvironmentalMonitoringPage = lazy(() =>
+  import("./features/lims/EnvironmentalMonitoringPage").then((module) => ({ default: module.EnvironmentalMonitoringPage }))
+);
+const LogbookPage = lazy(() =>
+  import("./features/lims/LogbookPage").then((module) => ({ default: module.LogbookPage }))
+);
+const LimsDashboardPage = lazy(() =>
+  import("./features/lims/LimsNavigationPages").then((module) => ({ default: module.LimsDashboardPage }))
+);
+const LimsWorksheetsPage = lazy(() =>
+  import("./features/lims/LimsNavigationPages").then((module) => ({ default: module.LimsWorksheetsPage }))
+);
+const LimsOosInvestigationsPage = lazy(() =>
+  import("./features/lims/LimsNavigationPages").then((module) => ({ default: module.LimsOosInvestigationsPage }))
+);
+const LimsCoaPage = lazy(() =>
+  import("./features/lims/LimsNavigationPages").then((module) => ({ default: module.LimsCoaPage }))
+);
+const LimsReportsPage = lazy(() =>
+  import("./features/lims/LimsNavigationPages").then((module) => ({ default: module.LimsReportsPage }))
+);
+const LimsCompliancePage = lazy(() =>
+  import("./features/lims/LimsNavigationPages").then((module) => ({ default: module.LimsCompliancePage }))
+);
 const RiskRegisterPage = lazy(() =>
   import("./features/qms/RiskRegisterPage").then((module) => ({ default: module.RiskRegisterPage }))
 );
@@ -196,6 +229,13 @@ export const router = createBrowserRouter([
             element: <ProtectedRoute allowedRoles={["SUPER_ADMIN", "QC_ANALYST", "QC_MANAGER"]} />,
             children: [
               { path: "qc/sampling", element: renderLazyRoute(<SamplingPage />), handle: { breadcrumb: "Sampling & QC" } },
+              { path: "lims/dashboard", element: renderLazyRoute(<LimsDashboardPage />), handle: { breadcrumb: "LIMS Dashboard" } },
+              { path: "lims/sampling", element: renderLazyRoute(<SamplingPage />), handle: { breadcrumb: "QC Sampling" } },
+              { path: "lims/worksheets", element: renderLazyRoute(<LimsWorksheetsPage />), handle: { breadcrumb: "Worksheets" } },
+              { path: "lims/oos-investigations", element: renderLazyRoute(<LimsOosInvestigationsPage />), handle: { breadcrumb: "OOS Investigations" } },
+              { path: "lims/specifications", element: renderLazyRoute(<SpecsPage />), handle: { breadcrumb: "Specifications" } },
+              { path: "lims/methods", element: renderLazyRoute(<MoaPage />), handle: { breadcrumb: "Methods / MoA" } },
+              { path: "lims/sampling-tools", element: renderLazyRoute(<SamplingToolsPage />), handle: { breadcrumb: "Sampling Tools" } },
               { path: "qms/deviations", element: renderLazyRoute(<DeviationListPage />), handle: { breadcrumb: "Deviations" } },
               { path: "qms/deviations/:deviationId", element: renderLazyRoute(<DeviationDetailPage />), handle: { breadcrumb: "Deviation Detail" } },
               { path: "qms/capas", element: renderLazyRoute(<CapaBoardPage />), handle: { breadcrumb: "CAPAs" } },
@@ -206,13 +246,28 @@ export const router = createBrowserRouter([
               { path: "documents", element: renderLazyRoute(<DocumentsPage />), handle: { breadcrumb: "Documents" } },
               { path: "lims/equipment", element: renderLazyRoute(<EquipmentPage />), handle: { breadcrumb: "Equipment" } },
               { path: "lims/equipment/:equipmentId", element: renderLazyRoute(<EquipmentDetailPage />), handle: { breadcrumb: "Equipment Detail" } },
+              { path: "lims/reagents", element: renderLazyRoute(<ReagentInventoryPage />), handle: { breadcrumb: "Reagents" } },
+              { path: "lims/reference-standards", element: renderLazyRoute(<ReferenceStandardsPage />), handle: { breadcrumb: "Reference Standards" } },
+              { path: "lims/stability", element: renderLazyRoute(<StabilityPage />), handle: { breadcrumb: "Stability" } },
+              { path: "lims/stability/:studyId", element: renderLazyRoute(<StabilityPage />), handle: { breadcrumb: "Stability Detail" } },
+              { path: "lims/env-monitoring", element: renderLazyRoute(<EnvironmentalMonitoringPage />), handle: { breadcrumb: "Environmental Monitoring" } },
+              { path: "lims/logbook", element: renderLazyRoute(<LogbookPage />), handle: { breadcrumb: "Instrument Logbook" } },
               { path: "lims/retention-samples", element: renderLazyRoute(<RetentionSamplePage />), handle: { breadcrumb: "Retention Samples" } },
               { path: "lims/retention-samples/:id", element: renderLazyRoute(<RetentionSampleDetailPage />), handle: { breadcrumb: "Retention Sample Detail" } },
+              { path: "lims/coa", element: renderLazyRoute(<LimsCoaPage />), handle: { breadcrumb: "CoA / Lab Certificates" } },
+              { path: "lims/reports", element: renderLazyRoute(<LimsReportsPage />), handle: { breadcrumb: "Lab Reports" } },
               { path: "qms/risk-register", element: renderLazyRoute(<RiskRegisterPage />), handle: { breadcrumb: "Risk Register" } },
               { path: "qms/risk-register/:assessmentId", element: renderLazyRoute(<RiskAssessmentDetailPage />), handle: { breadcrumb: "Risk Assessment" } },
               { path: "qms/apqr", element: renderLazyRoute(<ApqrPage />), handle: { breadcrumb: "APQR" } },
               { path: "qms/batch-release", element: renderLazyRoute(<QpBatchReleasePage />), handle: { breadcrumb: "QP Batch Release" } },
               { path: "qms/traceability", element: renderLazyRoute(<TraceabilityPage />), handle: { breadcrumb: "Lot Traceability" } }
+            ]
+          },
+          {
+            element: <ProtectedRoute allowedRoles={["SUPER_ADMIN", "QC_MANAGER"]} />,
+            children: [
+              { path: "lims/compliance", element: renderLazyRoute(<LimsCompliancePage />), handle: { breadcrumb: "Lab Compliance" } },
+              { path: "compliance/alcoa-readiness", element: renderLazyRoute(<LimsCompliancePage />), handle: { breadcrumb: "ALCOA++ Readiness" } }
             ]
           },
           {

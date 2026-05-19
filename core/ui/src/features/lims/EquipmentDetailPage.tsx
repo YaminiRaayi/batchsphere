@@ -4,7 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   addQualificationRecord,
+  createInstrumentLogEntry,
   fetchEquipment,
+  fetchEquipmentLogbook,
   fetchQualificationRecords
 } from "../../lib/api";
 import type {
@@ -13,9 +15,10 @@ import type {
   QualificationResult,
   QualificationType
 } from "../../types/equipment";
+import type { CreateInstrumentUsageLogRequest } from "../../types/logbook";
 import { useAuthStore } from "../../stores/authStore";
 
-type Tab = "overview" | "qualifications";
+type Tab = "overview" | "qualifications" | "logbook";
 
 const ALL_QUAL_TYPES: QualificationType[] = ["IQ", "OQ", "PQ", "REQUALIFICATION", "CALIBRATION"];
 const ALL_RESULTS: QualificationResult[] = ["PASS", "FAIL", "CONDITIONAL_PASS", "PENDING"];
@@ -31,6 +34,14 @@ const initialRecordForm: CreateQualificationRecordRequest = {
   username: "",
   password: "",
   signatureMeaning: ""
+};
+
+const initialLogForm: CreateInstrumentUsageLogRequest = {
+  equipmentId: "",
+  purpose: "",
+  condition: "NORMAL",
+  anomalyDescription: "",
+  linkedDeviationId: ""
 };
 
 function statusBadgeClass(status: EquipmentStatus) {
@@ -105,7 +116,9 @@ export function EquipmentDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [isAddRecordOpen, setIsAddRecordOpen] = useState(false);
   const [form, setForm] = useState<CreateQualificationRecordRequest>(initialRecordForm);
+  const [logForm, setLogForm] = useState<CreateInstrumentUsageLogRequest>(initialLogForm);
   const [formError, setFormError] = useState<string | null>(null);
+  const [logError, setLogError] = useState<string | null>(null);
 
   const { data: equipment, isLoading, error } = useQuery({
     queryKey: ["equipment", equipmentId],
@@ -116,6 +129,12 @@ export function EquipmentDetailPage() {
   const { data: records } = useQuery({
     queryKey: ["equipment-qualifications", equipmentId],
     queryFn: () => fetchQualificationRecords(equipmentId!),
+    enabled: !!equipmentId
+  });
+
+  const { data: logbook } = useQuery({
+    queryKey: ["equipment-logbook", equipmentId],
+    queryFn: () => fetchEquipmentLogbook(equipmentId!),
     enabled: !!equipmentId
   });
 
@@ -135,6 +154,16 @@ export function EquipmentDetailPage() {
     },
     onError: (err) =>
       setFormError(err instanceof Error ? err.message : "Failed to add qualification record")
+  });
+
+  const addLogMutation = useMutation({
+    mutationFn: (payload: CreateInstrumentUsageLogRequest) => createInstrumentLogEntry(payload),
+    onSuccess: async () => {
+      setLogForm({ ...initialLogForm, equipmentId: equipmentId! });
+      setLogError(null);
+      await queryClient.invalidateQueries({ queryKey: ["equipment-logbook", equipmentId] });
+    },
+    onError: (err) => setLogError(err instanceof Error ? err.message : "Failed to save log entry")
   });
 
   function handleAddRecord(event: FormEvent<HTMLFormElement>) {
@@ -167,6 +196,26 @@ export function EquipmentDetailPage() {
       username: form.username?.trim() || undefined,
       password: form.password?.trim() || undefined,
       signatureMeaning: form.signatureMeaning?.trim() || undefined
+    });
+  }
+
+  function handleAddLog(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!logForm.purpose?.trim()) {
+      setLogError("Purpose is required.");
+      return;
+    }
+    if (logForm.condition === "ANOMALY" && !logForm.anomalyDescription?.trim()) {
+      setLogError("Anomaly description is required.");
+      return;
+    }
+    addLogMutation.mutate({
+      ...logForm,
+      equipmentId: equipmentId!,
+      usedBy: authUser?.username,
+      purpose: logForm.purpose?.trim(),
+      anomalyDescription: logForm.anomalyDescription?.trim() || undefined,
+      linkedDeviationId: logForm.linkedDeviationId?.trim() || undefined
     });
   }
 
@@ -228,7 +277,7 @@ export function EquipmentDetailPage() {
       )}
 
       <div className="flex gap-1 border-b border-slate-200">
-        {(["overview", "qualifications"] as Tab[]).map((tab) => (
+        {(["overview", "qualifications", "logbook"] as Tab[]).map((tab) => (
           <button
             key={tab}
             type="button"
@@ -240,7 +289,7 @@ export function EquipmentDetailPage() {
                 : "text-slate-500 hover:text-slate-700"
             ].join(" ")}
           >
-            {tab === "overview" ? "Overview & Specs" : "Qualification History"}
+            {tab === "overview" ? "Overview & Specs" : tab === "qualifications" ? "Qualification History" : `Logbook${logbook?.length ? ` (${logbook.length})` : ""}`}
           </button>
         ))}
       </div>
@@ -383,6 +432,84 @@ export function EquipmentDetailPage() {
                     </tr>
                   ))
                 )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "logbook" && (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-sm font-bold text-slate-700">Logbook</h2>
+              <span className="rounded-full bg-cyan-100 px-2.5 py-1 text-[11px] font-semibold text-cyan-700">{logbook?.length ?? 0} entries</span>
+            </div>
+            <form onSubmit={handleAddLog} className="grid gap-3 lg:grid-cols-[1fr_160px_1fr_140px]">
+              <input
+                value={logForm.purpose ?? ""}
+                onChange={(e) => setLogForm({ ...logForm, purpose: e.target.value })}
+                className={fieldClass()}
+                placeholder="Purpose"
+              />
+              <select
+                value={logForm.condition}
+                onChange={(e) => setLogForm({ ...logForm, condition: e.target.value as CreateInstrumentUsageLogRequest["condition"] })}
+                className={fieldClass()}
+              >
+                <option value="NORMAL">Normal</option>
+                <option value="ANOMALY">Anomaly</option>
+              </select>
+              <input
+                value={logForm.anomalyDescription ?? ""}
+                onChange={(e) => setLogForm({ ...logForm, anomalyDescription: e.target.value })}
+                className={fieldClass()}
+                placeholder="Anomaly description"
+              />
+              <button disabled={addLogMutation.isPending} className="rounded-xl bg-cyan-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-60">
+                Save Entry
+              </button>
+            </form>
+            {logError && <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-600">{logError}</p>}
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <table className="w-full text-xs">
+              <thead className="border-b border-slate-200 bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-600">Date/Time</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-600">Used By</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-600">Purpose</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-600">Condition</th>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-600">Deviation</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {!logbook || logbook.length === 0 ? (
+                  <tr><td className="px-4 py-10 text-center text-slate-400" colSpan={5}>No logbook entries yet.</td></tr>
+                ) : logbook.map((entry) => (
+                  <tr key={entry.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 text-slate-600">{entry.usedAt}</td>
+                    <td className="px-4 py-3 text-slate-600">{entry.usedBy}</td>
+                    <td className="px-4 py-3 text-slate-700">
+                      <div>{entry.purpose ?? "—"}</div>
+                      {entry.samplingRequestId && <div className="text-[10px] text-slate-400">auto-logged from worksheet</div>}
+                      {entry.anomalyDescription && <div className="mt-1 text-[11px] text-amber-700">{entry.anomalyDescription}</div>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${entry.condition === "ANOMALY" ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}>
+                        {formatLabel(entry.condition)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {entry.linkedDeviationId ? (
+                        <a className="font-semibold text-cyan-700 hover:underline" href={`/qms/deviations/${entry.linkedDeviationId}`}>
+                          {entry.linkedDeviationNumber ?? "View Deviation"}
+                        </a>
+                      ) : "—"}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

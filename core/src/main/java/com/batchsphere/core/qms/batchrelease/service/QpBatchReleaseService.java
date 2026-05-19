@@ -18,5 +18,5 @@ public interface QpBatchReleaseService {
   CoaResponse analystSignCoa(UUID id, AnalystSignCoaRequest request, String actor);
   CoaResponse issueCoa(UUID id, IssueCoaRequest request, String actor);
   CoaResponse getCoaDetails(UUID id);
-  byte[] getCoaPdf(UUID id, String actor);
+  byte[] getCoaPdf(UUID id, String actor, boolean preview, boolean reprint);
 }

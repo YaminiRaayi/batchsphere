@@ -41,9 +41,12 @@ public class QcTestResultResponse {
     String unitApplied;
     String criteriaDisplay;
     Boolean mandatory;
+    Boolean requiresInstrument;
     Integer sequence;
     LocalDateTime enteredAt;
     String remarks;
+    Boolean isLocked;
     UUID equipmentId;
     String instrumentRef;
+    UUID reagentLotId;
 }

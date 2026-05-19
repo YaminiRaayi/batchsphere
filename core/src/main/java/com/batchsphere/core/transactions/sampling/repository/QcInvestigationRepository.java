@@ -18,6 +18,28 @@ public interface QcInvestigationRepository extends JpaRepository<QcInvestigation
     boolean existsBySamplingRequestIdAndStatusInAndIsActiveTrue(UUID samplingRequestId, Collection<QcInvestigationStatus> statuses);
 
     @Query("""
+            select i
+            from QcInvestigation i
+            where i.isActive = true
+              and (:includeClosed = true or i.status in :openStatuses)
+              and (:type is null or i.investigationType = :type)
+              and (:actor is null or lower(i.openedBy) = lower(:actor)
+                   or lower(i.outcomeSubmittedBy) = lower(:actor)
+                   or lower(i.qaReviewedBy) = lower(:actor)
+                   or lower(i.updatedBy) = lower(:actor))
+            order by i.openedAt desc
+            """)
+    List<QcInvestigation> findFiltered(@Param("includeClosed") boolean includeClosed,
+                                       @Param("openStatuses") Collection<QcInvestigationStatus> openStatuses,
+                                       @Param("type") QcInvestigationType type,
+                                       @Param("actor") String actor);
+
+    long countByStatusInAndIsActiveTrue(Collection<QcInvestigationStatus> statuses);
+
+    long countByStatusInAndInvestigationTypeAndIsActiveTrue(Collection<QcInvestigationStatus> statuses,
+                                                            QcInvestigationType investigationType);
+
+    @Query("""
             select count(i)
             from QcInvestigation i
             join Sample s on s.id = i.sampleId

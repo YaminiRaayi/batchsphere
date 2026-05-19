@@ -202,11 +202,14 @@ public class QcWorksheetServiceImpl implements QcWorksheetService {
                 .unitApplied(row.getUnitApplied())
                 .criteriaDisplay(formatCriteria(row.getCriteriaTypeApplied(), row.getLowerLimitApplied(), row.getUpperLimitApplied(), row.getUnitApplied(), parameter.getTextCriteria()))
                 .mandatory(parameter.getIsMandatory())
+                .requiresInstrument(parameter.getRequiresInstrument())
                 .sequence(parameter.getSequence())
                 .enteredAt(row.getEnteredAt())
                 .remarks(row.getRemarks())
+                .isLocked(row.getIsLocked())
                 .equipmentId(row.getEquipmentId())
                 .instrumentRef(row.getInstrumentRef())
+                .reagentLotId(row.getReagentLotId())
                 .build();
     }
 

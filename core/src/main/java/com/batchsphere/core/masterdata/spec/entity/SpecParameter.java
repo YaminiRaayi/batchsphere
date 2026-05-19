@@ -70,8 +70,9 @@ public class SpecParameter {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @Builder.Default
     @Column(name = "requires_instrument", nullable = false)
-    private Boolean requiresInstrument;
+    private Boolean requiresInstrument = false;
 
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;

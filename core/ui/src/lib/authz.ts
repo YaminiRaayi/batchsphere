@@ -41,6 +41,10 @@ export function canAccessNavPath(user: AuthUser | null, path: string) {
     return hasAnyRole(user, ["SUPER_ADMIN", "QC_ANALYST", "QC_MANAGER"]);
   }
 
+  if (path.startsWith("/lims/compliance") || path.startsWith("/compliance/alcoa-readiness")) {
+    return hasAnyRole(user, ["SUPER_ADMIN", "QC_MANAGER"]);
+  }
+
   if (path.startsWith("/lims")) {
     return hasAnyRole(user, ["SUPER_ADMIN", "QC_ANALYST", "QC_MANAGER"]);
   }
